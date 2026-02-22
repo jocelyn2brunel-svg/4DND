@@ -1688,11 +1688,6 @@ public class Game1 : Game
                         }
                     }
                 }
-                
-                _prevMouse = mouse;
-                _prevKb = kb;
-                base.Update(gameTime);
-                return;
             }
         }
 
@@ -1716,7 +1711,7 @@ public class Game1 : Game
         int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
         if (scrollDelta != 0) { _cameraDistance = MathHelper.Clamp(_cameraDistance - scrollDelta * 0.01f, 5f, 50f); _prevScrollValue = mouse.ScrollWheelValue; }
         
-        // Update vision
+        // Update vision before potential early returns in combat AI turns
         if (_visionNeedsUpdate)
         {
             RecalculateVision();
