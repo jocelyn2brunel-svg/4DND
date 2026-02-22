@@ -697,7 +697,9 @@ public class Game1 : Game
     {
         if (creature.Z > _currentViewLevel) return;
         if (_font == null || (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))) return;
-        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, creature.Z + 1.2f), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+        var (capsuleRadius, _) = GetCreatureCapsuleDimensions(creature.Size);
+        float uiAnchorZ = GetCreatureVisualTopZ(creature) + MathF.Max(0.15f, capsuleRadius * 0.4f);
+        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
