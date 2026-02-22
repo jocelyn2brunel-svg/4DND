@@ -262,13 +262,24 @@ namespace _4DND
             // Find which region this belongs to
             foreach (var region in Regions)
             {
-                int distance = Math.Abs(location.X - region.CenterX) + Math.Abs(location.Y - region.CenterY);
+                int distance = GetHexDistance(location.X, location.Y, region.CenterX, region.CenterY);
                 if (distance <= region.Radius)
                 {
                     region.Locations.Add(location);
                     break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Computes distance between two axial hex coordinates.
+        /// </summary>
+        private static int GetHexDistance(int x1, int y1, int x2, int y2)
+        {
+            int dx = x1 - x2;
+            int dy = y1 - y2;
+            int dz = -(x1 + y1) + (x2 + y2);
+            return (Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz)) / 2;
         }
         
         /// <summary>

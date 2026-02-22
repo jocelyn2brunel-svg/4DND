@@ -206,7 +206,7 @@ namespace _4DND
                     _ => "Unknown"
                 };
                 
-                sb.DrawString(_font, $"• {typeName}", new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, $"Â• {typeName}", new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
                 y += 16;
             }
         }
@@ -424,13 +424,11 @@ namespace _4DND
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             }
 
-            // Affichage des détails de la localisation sélectionnée
-            if (_selectedLocation != null)
-            {
-                y += 30;
-                sb.DrawString(_font, $"Selected: {_selectedLocation.Name}", new Vector2(panelRect.X + 10, y), Color.LightSkyBlue, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                y += 18;
-                sb.DrawString(_font, $"Type: {_selectedLocation.Type}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            // Convert axial hex coordinates to screen position (pointy-top hexagons).
+            // This keeps neighbors uniformly spaced in a true honeycomb layout.
+            float size = _tileSize * _zoom;
+            float screenX = size * (float)Math.Sqrt(3) * (x + y * 0.5f);
+            float screenY = size * 1.5f * y;
                 y += 18;
                 sb.DrawString(_font, $"Description: {_selectedLocation.Description}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             }
