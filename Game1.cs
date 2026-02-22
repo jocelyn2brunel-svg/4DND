@@ -630,22 +630,26 @@ public class Game1 : Game
     private void Draw3DGridOutlines(int zLevel)
     {
         Color gridOutlineColor = new Color(28, 36, 40);
-        foreach (var cell in _grid.EnumerateNonEmpty())
+
+        var bounds = _grid.BoundingBox();
+        if (!bounds.HasValue)
         {
-            int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
-            if (cz > zLevel || cell.Value == TileType.Empty || cell.Value == TileType.Wall) continue;
+            return;
+        }
 
-            // Ground grass should stay on the base level only and not bleed into upper-floor views.
-            if (cell.Value == TileType.Grass && (cz != 0 || zLevel > 0)) continue;
-
-            if (_showVisionOverlay && _playerCreature != null)
+        for (int cx = bounds.Value.minX; cx <= bounds.Value.maxX; cx++)
+        {
+            for (int cy = bounds.Value.minY; cy <= bounds.Value.maxY; cy++)
             {
-                bool isVisible = _visionSystem.IsVisible(cx, cy, cz);
-                Color tint = _visionSystem.GetFogOfWarTint(cx, cy, cz, isVisible, _playerCreature);
-                if (tint == Color.Black) continue;
-            }
+                if (_showVisionOverlay && _playerCreature != null)
+                {
+                    bool isVisible = _visionSystem.IsVisible(cx, cy, zLevel);
+                    Color tint = _visionSystem.GetFogOfWarTint(cx, cy, zLevel, isVisible, _playerCreature);
+                    if (tint == Color.Black) continue;
+                }
 
-            Draw3DTileOutline(cx, cy, cz, gridOutlineColor);
+                Draw3DTileOutline(cx, cy, zLevel, gridOutlineColor);
+            }
         }
     }
 
