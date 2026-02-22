@@ -583,6 +583,10 @@ public class Game1 : Game
     {
         _basicEffect.World = Matrix.Identity;
         _basicEffect.LightingEnabled = true;
+        _basicEffect.DiffuseColor = Vector3.One;
+
+        List<VertexPositionNormalColor> wallVertices = new();
+
         foreach (var cell in _grid.EnumerateNonEmpty())
         {
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
@@ -596,7 +600,7 @@ public class Game1 : Game
                 TileType.Floor => Color.ForestGreen,
                 TileType.Grass => new Color(80, 180, 80),
                 TileType.DifficultTerrain => new Color(139, 69, 19),
-                TileType.Wall => Color.Gray,
+                TileType.Wall => new Color(100, 100, 110), // Slightly cooler gray for walls
                 TileType.Water => Color.CornflowerBlue,
                 _ => Color.ForestGreen
             };
@@ -612,7 +616,8 @@ public class Game1 : Game
 
             if (cell.Value == TileType.Wall)
             {
-                Draw3DCube(cx, cy, cz, 1.0f, baseColor);
+                // Render wall as thin vertical planes on its boundaries
+                AddThinWallVertices(wallVertices, cx, cy, cz, baseColor);
             }
             else
             {
@@ -625,38 +630,166 @@ public class Game1 : Game
                 }
             }
         }
+
+        if (wallVertices.Count > 0)
+        {
+            _basicEffect.World = Matrix.Identity;
+            foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, wallVertices.ToArray(), 0, wallVertices.Count / 3);
+            }
+        }
+    }
+
+    private void AddThinWallVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
+    {
+        // Check neighbors to see which edges need a vertical plane
+        // A plane is drawn if the neighbor is NOT a wall
+        bool north = _grid.Get(x, y + 1, z) != TileType.Wall;
+        bool south = _grid.Get(x, y - 1, z) != TileType.Wall;
+        bool east = _grid.Get(x + 1, y, z) != TileType.Wall;
+        bool west = _grid.Get(x - 1, y, z) != TileType.Wall;
+
+        const float halfTile = 0.5f;
+        const float wallHeight = 1.0f;
+
+        if (north) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y + halfTile, z), new Vector3(x + halfTile, y + halfTile, z), wallHeight, color, Vector3.Backward);
+        if (south) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y - halfTile, z), new Vector3(x - halfTile, y - halfTile, z), wallHeight, color, Vector3.Forward);
+        if (east) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y + halfTile, z), new Vector3(x + halfTile, y - halfTile, z), wallHeight, color, Vector3.Right);
+        if (west) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y - halfTile, z), new Vector3(x - halfTile, y + halfTile, z), wallHeight, color, Vector3.Left);
+
+        // Also draw a small "cap" on top of the wall edges to make them look solid from above
+        // This helps the "separation" look
+        AddHorizontalWallCap(vertices, x, y, z, color);
+    }
+
+    private void AddVerticalPlaneVertices(List<VertexPositionNormalColor> vertices, Vector3 start, Vector3 end, float height, Color color, Vector3 normal)
+    {
+        var v1 = new VertexPositionNormalColor(start, normal, color);
+        var v2 = new VertexPositionNormalColor(end, normal, color);
+        var v3 = new VertexPositionNormalColor(start + Vector3.UnitZ * height, normal, color);
+        var v4 = new VertexPositionNormalColor(end + Vector3.UnitZ * height, normal, color);
+
+        // Triangle 1
+        vertices.Add(v1); vertices.Add(v3); vertices.Add(v2);
+        // Triangle 2
+        vertices.Add(v2); vertices.Add(v3); vertices.Add(v4);
+
+        // Draw the other side of the plane too so it's visible from both directions
+        var v1r = new VertexPositionNormalColor(start, -normal, color);
+        var v2r = new VertexPositionNormalColor(end, -normal, color);
+        var v3r = new VertexPositionNormalColor(start + Vector3.UnitZ * height, -normal, color);
+        var v4r = new VertexPositionNormalColor(end + Vector3.UnitZ * height, -normal, color);
+
+        vertices.Add(v1r); vertices.Add(v2r); vertices.Add(v3r);
+        vertices.Add(v2r); vertices.Add(v4r); vertices.Add(v3r);
+    }
+
+    private void AddHorizontalWallCap(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
+    {
+        const float halfTile = 0.5f;
+        const float wallHeight = 1.0f;
+        const float thickness = 0.05f; // Thin cap
+
+        float topZ = z + wallHeight;
+
+        // We draw a thin border on top
+        Vector3 tl = new Vector3(x - halfTile, y - halfTile, topZ);
+        Vector3 tr = new Vector3(x + halfTile, y - halfTile, topZ);
+        Vector3 br = new Vector3(x + halfTile, y + halfTile, topZ);
+        Vector3 bl = new Vector3(x - halfTile, y + halfTile, topZ);
+
+        // Check neighbors to avoid drawing caps where walls are continuous
+        bool north = _grid.Get(x, y + 1, z) != TileType.Wall;
+        bool south = _grid.Get(x, y - 1, z) != TileType.Wall;
+        bool east = _grid.Get(x + 1, y, z) != TileType.Wall;
+        bool west = _grid.Get(x - 1, y, z) != TileType.Wall;
+
+        if (north) AddCapSegment(vertices, bl, br, thickness, color);
+        if (south) AddCapSegment(vertices, tr, tl, thickness, color);
+        if (east) AddCapSegment(vertices, br, tr, thickness, color);
+        if (west) AddCapSegment(vertices, tl, bl, thickness, color);
+    }
+
+    private void AddCapSegment(List<VertexPositionNormalColor> vertices, Vector3 p1, Vector3 p2, float thickness, Color color)
+    {
+        Vector3 dir = Vector3.Normalize(p2 - p1);
+        Vector3 side = Vector3.Cross(dir, Vector3.UnitZ) * thickness;
+
+        Vector3 v1 = p1;
+        Vector3 v2 = p2;
+        Vector3 v3 = p1 - side;
+        Vector3 v4 = p2 - side;
+
+        vertices.Add(new VertexPositionNormalColor(v1, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v3, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v3, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v4, Vector3.Up, color));
     }
 
     private void Draw3DGridOutlines(int zLevel)
     {
-        Color gridOutlineColor = new Color(28, 36, 40);
+        Color gridOutlineColor = new Color(40, 50, 60);
+        List<VertexPositionColor> vertices = new();
 
-        var bounds = _grid.BoundingBox();
-        if (!bounds.HasValue)
+        foreach (var cell in _grid.EnumerateNonEmpty())
         {
-            return;
+            int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
+            if (cz > zLevel || cell.Value == TileType.Empty) continue;
+
+            // Only draw grid for the current level and one level below
+            if (cz < zLevel - 1) continue;
+
+            Color color = gridOutlineColor;
+            if (cz < zLevel) color *= 0.5f;
+
+            if (_showVisionOverlay && _playerCreature != null)
+            {
+                bool isVisible = _visionSystem.IsVisible(cx, cy, cz);
+                Color tint = _visionSystem.GetFogOfWarTint(cx, cy, cz, isVisible, _playerCreature);
+                if (tint == Color.Black) continue;
+                color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255), (byte)(color.A * tint.A / 255));
+            }
+
+            const float halfTile = 0.5f;
+            const float elevation = 0.01f; // Closer to tile surface to avoid looking like it floats
+            float zPos = cz + elevation;
+
+            Vector3 tl = new Vector3(cx - halfTile, cy - halfTile, zPos);
+            Vector3 tr = new Vector3(cx + halfTile, cy - halfTile, zPos);
+            Vector3 br = new Vector3(cx + halfTile, cy + halfTile, zPos);
+            Vector3 bl = new Vector3(cx - halfTile, cy + halfTile, zPos);
+
+            // Add 4 lines for the square
+            vertices.Add(new VertexPositionColor(tl, color)); vertices.Add(new VertexPositionColor(tr, color));
+            vertices.Add(new VertexPositionColor(tr, color)); vertices.Add(new VertexPositionColor(br, color));
+            vertices.Add(new VertexPositionColor(br, color)); vertices.Add(new VertexPositionColor(bl, color));
+            vertices.Add(new VertexPositionColor(bl, color)); vertices.Add(new VertexPositionColor(tl, color));
         }
 
-        for (int cx = bounds.Value.minX; cx <= bounds.Value.maxX; cx++)
+        if (vertices.Count > 0)
         {
-            for (int cy = bounds.Value.minY; cy <= bounds.Value.maxY; cy++)
+            _basicEffect.World = Matrix.Identity;
+            _basicEffect.LightingEnabled = false; // Grids don't need lighting
+            foreach (var pass in _basicEffect.CurrentTechnique.Passes)
             {
-                if (_showVisionOverlay && _playerCreature != null)
-                {
-                    bool isVisible = _visionSystem.IsVisible(cx, cy, zLevel);
-                    Color tint = _visionSystem.GetFogOfWarTint(cx, cy, zLevel, isVisible, _playerCreature);
-                    if (tint == Color.Black) continue;
-                }
-
-                Draw3DTileOutline(cx, cy, zLevel, gridOutlineColor);
+                pass.Apply();
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices.ToArray(), 0, vertices.Count / 2);
             }
+            _basicEffect.LightingEnabled = true;
         }
     }
 
     private void Draw3DLine(Vector3 start, Vector3 end, Color color)
     {
         var vertices = new[] { new VertexPositionColor(start, color), new VertexPositionColor(end, color) };
+        _basicEffect.LightingEnabled = false;
         foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices, 0, 1); }
+        _basicEffect.LightingEnabled = true;
     }
 
     private void Draw3DTile(int x, int y, int z, Color color)
@@ -1884,10 +2017,11 @@ public class Game1 : Game
             GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DGrid(_currentViewLevel);
-            GraphicsDevice.DepthStencilState = DepthStencilState.None;
+
+            // Draw grid outlines with depth testing enabled so they are hidden by walls/objects
             Draw3DGridOutlines(_currentViewLevel);
+
             DrawCreatureTileOutlines();
-            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DCreatures();
             var hovered = GetHoveredTile();
             if (hovered.HasValue)
