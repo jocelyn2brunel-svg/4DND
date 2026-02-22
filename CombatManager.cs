@@ -123,11 +123,7 @@ public class CombatManager
         if (Grid != null && Grid.Get(targetX, targetY, targetZ) == TileType.Wall)
             return false;
         
-        int distance = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
-        if (distance == 0) return true;
-
-        // Check corners for single-step diagonal movement
-        if (distance == 1 && !IsDiagonalMoveAllowed(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ))
+        if (IsPathBlocked(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ))
             return false;
 
         int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
@@ -145,19 +141,54 @@ public class CombatManager
         creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - totalCost);
     }
 
+    public bool IsPathBlocked(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        if (Grid == null) return false;
+
+        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
+        if (dist == 0) return false;
+
+        for (int i = 1; i <= dist; i++)
+        {
+            float t = (float)i / dist;
+            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
+            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
+            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
+
+            if (Grid.Get(cx, cy, cz) == TileType.Wall)
+                return true;
+
+            float tPrev = (float)(i - 1) / dist;
+            int px = (int)Math.Round(x1 + (x2 - x1) * tPrev);
+            int py = (int)Math.Round(y1 + (y2 - y1) * tPrev);
+            int pz = (int)Math.Round(z1 + (z2 - z1) * tPrev);
+
+            if (!IsDiagonalMoveAllowed(px, py, pz, cx, cy, cz))
+                return true;
+        }
+
+        return false;
+    }
+
     private int CalculateMovementCost(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        int distance = CalculateDistance(x1, y1, z1, x2, y2, z2);
-        if (distance == 0) return 0;
+        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
+        if (dist == 0) return 0;
 
-        // Base cost: 5ft per square (Chebyshev)
-        int cost = distance * 5;
+        int totalCost = 0;
+        for (int i = 1; i <= dist; i++)
+        {
+            float t = (float)i / dist;
+            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
+            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
+            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
 
-        // If target square is difficult terrain, it costs 5ft extra
-        if (Grid != null && Grid.Get(x2, y2, z2) == TileType.DifficultTerrain)
-            cost += 5;
+            totalCost += 5;
+            if (Grid != null && Grid.Get(cx, cy, cz) == TileType.DifficultTerrain)
+                totalCost += 5;
+        }
 
-        return cost;
+        return totalCost;
     }
 
     private bool IsDiagonalMoveAllowed(int x1, int y1, int z1, int x2, int y2, int z2)
@@ -222,15 +253,22 @@ public class CombatManager
         // Consume the action
         attacker.HasAction = false;
         
-        // Check if attacker can see target (requires VisionSystem)
-        bool attackerCanSee = !attacker.IsBlinded();
-        bool targetIsInvisible = target.Conditions.HasCondition(Condition.Invisible);
+        // Check if attacker can see target
+        bool attackerCanSee = true;
+        if (visionSystem != null)
+        {
+            attackerCanSee = visionSystem.CanSee(attacker, target);
+        }
+        else
+        {
+            attackerCanSee = !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+        }
         
         // Determine advantage/disadvantage
-        bool hasAdvantage = targetIsInvisible || target.Conditions.HasCondition(Condition.Prone) || 
+        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
                            target.Conditions.HasCondition(Condition.Paralyzed) || 
                            target.Conditions.HasCondition(Condition.Unconscious);
-        bool hasDisadvantage = attacker.IsBlinded() || target.Conditions.HasCondition(Condition.Invisible);
+        bool hasDisadvantage = !attackerCanSee;
         
         // Check for sunlight sensitivity (circumstantial disadvantage)
         if (visionSystem != null && attacker.HasSunlightSensitivity)

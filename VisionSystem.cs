@@ -430,6 +430,12 @@ public class VisionSystem
         {
             return false;
         }
+
+        // Walls block vision
+        if (!HasLineOfSight(observer.X, observer.Y, observer.Z, targetX, targetY, targetZ))
+        {
+            return false;
+        }
         
         foreach (var effect in _areaEffects)
         {
@@ -531,14 +537,14 @@ public class VisionSystem
         });
     }
 
-    public bool IsLightlyObscured(int x, int y, Creature observer)
+    public bool IsLightlyObscured(int x, int y, int z, Creature observer)
     {
-        var lightLevel = GetLightLevel(x, y);
+        var lightLevel = GetLightLevel(x, y, z);
         if (lightLevel == LightType.Dim) return true;
 
         if (lightLevel == LightType.Darkness)
         {
-            int dist = Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)) * 5;
+            int dist = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
             // Darkness is dim light for creatures with Darkvision
             if (observer.DarkvisionRange > 0 && dist <= observer.DarkvisionRange) return true;
         }
@@ -546,9 +552,9 @@ public class VisionSystem
         return false;
     }
 
-    public bool IsHeavilyObscured(int x, int y, Creature observer)
+    public bool IsHeavilyObscured(int x, int y, int z, Creature observer)
     {
-        int distToObserver = Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)) * 5;
+        int distToObserver = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
 
         // Truesight sees in normal and magical darkness
         if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
@@ -572,12 +578,12 @@ public class VisionSystem
         {
             if (effect.IsActive && effect.BlocksVision)
             {
-                int distance = Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y));
+                int distance = Math.Max(Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y)), Math.Abs(z - effect.Z));
                 if (distance <= effect.Radius / 5) return true;
             }
         }
 
-        var lightLevel = GetLightLevel(x, y);
+        var lightLevel = GetLightLevel(x, y, z);
         if (lightLevel == LightType.Darkness)
         {
             // Darkvision treats darkness as dim light, not heavily obscured
