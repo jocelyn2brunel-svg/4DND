@@ -593,6 +593,9 @@ public class Game1 : Game
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
 
+            // Ground grass should stay on the base level only and not bleed into upper-floor views.
+            if (cell.Value == TileType.Grass && (cz != 0 || zLevel > 0)) continue;
+
             Color baseColor = cell.Value switch
             {
                 TileType.Floor => Color.ForestGreen,
