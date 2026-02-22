@@ -174,10 +174,23 @@ public class CombatManager
         if (path == null)
             return;
 
-        int totalCost = CalculatePathCost(path);
-        
-        creature.MoveTo(targetX, targetY, targetZ);
-        creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - totalCost);
+        int movementSpent = 0;
+        int remaining = creature.MovementRemaining;
+
+        // Follow path step-by-step instead of jumping directly to target.
+        // This preserves path shape (detours around obstacles/difficult terrain)
+        // and prevents straight-line teleporting when movement is limited.
+        for (int i = 1; i < path.Count; i++)
+        {
+            int stepCost = GetMoveCost(path[i]);
+            if (movementSpent + stepCost > remaining)
+                break;
+
+            movementSpent += stepCost;
+            creature.MoveTo(path[i].X, path[i].Y, path[i].Z);
+        }
+
+        creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
     }
 
     public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)

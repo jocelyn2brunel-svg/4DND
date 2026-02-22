@@ -1657,7 +1657,7 @@ public class Game1 : Game
                                         _combatManager.Move(currentCombatant, tx, ty, _currentViewLevel);
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
-                                        AddToCombatLog($"{currentCombatant.Name} moved to ({tx}, {ty}, {_currentViewLevel}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
+                                        AddToCombatLog($"{currentCombatant.Name} moved to ({currentCombatant.X}, {currentCombatant.Y}, {currentCombatant.Z}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
                                         _selectedAction = CombatAction.None;
                                         
                                         // Update vision after movement
