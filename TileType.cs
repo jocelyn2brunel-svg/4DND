@@ -5,6 +5,7 @@ public enum TileType
     Empty,
     Water,
     Floor,
+    Grass,
     DifficultTerrain,
     Wall
 }
