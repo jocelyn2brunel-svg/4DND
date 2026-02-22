@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
 namespace _4DND;
@@ -17,7 +18,7 @@ public enum CreatureType
 
 public enum CreatureSize
 {
-    Tiny,       // 2½ by 2½ ft. (e.g., imp, sprite)
+    Tiny,       // 2Â½ by 2Â½ ft. (e.g., imp, sprite)
     Small,      // 5 by 5 ft. (e.g., giant rat, goblin)
     Medium,     // 5 by 5 ft. (e.g., orc, werewolf)
     Large,      // 10 by 10 ft. (e.g., hippogriff, ogre)
@@ -102,7 +103,7 @@ public static class SizeHelper
     {
         return size switch
         {
-            CreatureSize.Tiny => (2.5f, 2.5f),        // 2½ by 2½ ft.
+            CreatureSize.Tiny => (2.5f, 2.5f),        // 2Â½ by 2Â½ ft.
             CreatureSize.Small => (5f, 5f),           // 5 by 5 ft.
             CreatureSize.Medium => (5f, 5f),          // 5 by 5 ft.
             CreatureSize.Large => (10f, 10f),         // 10 by 10 ft.
@@ -171,6 +172,8 @@ public static class SizeHelper
 
 public class Creature
 {
+    private readonly Queue<Vector3> _movementWaypoints = new();
+
     public string Name { get; set; } = "";
     public CreatureType Type { get; set; }
     public CreatureSize Size { get; set; } = CreatureSize.Medium;
@@ -271,9 +274,13 @@ public class Creature
     /// </summary>
     public void UpdateMovementAnimation(float deltaTime)
     {
-        float dx = X - VisualX;
-        float dy = Y - VisualY;
-        float dz = Z - VisualZ;
+        Vector3 target = _movementWaypoints.Count > 0
+            ? _movementWaypoints.Peek()
+            : new Vector3(X, Y, Z);
+
+        float dx = target.X - VisualX;
+        float dy = target.Y - VisualY;
+        float dz = target.Z - VisualZ;
         float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
         
         if (distance > 0.01f)
@@ -282,9 +289,14 @@ public class Creature
             if (moveAmount >= distance)
             {
                 // Snap to target if we're close enough
-                VisualX = X;
-                VisualY = Y;
-                VisualZ = Z;
+                VisualX = target.X;
+                VisualY = target.Y;
+                VisualZ = target.Z;
+
+                if (_movementWaypoints.Count > 0)
+                {
+                    _movementWaypoints.Dequeue();
+                }
             }
             else
             {
@@ -302,6 +314,9 @@ public class Creature
     /// </summary>
     public bool IsMoving()
     {
+        if (_movementWaypoints.Count > 0)
+            return true;
+
         float dx = X - VisualX;
         float dy = Y - VisualY;
         float dz = Z - VisualZ;
@@ -313,6 +328,7 @@ public class Creature
     /// </summary>
     public void TeleportTo(int x, int y, int z)
     {
+        _movementWaypoints.Clear();
         X = x;
         Y = y;
         Z = z;
@@ -326,6 +342,12 @@ public class Creature
     /// </summary>
     public void MoveTo(int x, int y, int z)
     {
+        var waypoint = new Vector3(x, y, z);
+        if (_movementWaypoints.Count == 0 || _movementWaypoints.Peek() != waypoint)
+        {
+            _movementWaypoints.Enqueue(waypoint);
+        }
+
         X = x;
         Y = y;
         Z = z;
