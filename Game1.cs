@@ -582,11 +582,6 @@ public class Game1 : Game
     private void Draw3DGrid(int zLevel)
     {
         _basicEffect.World = Matrix.Identity;
-        _basicEffect.LightingEnabled = false;
-        int range = 20;
-        for (int x = -range; x <= range; x++) Draw3DLine(new Vector3(x, -range, zLevel), new Vector3(x, range, zLevel), Color.Gray * 0.5f);
-        for (int y = -range; y <= range; y++) Draw3DLine(new Vector3(-range, y, zLevel), new Vector3(range, y, zLevel), Color.Gray * 0.5f);
-
         _basicEffect.LightingEnabled = true;
         foreach (var cell in _grid.EnumerateNonEmpty())
         {
