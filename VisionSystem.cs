@@ -9,7 +9,7 @@ namespace _4DND;
 
 public class VisionSystem
 {
-    public InfiniteGrid3D<TileType>? Grid { get; set; }
+    public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
     
@@ -238,7 +238,7 @@ public class VisionSystem
             _visibleTiles.Add((cx, cy, cz));
             _exploredTiles.Add((cx, cy, cz));
 
-            if (Grid != null && Grid.Get(cx, cy, cz) == TileType.Wall)
+            if (TacticalMap != null && TacticalMap.Get(cx, cy, cz) == TileType.Wall)
                 break;
 
             // Check area effects that block vision
@@ -523,7 +523,7 @@ public class VisionSystem
     
     public bool HasLineOfSight(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        if (Grid == null) return true;
+        if (TacticalMap == null) return true;
 
         int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
         if (dist <= 1) return true;
@@ -542,7 +542,7 @@ public class VisionSystem
             curY += stepY;
             curZ += stepZ;
 
-            if (Grid.Get((int)curX, (int)curY, (int)curZ) == TileType.Wall)
+            if (TacticalMap.Get((int)curX, (int)curY, (int)curZ) == TileType.Wall)
                 return false;
         }
 
