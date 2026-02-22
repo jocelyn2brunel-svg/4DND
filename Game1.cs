@@ -14,7 +14,7 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
-    private InfiniteGrid3D<TileType> _tacticalMap = new();
+    private InfiniteGrid3D<TileType> _tacticalMap = null!;
     private Texture2D _pixel = null!;
 
     // 3D Camera system
@@ -108,10 +108,45 @@ public class Game1 : Game
         // Keep a normal bordered window at startup
         Window.IsBorderless = false;
         _graphics.ApplyChanges();
+
+        _tacticalMap = new InfiniteGrid3D<TileType>(GetProceduralTile);
         
         _prevKb = Keyboard.GetState();
         _prevMouse = Mouse.GetState();
         base.Initialize();
+    }
+
+    private TileType GetProceduralTile(int x, int y, int z)
+    {
+        if (z != 0) return TileType.Empty;
+
+        // Convert tactical coordinates to hex coordinates
+        (int q, int r) = Campaign.TacticalToHex(x, y);
+
+        // Deterministic terrain selection without allocating Random object every call.
+        // Simple hash of hex coordinates.
+        int h = q * 37 + r * 101;
+        h ^= (h >> 13);
+        h *= 0x5bd1e995;
+        h ^= (h >> 15);
+
+        int dominantType = Math.Abs(h % 100);
+
+        // Even/Odd hex color variation to make boundaries more visible
+        bool isEven = (q + r) % 2 == 0;
+
+        if (dominantType < 70) // 70% chance of primary terrain
+        {
+            return isEven ? TileType.Grass : TileType.Floor;
+        }
+        else if (dominantType < 90) // 20% chance of secondary terrain
+        {
+            return TileType.DifficultTerrain;
+        }
+        else // 10% chance of rare terrain (water)
+        {
+            return (q % 5 == 0 && r % 5 == 0) ? TileType.Water : TileType.Grass;
+        }
     }
 
     protected override void LoadContent()
@@ -143,12 +178,7 @@ public class Game1 : Game
         _visionSystem.TacticalMap = _tacticalMap;
         _visionSystem.GlobalDaylight = true; // Morning/Daylight by default
 
-        // Generate a full grassy ground plane
-        for (int x = -10; x <= 10; x++)
-        {
-            for (int y = -10; y <= 10; y++)
-                _tacticalMap.Set(x, y, 0, TileType.Grass);
-        }
+        // Procedural ground is now handled by InfiniteGrid3D factory.
         
         // Add some walls
         for (int i = -5; i <= 5; i++)
@@ -586,51 +616,76 @@ public class Game1 : Game
         _basicEffect.DiffuseColor = Vector3.One;
 
         List<VertexPositionNormalColor> wallVertices = new();
+        List<VertexPositionNormalColor> tileVertices = new();
 
+        // 1. Draw procedural ground around camera
+        int viewDist = 40; // View radius in tiles
+        int minX = (int)Math.Floor(_cameraTarget.X - viewDist);
+        int maxX = (int)Math.Ceiling(_cameraTarget.X + viewDist);
+        int minY = (int)Math.Floor(_cameraTarget.Y - viewDist);
+        int maxY = (int)Math.Ceiling(_cameraTarget.Y + viewDist);
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                TileType type = _tacticalMap.Get(x, y, 0);
+                if (type == TileType.Empty) continue;
+
+                // Ground grass should stay on the base level only and not bleed into upper-floor views.
+                if (type == TileType.Grass && zLevel > 0) continue;
+
+                Color color = GetTileColor(type, x, y, 0, zLevel);
+                if (color.A == 0) continue;
+
+                if (type == TileType.Wall)
+                {
+                    AddThinWallVertices(wallVertices, x, y, 0, color);
+                }
+                else
+                {
+                    AddTileVertices(tileVertices, x, y, 0, color);
+                    if (type == TileType.DifficultTerrain)
+                    {
+                        Draw3DLine(new Vector3(x - 0.2f, y - 0.2f, 0.01f), new Vector3(x + 0.2f, y + 0.2f, 0.01f), Color.Black * 0.5f);
+                        Draw3DLine(new Vector3(x - 0.2f, y + 0.2f, 0.01f), new Vector3(x + 0.2f, y - 0.2f, 0.01f), Color.Black * 0.5f);
+                    }
+                }
+            }
+        }
+
+        // 2. Draw non-empty cells from dictionary (for verticality and overrides)
         foreach (var cell in _tacticalMap.EnumerateNonEmpty())
         {
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
+
+            // Skip cells already drawn in the view box at z=0
+            if (cz == 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) continue;
+
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
 
             // Ground grass should stay on the base level only and not bleed into upper-floor views.
             if (cell.Value == TileType.Grass && (cz != 0 || zLevel > 0)) continue;
 
-            Color baseColor = cell.Value switch
-            {
-                TileType.Floor => Color.ForestGreen,
-                TileType.Grass => new Color(80, 180, 80),
-                TileType.DifficultTerrain => new Color(139, 69, 19),
-                TileType.Wall => new Color(100, 100, 110), // Slightly cooler gray for walls
-                TileType.Water => Color.CornflowerBlue,
-                _ => Color.ForestGreen
-            };
-
-            if (cz < zLevel) baseColor *= 0.3f;
-            if (_showVisionOverlay && _playerCreature != null)
-            {
-                bool isVisible = _visionSystem.IsVisible(cx, cy, cz);
-                Color tint = _visionSystem.GetFogOfWarTint(cx, cy, cz, isVisible, _playerCreature);
-                if (tint == Color.Black) continue;
-                baseColor = new Color((byte)(baseColor.R * tint.R / 255), (byte)(baseColor.G * tint.G / 255), (byte)(baseColor.B * tint.B / 255), (byte)(baseColor.A * tint.A / 255));
-            }
+            Color color = GetTileColor(cell.Value, cx, cy, cz, zLevel);
+            if (color.A == 0) continue;
 
             if (cell.Value == TileType.Wall)
             {
-                // Render wall as thin vertical planes on its boundaries
-                AddThinWallVertices(wallVertices, cx, cy, cz, baseColor);
+                AddThinWallVertices(wallVertices, cx, cy, cz, color);
             }
             else
             {
-                Draw3DTile(cx, cy, cz, baseColor);
+                AddTileVertices(tileVertices, cx, cy, cz, color);
                 if (cell.Value == TileType.DifficultTerrain)
                 {
-                    // Draw a small "X" on difficult terrain
                     Draw3DLine(new Vector3(cx - 0.2f, cy - 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy + 0.2f, cz + 0.01f), Color.Black * 0.5f);
                     Draw3DLine(new Vector3(cx - 0.2f, cy + 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy - 0.2f, cz + 0.01f), Color.Black * 0.5f);
                 }
             }
         }
 
+        // 3. Render batches
         if (wallVertices.Count > 0)
         {
             _basicEffect.World = Matrix.Identity;
@@ -640,6 +695,55 @@ public class Game1 : Game
                 GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, wallVertices.ToArray(), 0, wallVertices.Count / 3);
             }
         }
+
+        if (tileVertices.Count > 0)
+        {
+            _basicEffect.World = Matrix.Identity;
+            foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, tileVertices.ToArray(), 0, tileVertices.Count / 3);
+            }
+        }
+    }
+
+    private Color GetTileColor(TileType type, int x, int y, int z, int zLevel)
+    {
+        Color baseColor = type switch
+        {
+            TileType.Floor => Color.ForestGreen,
+            TileType.Grass => new Color(80, 180, 80),
+            TileType.DifficultTerrain => new Color(139, 69, 19),
+            TileType.Wall => new Color(100, 100, 110),
+            TileType.Water => Color.CornflowerBlue,
+            _ => Color.ForestGreen
+        };
+
+        if (z < zLevel) baseColor *= 0.3f;
+        if (_showVisionOverlay && _playerCreature != null)
+        {
+            bool isVisible = _visionSystem.IsVisible(x, y, z);
+            Color tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
+            if (tint == Color.Black) return Color.Transparent;
+            baseColor = new Color((byte)(baseColor.R * tint.R / 255), (byte)(baseColor.G * tint.G / 255), (byte)(baseColor.B * tint.B / 255), (byte)(baseColor.A * tint.A / 255));
+        }
+        return baseColor;
+    }
+
+    private void AddTileVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
+    {
+        const float half = 0.5f;
+        Vector3 n = Vector3.Up;
+
+        // Triangle 1
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y - half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, color));
+
+        // Triangle 2
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y + half, z), n, color));
     }
 
     private void AddThinWallVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
