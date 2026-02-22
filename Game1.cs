@@ -96,18 +96,17 @@ public class Game1 : Game
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
         
-        // Configure borderless fullscreen window
-        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
-        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+        // Start in standard windowed mode for now
+        _graphics.PreferredBackBufferWidth = 1280;
+        _graphics.PreferredBackBufferHeight = 720;
         _graphics.HardwareModeSwitch = false;
         _graphics.IsFullScreen = false;
     }
 
     protected override void Initialize()
     {
-        // Apply borderless fullscreen after initialization
-        Window.IsBorderless = true;
-        Window.Position = new Point(0, 0);
+        // Keep a normal bordered window at startup
+        Window.IsBorderless = false;
         _graphics.ApplyChanges();
         
         _prevKb = Keyboard.GetState();
