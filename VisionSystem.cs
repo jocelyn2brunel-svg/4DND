@@ -182,66 +182,88 @@ public class VisionSystem
         int visionRange = CalculateVisionRange(observer);
         // Limit to 40 tiles (200ft) for performance while allowing wide exploration
         int visionTiles = Math.Min(visionRange / 5, 40);
+        // Limit vertical vision for performance unless necessary
+        int verticalTiles = Math.Min(visionTiles, 10);
         
-        for (int dz = -visionTiles; dz <= visionTiles; dz++)
+        // Raycasting to all tiles on the surface of the visibility volume
+        // This is O(R^2) rays instead of O(R^3) raycasts, which is significantly faster
+
+        // Top and Bottom faces
+        for (int dx = -visionTiles; dx <= visionTiles; dx++)
         {
             for (int dy = -visionTiles; dy <= visionTiles; dy++)
             {
-                for (int dx = -visionTiles; dx <= visionTiles; dx++)
+                CastVisibilityRay(observer, observer.X + dx, observer.Y + dy, observer.Z + verticalTiles);
+                CastVisibilityRay(observer, observer.X + dx, observer.Y + dy, observer.Z - verticalTiles);
+            }
+        }
+
+        // Side faces
+        for (int dz = -verticalTiles; dz <= verticalTiles; dz++)
+        {
+            for (int d = -visionTiles; d <= visionTiles; d++)
+            {
+                CastVisibilityRay(observer, observer.X - visionTiles, observer.Y + d, observer.Z + dz);
+                CastVisibilityRay(observer, observer.X + visionTiles, observer.Y + d, observer.Z + dz);
+                CastVisibilityRay(observer, observer.X + d, observer.Y - visionTiles, observer.Z + dz);
+                CastVisibilityRay(observer, observer.X + d, observer.Y + visionTiles, observer.Z + dz);
+            }
+        }
+    }
+
+    private void CastVisibilityRay(Creature observer, int tx, int ty, int tz)
+    {
+        int dist = Math.Max(Math.Max(Math.Abs(tx - observer.X), Math.Abs(ty - observer.Y)), Math.Abs(tz - observer.Z));
+        if (dist == 0)
+        {
+            _visibleTiles.Add((observer.X, observer.Y, observer.Z));
+            _exploredTiles.Add((observer.X, observer.Y, observer.Z));
+            return;
+        }
+
+        float stepX = (float)(tx - observer.X) / dist;
+        float stepY = (float)(ty - observer.Y) / dist;
+        float stepZ = (float)(tz - observer.Z) / dist;
+
+        float curX = observer.X + 0.5f;
+        float curY = observer.Y + 0.5f;
+        float curZ = observer.Z + 0.5f;
+
+        for (int i = 0; i <= dist; i++)
+        {
+            int cx = (int)curX;
+            int cy = (int)curY;
+            int cz = (int)curZ;
+
+            _visibleTiles.Add((cx, cy, cz));
+            _exploredTiles.Add((cx, cy, cz));
+
+            if (Grid != null && Grid.Get(cx, cy, cz) == TileType.Wall)
+                break;
+
+            // Check area effects that block vision
+            bool blockedByEffect = false;
+            foreach (var effect in _areaEffects)
+            {
+                if (!effect.IsActive || !effect.BlocksVision) continue;
+
+                // Blindsight/Truesight can see through certain effects
+                int distToObs = Math.Max(Math.Max(Math.Abs(cx - observer.X), Math.Abs(cy - observer.Y)), Math.Abs(cz - observer.Z)) * 5;
+                if (observer.HasBlindSight && distToObs <= observer.BlindSightRange) continue;
+                if (observer.HasTrueSight && distToObs <= observer.TrueSightRange) continue;
+
+                int distToEff = Math.Max(Math.Max(Math.Abs(cx - effect.X), Math.Abs(cy - effect.Y)), Math.Abs(cz - effect.Z));
+                if (distToEff <= effect.Radius / 5)
                 {
-                    int tx = observer.X + dx;
-                    int ty = observer.Y + dy;
-                    int tz = observer.Z + dz;
-                    
-                    int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
-                    
-                    if (distance > visionTiles) continue; // Skip tiles outside range
-                    
-                    bool blocked = false;
-
-                    // Walls block vision
-                    if (!HasLineOfSight(observer.X, observer.Y, observer.Z, tx, ty, tz))
-                    {
-                        blocked = true;
-                    }
-
-                    if (!blocked)
-                    {
-                        foreach (var effect in _areaEffects)
-                        {
-                            if (!effect.IsActive || !effect.BlocksVision) continue;
-
-                            // Blindsight can see through most vision-blocking effects (like Fog Cloud)
-                            int distToObserver = Math.Max(Math.Max(Math.Abs(tx - observer.X), Math.Abs(ty - observer.Y)), Math.Abs(tz - observer.Z)) * 5;
-                            if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
-                            {
-                                continue;
-                            }
-
-                            // Truesight can see through magical effects
-                            if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
-                            {
-                                continue;
-                            }
-
-                            int distToEffect = Math.Max(Math.Max(Math.Abs(tx - effect.X), Math.Abs(ty - effect.Y)), Math.Abs(tz - effect.Z));
-                            int effectTiles = effect.Radius / 5;
-
-                            if (distToEffect <= effectTiles)
-                            {
-                                blocked = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!blocked)
-                    {
-                        _visibleTiles.Add((tx, ty, tz));
-                        _exploredTiles.Add((tx, ty, tz));
-                    }
+                    blockedByEffect = true;
+                    break;
                 }
             }
+            if (blockedByEffect) break;
+
+            curX += stepX;
+            curY += stepY;
+            curZ += stepZ;
         }
     }
     
@@ -506,14 +528,21 @@ public class VisionSystem
         int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
         if (dist <= 1) return true;
 
+        float stepX = (float)(x2 - x1) / dist;
+        float stepY = (float)(y2 - y1) / dist;
+        float stepZ = (float)(z2 - z1) / dist;
+
+        float curX = x1 + 0.5f;
+        float curY = y1 + 0.5f;
+        float curZ = z1 + 0.5f;
+
         for (int i = 1; i < dist; i++)
         {
-            float t = (float)i / dist;
-            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
-            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
-            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
+            curX += stepX;
+            curY += stepY;
+            curZ += stepZ;
 
-            if (Grid.Get(cx, cy, cz) == TileType.Wall)
+            if (Grid.Get((int)curX, (int)curY, (int)curZ) == TileType.Wall)
                 return false;
         }
 
