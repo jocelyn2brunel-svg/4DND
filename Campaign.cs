@@ -4,6 +4,16 @@ using System.Collections.Generic;
 namespace _4DND
 {
     /// <summary>
+    /// Map scale for campaign mapping (DMG p.14-16)
+    /// </summary>
+    public enum MapScale
+    {
+        Province,    // 1 hex = 1 mile (detailed local exploration)
+        Kingdom,     // 1 hex = 6 miles (regional travel)
+        Continent    // 1 hex = 60 miles (continental overview)
+    }
+    
+    /// <summary>
     /// Represents the type of settlement in the campaign world.
     /// </summary>
     public enum SettlementType
@@ -41,6 +51,56 @@ namespace _4DND
         
         // NPCs in this location
         public List<string> NPCs { get; set; } = new();
+        
+        // Scale visibility - at what scales this location is visible
+        public MapScale MinimumScale { get; set; } = MapScale.Province;
+        
+        /// <summary>
+        /// Creates a location with automatically assigned scale based on settlement type
+        /// </summary>
+        public static Location Create(string name, SettlementType type, int x, int y)
+        {
+            var location = new Location
+            {
+                Name = name,
+                Type = type,
+                X = x,
+                Y = y,
+                Description = Campaign.GetDefaultDescription(type),
+                Population = Campaign.GetTypicalPopulation(type),
+                MinimumScale = GetAppropriateScale(type),
+                IsDiscovered = false
+            };
+            
+            return location;
+        }
+        
+        /// <summary>
+        /// Determines the appropriate minimum scale for a settlement type
+        /// </summary>
+        private static MapScale GetAppropriateScale(SettlementType type)
+        {
+            return type switch
+            {
+                // Province scale only (too small for regional maps)
+                SettlementType.Hamlet => MapScale.Province,
+                SettlementType.Village => MapScale.Province,
+                SettlementType.Monastery => MapScale.Province,
+                SettlementType.Dungeon => MapScale.Province,
+                SettlementType.Wilderness => MapScale.Province,
+                
+                // Kingdom scale (regional importance)
+                SettlementType.Town => MapScale.Kingdom,
+                SettlementType.Fort => MapScale.Kingdom,
+                SettlementType.Castle => MapScale.Kingdom,
+                
+                // Visible at all scales (major importance)
+                SettlementType.City => MapScale.Kingdom,
+                SettlementType.Metropolis => MapScale.Continent,
+                
+                _ => MapScale.Province
+            };
+        }
     }
     
     /// <summary>
@@ -59,6 +119,9 @@ namespace _4DND
         
         // Locations in this region
         public List<Location> Locations { get; set; } = new();
+        
+        // Scale this region is defined at
+        public MapScale Scale { get; set; } = MapScale.Province;
     }
     
     /// <summary>
@@ -94,6 +157,54 @@ namespace _4DND
         public List<string> CampaignNotes { get; set; } = new();
         public Dictionary<string, string> Lore { get; set; } = new();
         
+        // Current map viewing scale
+        public MapScale CurrentScale { get; set; } = MapScale.Province;
+        
+        /// <summary>
+        /// Gets the distance represented by one hex at the given scale (in miles)
+        /// </summary>
+        public static int GetHexSize(MapScale scale)
+        {
+            return scale switch
+            {
+                MapScale.Province => 1,    // 1 hex = 1 mile
+                MapScale.Kingdom => 6,     // 1 hex = 6 miles  
+                MapScale.Continent => 60,  // 1 hex = 60 miles
+                _ => 1
+            };
+        }
+        
+        /// <summary>
+        /// Converts coordinates from one scale to another
+        /// </summary>
+        public static (int x, int y) ConvertCoordinates(int x, int y, MapScale fromScale, MapScale toScale)
+        {
+            int fromHexSize = GetHexSize(fromScale);
+            int toHexSize = GetHexSize(toScale);
+            
+            // Convert to "world units" (miles) then to target scale
+            float worldX = x * fromHexSize;
+            float worldY = y * fromHexSize;
+            
+            return ((int)(worldX / toHexSize), (int)(worldY / toHexSize));
+        }
+        
+        /// <summary>
+        /// Gets all regions visible at the given scale
+        /// </summary>
+        public List<Region> GetRegionsAtScale(MapScale scale)
+        {
+            return Regions.FindAll(r => r.Scale == scale);
+        }
+        
+        /// <summary>
+        /// Gets all locations visible at the given scale
+        /// </summary>
+        public List<Location> GetLocationsAtScale(MapScale scale)
+        {
+            return AllLocations.FindAll(l => l.IsDiscovered && (int)l.MinimumScale <= (int)scale);
+        }
+
         /// <summary>
         /// Creates a basic starting campaign with a home base.
         /// </summary>
@@ -104,7 +215,8 @@ namespace _4DND
                 Name = campaignName,
                 CreatedDate = DateTime.Now,
                 LastPlayedDate = DateTime.Now,
-                SessionCount = 0
+                SessionCount = 0,
+                CurrentScale = MapScale.Province // Start at province scale (local)
             };
             
             // Create home base (starting at origin)
@@ -117,10 +229,11 @@ namespace _4DND
                 IsHomeBase = true,
                 IsDiscovered = true,
                 Description = GetDefaultDescription(homeBaseType),
-                Population = GetTypicalPopulation(homeBaseType)
+                Population = GetTypicalPopulation(homeBaseType),
+                MinimumScale = MapScale.Province
             };
             
-            // Create local region (1 hex = 1 mile, radius 30 hexes)
+            // Create local region (1 hex = 1 mile, radius 30 hexes = 30 miles)
             campaign.LocalRegion = new Region
             {
                 Name = $"{homeBaseName} Region",
@@ -128,7 +241,8 @@ namespace _4DND
                 CenterX = 0,
                 CenterY = 0,
                 Radius = 30,
-                Terrain = "Mixed"
+                Terrain = "Mixed",
+                Scale = MapScale.Province
             };
             
             campaign.LocalRegion.Locations.Add(campaign.HomeBase);
@@ -160,7 +274,7 @@ namespace _4DND
         /// <summary>
         /// Gets a default description for a settlement type.
         /// </summary>
-        private static string GetDefaultDescription(SettlementType type)
+        public static string GetDefaultDescription(SettlementType type)
         {
             return type switch
             {
@@ -181,7 +295,7 @@ namespace _4DND
         /// <summary>
         /// Gets typical population for a settlement type.
         /// </summary>
-        private static int GetTypicalPopulation(SettlementType type)
+        public static int GetTypicalPopulation(SettlementType type)
         {
             return type switch
             {

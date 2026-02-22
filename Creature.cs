@@ -175,9 +175,19 @@ public class Creature
     public CreatureType Type { get; set; }
     public CreatureSize Size { get; set; } = CreatureSize.Medium;
     public Alignment Alignment { get; set; } = Alignment.TrueNeutral;
+    
+    // Grid position (target position)
     public int X { get; set; }
     public int Y { get; set; }
     public int Z { get; set; }
+    
+    // Visual position for smooth movement animation
+    public float VisualX { get; set; }
+    public float VisualY { get; set; }
+    public float VisualZ { get; set; }
+    
+    // Movement animation speed (units per second)
+    public float MovementSpeed { get; set; } = 8.0f;
     
     // Flight capabilities
     public bool CanFly { get; set; } = false;
@@ -256,6 +266,72 @@ public class Creature
         CurrentHP = Math.Min(MaxHP, CurrentHP + amount);
     }
     
+    /// <summary>
+    /// Updates the visual position to smoothly move towards the target grid position
+    /// </summary>
+    public void UpdateMovementAnimation(float deltaTime)
+    {
+        float dx = X - VisualX;
+        float dy = Y - VisualY;
+        float dz = Z - VisualZ;
+        float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        
+        if (distance > 0.01f)
+        {
+            float moveAmount = MovementSpeed * deltaTime;
+            if (moveAmount >= distance)
+            {
+                // Snap to target if we're close enough
+                VisualX = X;
+                VisualY = Y;
+                VisualZ = Z;
+            }
+            else
+            {
+                // Move towards target
+                float t = moveAmount / distance;
+                VisualX += dx * t;
+                VisualY += dy * t;
+                VisualZ += dz * t;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Checks if the creature is currently moving (visual position != target position)
+    /// </summary>
+    public bool IsMoving()
+    {
+        float dx = X - VisualX;
+        float dy = Y - VisualY;
+        float dz = Z - VisualZ;
+        return (dx * dx + dy * dy + dz * dz) > 0.01f;
+    }
+    
+    /// <summary>
+    /// Teleports the creature to a new position immediately (no animation)
+    /// </summary>
+    public void TeleportTo(int x, int y, int z)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        VisualX = x;
+        VisualY = y;
+        VisualZ = z;
+    }
+    
+    /// <summary>
+    /// Moves the creature to a new position with animation
+    /// </summary>
+    public void MoveTo(int x, int y, int z)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        // VisualX/Y/Z will be updated by UpdateMovementAnimation
+    }
+    
     public static Creature CreateGoblin(int x, int y, int z = 0)
     {
         return new Creature
@@ -267,6 +343,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 7,
             CurrentHP = 7,
             ArmorClass = 15,
@@ -284,7 +363,6 @@ public class Creature
             DarkvisionRange = 60,
             DisplayColor = Color.Green,
             IsPlayer = false,
-            // Goblins have no saving throw proficiencies
         };
     }
     
@@ -299,6 +377,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 15,
             CurrentHP = 15,
             ArmorClass = 13,
@@ -316,7 +397,6 @@ public class Creature
             DarkvisionRange = 60,
             DisplayColor = Color.DarkRed,
             IsPlayer = false,
-            // Orcs have no saving throw proficiencies
         };
     }
     
@@ -331,6 +411,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 13,
             CurrentHP = 13,
             ArmorClass = 13,
@@ -348,7 +431,6 @@ public class Creature
             DarkvisionRange = 60,
             DisplayColor = Color.White,
             IsPlayer = false,
-            // Skeletons have no saving throw proficiencies
         };
     }
     
@@ -363,6 +445,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 11,
             CurrentHP = 11,
             ArmorClass = 13,
@@ -382,7 +467,6 @@ public class Creature
             BlindSightRange = 30,
             DisplayColor = Color.Gray,
             IsPlayer = false
-            // Wolves have perception advantage but no saving throw proficiencies
         };
     }
     
@@ -397,6 +481,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 5,
             CurrentHP = 5,
             ArmorClass = 12,
@@ -415,7 +502,6 @@ public class Creature
             HasSunlightSensitivity = true,
             DisplayColor = Color.Brown,
             IsPlayer = false
-            // Kobolds have no saving throw proficiencies
         };
     }
     
@@ -430,6 +516,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 100,
             CurrentHP = 100,
             ArmorClass = 15,
@@ -449,7 +538,6 @@ public class Creature
             TremorsenseRange = 60,
             DisplayColor = Color.DarkGray,
             IsPlayer = false
-            // Umber Hulks have no saving throw proficiencies
         };
     }
     
@@ -464,6 +552,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = 97,
             CurrentHP = 97,
             ArmorClass = 15,
@@ -485,7 +576,6 @@ public class Creature
             TrueSightRange = 120,
             DisplayColor = Color.LightGoldenrodYellow,
             IsPlayer = false,
-            // Couatls have Charisma and Wisdom save proficiencies
             CharismaSaveProficiency = true,
             WisdomSaveProficiency = true
         };
@@ -504,6 +594,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
             MaxHP = character.MaxHP,
             CurrentHP = character.CurrentHP,
             ArmorClass = character.ArmorClass,
@@ -517,7 +610,6 @@ public class Creature
             DarkvisionRange = character.DarkvisionRange,
             DisplayColor = Color.Blue,
             IsPlayer = true,
-            // Copy saving throw proficiencies
             StrengthSaveProficiency = character.StrengthSaveProficiency,
             DexteritySaveProficiency = character.DexteritySaveProficiency,
             ConstitutionSaveProficiency = character.ConstitutionSaveProficiency,

@@ -8,6 +8,7 @@ namespace _4DND
     /// <summary>
     /// Displays the campaign world map showing discovered locations.
     /// Players can see their home base and explore outward.
+    /// Supports multiple map scales (Province, Kingdom, Continent).
     /// </summary>
     public class CampaignMapViewer
     {
@@ -55,6 +56,23 @@ namespace _4DND
                 _prevScrollValue = mouse.ScrollWheelValue;
             }
             
+            // Switch map scale with 1, 2, 3 keys
+            if (kb.IsKeyDown(Keys.D1) && !prevKb.IsKeyDown(Keys.D1))
+            {
+                campaign.CurrentScale = MapScale.Province;
+                System.Console.WriteLine($"Switched to Province scale (1 hex = {Campaign.GetHexSize(MapScale.Province)} mile)");
+            }
+            if (kb.IsKeyDown(Keys.D2) && !prevKb.IsKeyDown(Keys.D2))
+            {
+                campaign.CurrentScale = MapScale.Kingdom;
+                System.Console.WriteLine($"Switched to Kingdom scale (1 hex = {Campaign.GetHexSize(MapScale.Kingdom)} miles)");
+            }
+            if (kb.IsKeyDown(Keys.D3) && !prevKb.IsKeyDown(Keys.D3))
+            {
+                campaign.CurrentScale = MapScale.Continent;
+                System.Console.WriteLine($"Switched to Continent scale (1 hex = {Campaign.GetHexSize(MapScale.Continent)} miles)");
+            }
+            
             // Click to select location
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
@@ -85,23 +103,25 @@ namespace _4DND
             // Draw grid
             DrawGrid(sb, center);
             
-            // Draw regions
-            foreach (var region in campaign.Regions)
+            // Draw regions at current scale
+            var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
+            foreach (var region in regionsAtScale)
             {
                 DrawRegion(sb, center, region);
             }
             
-            // Draw locations
-            foreach (var location in campaign.AllLocations)
+            // Draw locations at current scale
+            var locationsAtScale = campaign.GetLocationsAtScale(campaign.CurrentScale);
+            foreach (var location in locationsAtScale)
             {
-                if (location.IsDiscovered)
-                {
-                    DrawLocation(sb, center, location);
-                }
+                DrawLocation(sb, center, location);
             }
             
             // Draw info panel
             DrawInfoPanel(sb, vp, campaign);
+            
+            // Draw scale indicator
+            DrawScaleIndicator(sb, vp, campaign);
             
             if (_showAdventureDetails)
             {
@@ -111,8 +131,118 @@ namespace _4DND
             // Instructions
             if (_font != null)
             {
-                sb.DrawString(_font, "WASD: Pan | Zoom: Mouse Wheel | J: Toggle Journal | M: Close Map", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, "WASD: Pan | Zoom: Wheel | [1][2][3]: Scale | J: Journal | M: Close", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
+        }
+        
+        private void DrawScaleIndicator(SpriteBatch sb, Viewport vp, Campaign campaign)
+        {
+            var panelRect = new Rectangle(vp.Width - 320, 10, 310, 220);
+            sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
+            DrawBorder(sb, panelRect, Color.Gold, 2);
+            
+            if (_font == null) return;
+            
+            int y = panelRect.Y + 10;
+            
+            sb.DrawString(_font, "Map Scale", new Vector2(panelRect.X + 10, y), Color.Gold, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            y += 25;
+            
+            // Draw all three scales with current one highlighted
+            var scales = new[] { MapScale.Province, MapScale.Kingdom, MapScale.Continent };
+            foreach (var scale in scales)
+            {
+                bool isCurrent = scale == campaign.CurrentScale;
+                Color color = isCurrent ? Color.Yellow : Color.Gray;
+                
+                string scaleName = scale switch
+                {
+                    MapScale.Province => "[1] Province",
+                    MapScale.Kingdom => "[2] Kingdom",
+                    MapScale.Continent => "[3] Continent",
+                    _ => "Unknown"
+                };
+                
+                int hexSize = Campaign.GetHexSize(scale);
+                string scaleText = $"{scaleName}: 1 hex = {hexSize} mile{(hexSize > 1 ? "s" : "")}";
+                
+                sb.DrawString(_font, scaleText, new Vector2(panelRect.X + 15, y), color, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                y += 22;
+            }
+            
+            y += 10;
+            
+            // Scale description
+            string description = campaign.CurrentScale switch
+            {
+                MapScale.Province => "Detailed local exploration",
+                MapScale.Kingdom => "Regional travel overview",
+                MapScale.Continent => "Continental geography",
+                _ => ""
+            };
+            
+            sb.DrawString(_font, description, new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            y += 25;
+            
+            // Show what's visible at current scale
+            sb.DrawString(_font, "Visible at this scale:", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+            y += 18;
+            
+            var visibleTypes = GetVisibleSettlementTypes(campaign.CurrentScale);
+            foreach (var type in visibleTypes)
+            {
+                string typeName = type switch
+                {
+                    SettlementType.Hamlet => "Hamlets",
+                    SettlementType.Village => "Villages",
+                    SettlementType.Town => "Towns",
+                    SettlementType.City => "Cities",
+                    SettlementType.Metropolis => "Metropolises",
+                    SettlementType.Fort => "Forts",
+                    SettlementType.Castle => "Castles",
+                    SettlementType.Monastery => "Monasteries",
+                    SettlementType.Dungeon => "Dungeons",
+                    SettlementType.Wilderness => "Wilderness",
+                    _ => "Unknown"
+                };
+                
+                sb.DrawString(_font, $"• {typeName}", new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                y += 16;
+            }
+        }
+        
+        private SettlementType[] GetVisibleSettlementTypes(MapScale scale)
+        {
+            return scale switch
+            {
+                MapScale.Province => new[] 
+                { 
+                    SettlementType.Hamlet, 
+                    SettlementType.Village, 
+                    SettlementType.Town,
+                    SettlementType.Fort,
+                    SettlementType.Castle,
+                    SettlementType.City,
+                    SettlementType.Monastery,
+                    SettlementType.Dungeon,
+                    SettlementType.Wilderness
+                },
+                MapScale.Kingdom => new[] 
+                { 
+                    SettlementType.Town,
+                    SettlementType.Fort,
+                    SettlementType.Castle,
+                    SettlementType.City,
+                    SettlementType.Metropolis
+                },
+                MapScale.Continent => new[] 
+                { 
+                    SettlementType.City,
+                    SettlementType.Metropolis,
+                    SettlementType.Castle
+                },
+                _ => Array.Empty<SettlementType>()
+            };
         }
         
         private void DrawGrid(SpriteBatch sb, Vector2 center)
@@ -178,33 +308,81 @@ namespace _4DND
                 SettlementType.Castle => Color.DarkRed,
                 SettlementType.Dungeon => Color.Purple,
                 SettlementType.Monastery => Color.LightBlue,
+                SettlementType.Hamlet => Color.YellowGreen,
+                SettlementType.Wilderness => Color.Brown,
                 _ => Color.White
+            };
+            
+            // Adjust size based on settlement importance
+            float sizeMultiplier = location.Type switch
+            {
+                SettlementType.Hamlet => 0.3f,
+                SettlementType.Village => 0.4f,
+                SettlementType.Monastery => 0.4f,
+                SettlementType.Dungeon => 0.45f,
+                SettlementType.Fort => 0.5f,
+                SettlementType.Town => 0.6f,
+                SettlementType.Castle => 0.65f,
+                SettlementType.City => 0.8f,
+                SettlementType.Metropolis => 1.0f,
+                _ => 0.5f
             };
             
             // Home base gets special marker
             if (location.IsHomeBase)
             {
-                DrawStar(sb, pos, _tileSize * _zoom * 0.6f, Color.Gold);
+                DrawStar(sb, pos, _tileSize * _zoom * 0.7f, Color.Gold);
+                // Add glow effect
+                DrawStar(sb, pos, _tileSize * _zoom * 0.9f, Color.Gold * 0.3f);
             }
             else
             {
-                // Regular location marker
-                int size = (int)(_tileSize * _zoom * 0.4f);
+                // Draw location marker with size based on importance
+                int size = (int)(_tileSize * _zoom * sizeMultiplier);
+                
+                // Draw shadow for depth
+                sb.Draw(_pixel, new Rectangle((int)pos.X - size/2 + 2, (int)pos.Y - size/2 + 2, size, size), Color.Black * 0.5f);
+                
+                // Draw main marker
                 sb.Draw(_pixel, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), locationColor);
+                
+                // Draw border for cities and metropolises
+                if (location.Type == SettlementType.City || location.Type == SettlementType.Metropolis)
+                {
+                    DrawBorder(sb, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), Color.White * 0.7f, 1);
+                }
             }
             
-            // Location name
-            if (_font != null && _zoom > 0.7f)
+            // Location name (only show if zoomed in enough or if it's an important location)
+            if (_font != null)
             {
-                var nameSize = _font.MeasureString(location.Name);
-                sb.DrawString(_font, location.Name, pos + new Vector2(-nameSize.X * 0.25f, _tileSize * _zoom * 0.5f), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                bool showName = _zoom > 0.7f || location.Type == SettlementType.City || location.Type == SettlementType.Metropolis || location.IsHomeBase;
+                
+                if (showName)
+                {
+                    float nameScale = location.Type switch
+                    {
+                        SettlementType.Metropolis => 0.7f,
+                        SettlementType.City => 0.6f,
+                        _ => 0.5f
+                    };
+                    
+                    var nameSize = _font.MeasureString(location.Name) * nameScale;
+                    var namePos = pos + new Vector2(-nameSize.X * 0.5f, _tileSize * _zoom * 0.6f);
+                    
+                    // Draw text shadow
+                    sb.DrawString(_font, location.Name, namePos + new Vector2(1, 1), Color.Black * 0.8f, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
+                    // Draw text
+                    sb.DrawString(_font, location.Name, namePos, Color.White, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
+                }
             }
         }
         
         private void DrawInfoPanel(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
-            var panelRect = new Rectangle(10, 10, 300, 150);
+            var panelRect = new Rectangle(10, 10, 350, 200);
             sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
+            DrawBorder(sb, panelRect, Color.Gold, 2);
             
             if (_font == null) return;
             
@@ -216,17 +394,34 @@ namespace _4DND
             sb.DrawString(_font, $"Home Base: {campaign.HomeBase.Name}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
             
-            sb.DrawString(_font, $"Locations: {campaign.AllLocations.Count}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            // Show location count for current scale
+            var visibleLocations = campaign.GetLocationsAtScale(campaign.CurrentScale);
+            sb.DrawString(_font, $"Locations (visible): {visibleLocations.Count} / {campaign.AllLocations.Count}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
             
             sb.DrawString(_font, $"Session: {campaign.SessionCount}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
             
+            // Current scale info
+            string scaleName = campaign.CurrentScale switch
+            {
+                MapScale.Province => "Province",
+                MapScale.Kingdom => "Kingdom", 
+                MapScale.Continent => "Continent",
+                _ => "Unknown"
+            };
+            int hexSize = Campaign.GetHexSize(campaign.CurrentScale);
+            sb.DrawString(_font, $"Scale: {scaleName} ({hexSize}mi/hex)", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 25;
+            
             if (!string.IsNullOrEmpty(campaign.CurrentObjective))
             {
                 sb.DrawString(_font, "Objective:", new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 y += 18;
-                sb.DrawString(_font, campaign.CurrentObjective, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                
+                // Wrap objective text
+                string wrapped = WrapText(campaign.CurrentObjective, 330);
+                sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             }
         }
         

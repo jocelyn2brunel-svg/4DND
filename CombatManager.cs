@@ -170,9 +170,7 @@ public class CombatManager
     {
         int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
         
-        creature.X = targetX;
-        creature.Y = targetY;
-        creature.Z = targetZ;
+        creature.MoveTo(targetX, targetY, targetZ);
         creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - totalCost);
     }
 

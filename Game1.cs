@@ -663,8 +663,9 @@ public class Game1 : Game
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
         var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
-        Draw3DCapsule(creature.X, creature.Y, creature.Z, capsuleRadius, capsuleHeight, color);
-        if (creature.Z > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.X, creature.Y, creature.Z), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f); }
+        // Use visual position for smooth movement
+        Draw3DCapsule(creature.VisualX, creature.VisualY, creature.VisualZ, capsuleRadius, capsuleHeight, color);
+        if (creature.VisualZ > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.VisualX, creature.VisualY, creature.VisualZ), new Vector3(creature.VisualX, creature.VisualY, 0), Color.Gray * 0.3f); }
     }
 
     private static (float Radius, float Height) GetCreatureCapsuleDimensions(CreatureSize size)
@@ -720,7 +721,8 @@ public class Game1 : Game
         if (_font == null || (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))) return;
         var (capsuleRadius, _) = GetCreatureCapsuleDimensions(creature.Size);
         float uiAnchorZ = GetCreatureVisualTopZ(creature) + MathF.Max(0.15f, capsuleRadius * 0.4f);
-        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+        // Use visual position for UI anchoring
+        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.VisualX, creature.VisualY, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
@@ -1231,7 +1233,7 @@ public class Game1 : Game
             base.Update(gameTime);
             return;
         }
-
+        
         // CAMPAIGN CREATION
         if (_state == AppState.CampaignCreate)
         {
@@ -1328,6 +1330,20 @@ public class Game1 : Game
         
         if (_state == AppState.Playing)
         {
+            // Update movement animation for all creatures
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_playerCreature != null)
+            {
+                _playerCreature.UpdateMovementAnimation(deltaTime);
+            }
+            foreach (var creature in _combatManager.Combatants)
+            {
+                if (creature.IsAlive())
+                {
+                    creature.UpdateMovementAnimation(deltaTime);
+                }
+            }
+            
             if (kb.IsKeyDown(Keys.C) && !_prevKb.IsKeyDown(Keys.C))
             {
                 _showCharacterSheet = !_showCharacterSheet;
@@ -1394,8 +1410,8 @@ public class Game1 : Game
             {
                 if (_playerCreature.CanFly && _playerCreature.IsFlying)
                 {
-                    _playerCreature.Z++;
-                    AddToCombatLog($"Ascended to level {_playerCreature.Z}");
+                    _playerCreature.MoveTo(_playerCreature.X, _playerCreature.Y, _playerCreature.Z + 1);
+                    AddToCombatLog($"Ascending to level {_playerCreature.Z}");
                     UpdateVision();
                 }
             }
@@ -1403,8 +1419,9 @@ public class Game1 : Game
             {
                 if (_playerCreature.CanFly && _playerCreature.IsFlying)
                 {
-                    _playerCreature.Z = Math.Max(0, _playerCreature.Z - 1);
-                    AddToCombatLog($"Descended to level {_playerCreature.Z}");
+                    int newZ = Math.Max(0, _playerCreature.Z - 1);
+                    _playerCreature.MoveTo(_playerCreature.X, _playerCreature.Y, newZ);
+                    AddToCombatLog($"Descending to level {newZ}");
                     UpdateVision();
                 }
             }
@@ -1489,9 +1506,7 @@ public class Game1 : Game
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                             {
-                                _playerCreature.X = tx;
-                                _playerCreature.Y = ty;
-                                _playerCreature.Z = tz;
+                                _playerCreature.MoveTo(tx, ty, tz);
                                 UpdateVision();
                             }
                         }
@@ -1721,7 +1736,6 @@ public class Game1 : Game
         {
             RecalculateVision();
         }
-
         _prevKb = kb;
         _prevMouse = mouse;
         base.Update(gameTime);
@@ -1942,6 +1956,23 @@ public class Game1 : Game
                 }
             }
 
+            // "Create New" option
+            {
+                int newIndex = _characters.Count;
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + newIndex * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var col = (newIndex == _characterIndex) ? Color.LightGray : Color.Gray;
+                _spriteBatch.Draw(_pixel, itemRect, col);
+
+                if (_font != null)
+                {
+                    var label = "Create New Character";
+                    var m = _font.MeasureString(label);
+                    var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
+                    var textCol = (newIndex == _characterIndex) ? Color.Black : Color.White;
+                    _spriteBatch.DrawString(_font, label, p, textCol);
+                }
+            }
+
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -1985,7 +2016,7 @@ public class Game1 : Game
                 var backText = "< Back";
                 var backTextSize = _font.MeasureString(backText);
                 _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
-                
+
                 // Hint at bottom
                 var hint = "Press Delete to remove campaign | Esc to go back";
                 var hintSize = _font.MeasureString(hint);
