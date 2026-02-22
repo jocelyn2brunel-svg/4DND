@@ -231,11 +231,14 @@ public class Game1 : Game
                 }
                 else
                 {
-                    // Non-flying creatures must be on a floor
-                    var tile = _grid.Get(enemyX, enemyY, enemyZ);
-                    if (tile == TileType.Floor || tile == TileType.DifficultTerrain)
+                    // Non-flying creatures must be at ground level (Z=0) and on a floor
+                    if (enemyZ == 0)
                     {
-                        isValidPosition = true;
+                        var tile = _grid.Get(enemyX, enemyY, 0);
+                        if (tile == TileType.Floor || tile == TileType.DifficultTerrain)
+                        {
+                            isValidPosition = true;
+                        }
                     }
                 }
             }
@@ -510,6 +513,7 @@ public class Game1 : Game
 
     private void Draw3DCreature(Creature creature)
     {
+        if (creature.Z > _currentViewLevel) return;
         if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) return;
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
@@ -532,6 +536,7 @@ public class Game1 : Game
 
     private void Draw3DCreatureUI(Creature creature)
     {
+        if (creature.Z > _currentViewLevel) return;
         if (_font == null || (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))) return;
         Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, creature.Z + 1.2f), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
