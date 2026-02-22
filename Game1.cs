@@ -662,9 +662,30 @@ public class Game1 : Game
         if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) return;
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
-        float size = creature.Size switch { CreatureSize.Tiny => 0.4f, CreatureSize.Small => 0.7f, CreatureSize.Large => 1.5f, CreatureSize.Huge => 2.0f, CreatureSize.Gargantuan => 2.5f, _ => 0.9f };
-        Draw3DCapsule(creature.X, creature.Y, creature.Z, size * 0.45f, size * 0.9f, color);
+        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
+        Draw3DCapsule(creature.X, creature.Y, creature.Z, capsuleRadius, capsuleHeight, color);
         if (creature.Z > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.X, creature.Y, creature.Z), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f); }
+    }
+
+    private static (float Radius, float Height) GetCreatureCapsuleDimensions(CreatureSize size)
+    {
+        float scale = size switch
+        {
+            CreatureSize.Tiny => 0.4f,
+            CreatureSize.Small => 0.7f,
+            CreatureSize.Large => 1.5f,
+            CreatureSize.Huge => 2.0f,
+            CreatureSize.Gargantuan => 2.5f,
+            _ => 0.9f
+        };
+
+        return (scale * 0.45f, scale * 0.9f);
+    }
+
+    private static float GetCreatureVisualTopZ(Creature creature)
+    {
+        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
+        return creature.Z + capsuleHeight + (capsuleRadius * 2f);
     }
 
     private void Draw3DCapsule(float x, float y, float z, float radius, float height, Color color)
