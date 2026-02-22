@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace _4DND
 {
@@ -18,7 +19,7 @@ namespace _4DND
         private SpriteFont _font;
         private Texture2D _pixel;
         
-        private int _step = -1; // -1=Mode selection, 0=Name, 1=HomeBase, 2=Region, 3=StartingAdventure
+        private int _step = -1; // -1=Mode selection, 0=Name, 1=HomeBase, 2=Region, 3=Hook, 4=Middle, 5=Ending
         
         // Campaign data
         private bool _isRandomMode = false;
@@ -26,7 +27,9 @@ namespace _4DND
         private string _homeBaseName = "";
         private SettlementType _homeBaseType = SettlementType.Village;
         private string _regionTerrain = "Forest";
-        private string _startingAdventure = "";
+        private string _adventureHook = "";
+        private string _adventureMiddle = "";
+        private string _adventureEnding = "";
         
         private int _selectedModeIndex = 0; // 0=Random, 1=Custom
         private int _selectedTypeIndex = 2; // Default to Village
@@ -47,18 +50,36 @@ namespace _4DND
             "Forest", "Hills", "Mountains", "Plains", "Swamp", "Desert", "Coast"
         };
         
-        private readonly string[] _startingAdventures = new[]
+        private readonly string[] _adventureHooks = new[]
         {
-            "Explore a nearby dungeon",
-            "Investigate mysterious disappearances",
-            "Clear out a bandit camp",
-            "Rescue a kidnapped merchant",
-            "Hunt a dangerous beast",
-            "Recover a lost artifact",
-            "Custom adventure"
+            "Monsters attack on the road",
+            "An assassin makes an attempt on your lives",
+            "A dragon shows up at the city gates",
+            "You stumble onto something you're not meant to see",
+            "Custom hook"
         };
         
-        private int _selectedAdventureIndex = 0;
+        private readonly string[] _adventureMiddles = new[]
+        {
+            "Discover secrets that reveal new goals",
+            "The rumors of treasure were a trick to lure you into a death trap",
+            "The spy you're hunting is actually working for the monarch",
+            "Thwart your adversaries while they try to carry out their nefarious plans",
+            "Custom middle"
+        };
+
+        private readonly string[] _adventureEndings = new[]
+        {
+            "A climax where the fate of the world hangs in the balance",
+            "A resolution that hinges entirely on your previous choices",
+            "A resolution that leaves some unfinished business for the future",
+            "A peak of tension where you must decide the ultimate outcome",
+            "Custom ending"
+        };
+
+        private int _selectedHookIndex = 0;
+        private int _selectedMiddleIndex = 0;
+        private int _selectedEndingIndex = 0;
         
         private bool _isTyping = false;
         private string _typingField = "";
@@ -80,11 +101,15 @@ namespace _4DND
             _homeBaseName = "";
             _homeBaseType = SettlementType.Village;
             _regionTerrain = "Forest";
-            _startingAdventure = "";
+            _adventureHook = "";
+            _adventureMiddle = "";
+            _adventureEnding = "";
             _selectedModeIndex = 0;
             _selectedTypeIndex = 2;
             _selectedTerrainIndex = 0;
-            _selectedAdventureIndex = 0;
+            _selectedHookIndex = 0;
+            _selectedMiddleIndex = 0;
+            _selectedEndingIndex = 0;
             _isTyping = false;
         }
         
@@ -107,8 +132,16 @@ namespace _4DND
             // Handle typing
             if (_isTyping)
             {
+                bool wasTyping = _isTyping;
                 HandleTyping(kb, prevKb);
                 
+                // If we just finished typing the ending, we might want to complete the campaign
+                if (wasTyping && !_isTyping && _step == 5 && !string.IsNullOrEmpty(_adventureEnding))
+                {
+                    outCampaign = CreateFinalCampaign();
+                    return true;
+                }
+
                 // Handle clicking input boxes while typing
                 var menuWidth = 600;
                 var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - 500) / 2, menuWidth, 500);
@@ -211,7 +244,11 @@ namespace _4DND
                 else if (_step == 2)
                     _selectedTerrainIndex = Math.Max(0, _selectedTerrainIndex - 1);
                 else if (_step == 3)
-                    _selectedAdventureIndex = Math.Max(0, _selectedAdventureIndex - 1);
+                    _selectedHookIndex = Math.Max(0, _selectedHookIndex - 1);
+                else if (_step == 4)
+                    _selectedMiddleIndex = Math.Max(0, _selectedMiddleIndex - 1);
+                else if (_step == 5)
+                    _selectedEndingIndex = Math.Max(0, _selectedEndingIndex - 1);
             }
             
             if (kb.IsKeyDown(Keys.Down) && !prevKb.IsKeyDown(Keys.Down))
@@ -221,7 +258,11 @@ namespace _4DND
                 else if (_step == 2)
                     _selectedTerrainIndex = Math.Min(_terrainTypes.Length - 1, _selectedTerrainIndex + 1);
                 else if (_step == 3)
-                    _selectedAdventureIndex = Math.Min(_startingAdventures.Length - 1, _selectedAdventureIndex + 1);
+                    _selectedHookIndex = Math.Min(_adventureHooks.Length - 1, _selectedHookIndex + 1);
+                else if (_step == 4)
+                    _selectedMiddleIndex = Math.Min(_adventureMiddles.Length - 1, _selectedMiddleIndex + 1);
+                else if (_step == 5)
+                    _selectedEndingIndex = Math.Min(_adventureEndings.Length - 1, _selectedEndingIndex + 1);
             }
             
             // Mouse navigation for each step
@@ -291,37 +332,65 @@ namespace _4DND
                 }
             }
             
-            // Step 3: Click on adventure type
+            // Step 3: Click on adventure hook
             if (_step == 3)
             {
                 int y = menuRect2.Y + 110;
-                for (int i = 0; i < _startingAdventures.Length; i++)
+                for (int i = 0; i < _adventureHooks.Length; i++)
                 {
                     var itemRect = new Rectangle(menuRect2.X + 40, y, menuRect2.Width - 80, 40);
                     if (itemRect.Contains(mouse.Position))
                     {
-                        _selectedAdventureIndex = i;
+                        _selectedHookIndex = i;
                         
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
-                            _startingAdventure = _startingAdventures[_selectedAdventureIndex];
+                            _adventureHook = _adventureHooks[_selectedHookIndex];
+                            _step = 4;
+                        }
+                    }
+                    y += 42;
+                }
+            }
+
+            // Step 4: Click on adventure middle
+            if (_step == 4)
+            {
+                int y = menuRect2.Y + 110;
+                for (int i = 0; i < _adventureMiddles.Length; i++)
+                {
+                    var itemRect = new Rectangle(menuRect2.X + 40, y, menuRect2.Width - 80, 40);
+                    if (itemRect.Contains(mouse.Position))
+                    {
+                        _selectedMiddleIndex = i;
+
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        {
+                            _adventureMiddle = _adventureMiddles[_selectedMiddleIndex];
+                            _step = 5;
+                        }
+                    }
+                    y += 42;
+                }
+            }
+
+            // Step 5: Click on adventure ending
+            if (_step == 5)
+            {
+                int y = menuRect2.Y + 110;
+                for (int i = 0; i < _adventureEndings.Length; i++)
+                {
+                    var itemRect = new Rectangle(menuRect2.X + 40, y, menuRect2.Width - 80, 40);
+                    if (itemRect.Contains(mouse.Position))
+                    {
+                        _selectedEndingIndex = i;
+
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        {
+                            _adventureEnding = _adventureEndings[_selectedEndingIndex];
                             
                             // Create campaign!
-                            outCampaign = Campaign.CreateStartingCampaign(_campaignName, _homeBaseName, _homeBaseType);
-                            outCampaign.LocalRegion.Terrain = _regionTerrain;
-                            outCampaign.CurrentObjective = _startingAdventure;
-                            
-                            // Add a starting dungeon location near home base
-                            var dungeon = new Location
-                            {
-                                Name = "Nearby Dungeon",
-                                Type = SettlementType.Dungeon,
-                                X = 5,
-                                Y = 5,
-                                Description = "A mysterious dungeon awaits exploration.",
-                                IsDiscovered = false
-                            };
-                            outCampaign.AddLocation(dungeon);
+                            outCampaign = CreateFinalCampaign();
                             
                             _prevMouse = mouse;
                             return true;
@@ -368,26 +437,43 @@ namespace _4DND
                 }
                 else if (_step == 3)
                 {
-                    _startingAdventure = _startingAdventures[_selectedAdventureIndex];
-                    
-                    // Create campaign!
-                    outCampaign = Campaign.CreateStartingCampaign(_campaignName, _homeBaseName, _homeBaseType);
-                    outCampaign.LocalRegion.Terrain = _regionTerrain;
-                    outCampaign.CurrentObjective = _startingAdventure;
-                    
-                    // Add a starting dungeon location near home base
-                    var dungeon = new Location
+                    if (_selectedHookIndex == _adventureHooks.Length - 1)
                     {
-                        Name = "Nearby Dungeon",
-                        Type = SettlementType.Dungeon,
-                        X = 5,
-                        Y = 5,
-                        Description = "A mysterious dungeon awaits exploration.",
-                        IsDiscovered = false
-                    };
-                    outCampaign.AddLocation(dungeon);
-                    
-                    return true;
+                        _isTyping = true;
+                        _typingField = "hook";
+                    }
+                    else
+                    {
+                        _adventureHook = _adventureHooks[_selectedHookIndex];
+                        _step = 4;
+                    }
+                }
+                else if (_step == 4)
+                {
+                    if (_selectedMiddleIndex == _adventureMiddles.Length - 1)
+                    {
+                        _isTyping = true;
+                        _typingField = "middle";
+                    }
+                    else
+                    {
+                        _adventureMiddle = _adventureMiddles[_selectedMiddleIndex];
+                        _step = 5;
+                    }
+                }
+                else if (_step == 5)
+                {
+                    if (_selectedEndingIndex == _adventureEndings.Length - 1)
+                    {
+                        _isTyping = true;
+                        _typingField = "ending";
+                    }
+                    else
+                    {
+                        _adventureEnding = _adventureEndings[_selectedEndingIndex];
+                        outCampaign = CreateFinalCampaign();
+                        return true;
+                    }
                 }
             }
             
@@ -395,6 +481,30 @@ namespace _4DND
             return true;
         }
         
+        private Campaign CreateFinalCampaign()
+        {
+            var campaign = Campaign.CreateStartingCampaign(_campaignName, _homeBaseName, _homeBaseType);
+            campaign.LocalRegion.Terrain = _regionTerrain;
+            campaign.AdventureHook = _adventureHook;
+            campaign.AdventureMiddle = _adventureMiddle;
+            campaign.AdventureEnding = _adventureEnding;
+            campaign.CurrentObjective = _adventureHook; // Set initial objective to the hook
+
+            // Add a starting dungeon location near home base
+            var dungeon = new Location
+            {
+                Name = "Nearby Dungeon",
+                Type = SettlementType.Dungeon,
+                X = 5,
+                Y = 5,
+                Description = "A mysterious dungeon awaits exploration.",
+                IsDiscovered = false
+            };
+            campaign.AddLocation(dungeon);
+
+            return campaign;
+        }
+
         private void GenerateRandomCampaign(out Campaign campaign)
         {
             var rand = new Random();
@@ -412,25 +522,21 @@ namespace _4DND
             // Random terrain
             _regionTerrain = _terrainTypes[rand.Next(_terrainTypes.Length)];
             
-            // Random starting adventure
-            _startingAdventure = _startingAdventures[rand.Next(_startingAdventures.Length - 1)]; // Exclude "Custom adventure"
+            // Random adventure parts
+            _adventureHook = _adventureHooks[rand.Next(_adventureHooks.Length - 1)]; // Exclude "Custom"
+            _adventureMiddle = _adventureMiddles[rand.Next(_adventureMiddles.Length - 1)];
+            _adventureEnding = _adventureEndings[rand.Next(_adventureEndings.Length - 1)];
             
             // Create campaign
-            campaign = Campaign.CreateStartingCampaign(_campaignName, _homeBaseName, _homeBaseType);
-            campaign.LocalRegion.Terrain = _regionTerrain;
-            campaign.CurrentObjective = _startingAdventure;
+            campaign = CreateFinalCampaign();
             
-            // Add a starting dungeon location near home base
-            var dungeon = new Location
+            // Override dungeon position for randomness
+            var dungeon = campaign.AllLocations.FirstOrDefault(l => l.Type == SettlementType.Dungeon);
+            if (dungeon != null)
             {
-                Name = "Nearby Dungeon",
-                Type = SettlementType.Dungeon,
-                X = rand.Next(3, 8),
-                Y = rand.Next(3, 8),
-                Description = "A mysterious dungeon awaits exploration.",
-                IsDiscovered = false
-            };
-            campaign.AddLocation(dungeon);
+                dungeon.X = rand.Next(3, 8);
+                dungeon.Y = rand.Next(3, 8);
+            }
         }
         
         private void HandleTyping(KeyboardState kb, KeyboardState prevKb)
@@ -441,13 +547,19 @@ namespace _4DND
                 _isTyping = false;
                 
                 if (_typingField == "campaign" && !string.IsNullOrEmpty(_campaignName))
-                {
                     _step = 1;
-                }
                 else if (_typingField == "homebase" && !string.IsNullOrEmpty(_homeBaseName))
                 {
                     _homeBaseType = ParseSettlementType(_settlementTypes[_selectedTypeIndex]);
                     _step = 2;
+                }
+                else if (_typingField == "hook" && !string.IsNullOrEmpty(_adventureHook))
+                    _step = 4;
+                else if (_typingField == "middle" && !string.IsNullOrEmpty(_adventureMiddle))
+                    _step = 5;
+                else if (_typingField == "ending" && !string.IsNullOrEmpty(_adventureEnding))
+                {
+                    // Created through separate logic or by calling CreateFinalCampaign later
                 }
                 
                 return;
@@ -460,6 +572,12 @@ namespace _4DND
                     _campaignName = _campaignName.Substring(0, _campaignName.Length - 1);
                 else if (_typingField == "homebase" && _homeBaseName.Length > 0)
                     _homeBaseName = _homeBaseName.Substring(0, _homeBaseName.Length - 1);
+                else if (_typingField == "hook" && _adventureHook.Length > 0)
+                    _adventureHook = _adventureHook.Substring(0, _adventureHook.Length - 1);
+                else if (_typingField == "middle" && _adventureMiddle.Length > 0)
+                    _adventureMiddle = _adventureMiddle.Substring(0, _adventureMiddle.Length - 1);
+                else if (_typingField == "ending" && _adventureEnding.Length > 0)
+                    _adventureEnding = _adventureEnding.Substring(0, _adventureEnding.Length - 1);
                 return;
             }
             
@@ -476,6 +594,12 @@ namespace _4DND
                             _campaignName += c;
                         else if (_typingField == "homebase" && _homeBaseName.Length < 30)
                             _homeBaseName += c;
+                        else if (_typingField == "hook" && _adventureHook.Length < 100)
+                            _adventureHook += c;
+                        else if (_typingField == "middle" && _adventureMiddle.Length < 100)
+                            _adventureMiddle += c;
+                        else if (_typingField == "ending" && _adventureEnding.Length < 100)
+                            _adventureEnding += c;
                     }
                 }
             }
@@ -543,7 +667,9 @@ namespace _4DND
                 0 => "Campaign Name",
                 1 => "Home Base",
                 2 => "Local Region",
-                3 => "Starting Adventure",
+                3 => "Adventure Hook",
+                4 => "Adventure Middle",
+                5 => "Adventure Ending",
                 _ => ""
             });
             
@@ -566,7 +692,15 @@ namespace _4DND
             }
             else if (_step == 3)
             {
-                DrawStep3_Adventure(spriteBatch, menuRect, ref y);
+                DrawStep3_Hook(spriteBatch, menuRect, ref y);
+            }
+            else if (_step == 4)
+            {
+                DrawStep4_Middle(spriteBatch, menuRect, ref y);
+            }
+            else if (_step == 5)
+            {
+                DrawStep5_Ending(spriteBatch, menuRect, ref y);
             }
             
             // Instructions
@@ -750,29 +884,135 @@ namespace _4DND
             sb.DrawString(_font, "This defines the local area around your home base.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
         
-        private void DrawStep3_Adventure(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep3_Hook(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
-            string prompt = "Choose your starting adventure:";
+            if (_isTyping && _typingField == "hook")
+            {
+                DrawCustomInput(sb, menuRect, ref y, "Enter custom adventure hook:", _adventureHook);
+                return;
+            }
+
+            string prompt = "Choose your adventure hook:";
+            sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
+            y += 40;
+
+            var mouse = Mouse.GetState();
+            for (int i = 0; i < _adventureHooks.Length; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + 40, y, menuRect.Width - 80, 40);
+                bool isHovered = itemRect.Contains(mouse.Position);
+
+                if (i == _selectedHookIndex)
+                    sb.Draw(_pixel, itemRect, Color.Orange * 0.4f);
+                else if (isHovered)
+                    sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
+
+                sb.DrawString(_font, _adventureHooks[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedHookIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                y += 42;
+            }
+
+            y += 20;
+            sb.DrawString(_font, "Next: Choose what happens in the middle", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawStep4_Middle(SpriteBatch sb, Rectangle menuRect, ref int y)
+        {
+            if (_isTyping && _typingField == "middle")
+            {
+                DrawCustomInput(sb, menuRect, ref y, "Enter custom middle events:", _adventureMiddle);
+                return;
+            }
+
+            string prompt = "What happens during the adventure?";
+            sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
+            y += 40;
+
+            var mouse = Mouse.GetState();
+            for (int i = 0; i < _adventureMiddles.Length; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + 40, y, menuRect.Width - 80, 40);
+                bool isHovered = itemRect.Contains(mouse.Position);
+
+                if (i == _selectedMiddleIndex)
+                    sb.Draw(_pixel, itemRect, Color.Orange * 0.4f);
+                else if (isHovered)
+                    sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
+
+                sb.DrawString(_font, _adventureMiddles[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedMiddleIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                y += 42;
+            }
+
+            y += 20;
+            sb.DrawString(_font, "Next: Choose the adventure's climax", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawStep5_Ending(SpriteBatch sb, Rectangle menuRect, ref int y)
+        {
+            if (_isTyping && _typingField == "ending")
+            {
+                DrawCustomInput(sb, menuRect, ref y, "Enter custom adventure ending:", _adventureEnding);
+                return;
+            }
+
+            string prompt = "How does the adventure end?";
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
             
             var mouse = Mouse.GetState();
-            for (int i = 0; i < _startingAdventures.Length; i++)
+            for (int i = 0; i < _adventureEndings.Length; i++)
             {
                 var itemRect = new Rectangle(menuRect.X + 40, y, menuRect.Width - 80, 40);
                 bool isHovered = itemRect.Contains(mouse.Position);
                 
-                if (i == _selectedAdventureIndex)
+                if (i == _selectedEndingIndex)
                     sb.Draw(_pixel, itemRect, Color.Orange * 0.4f);
                 else if (isHovered)
                     sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
                 
-                sb.DrawString(_font, _startingAdventures[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedAdventureIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, _adventureEndings[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedEndingIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 y += 42;
             }
             
             y += 20;
             sb.DrawString(_font, "Click to create your campaign!", new Vector2(menuRect.X + 20, y), Color.LightGreen, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawCustomInput(SpriteBatch sb, Rectangle menuRect, ref int y, string prompt, string value)
+        {
+            sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
+            y += 40;
+
+            var inputRect = new Rectangle(menuRect.X + 20, y, menuRect.Width - 40, 100);
+            sb.Draw(_pixel, inputRect, Color.LightYellow * 0.15f);
+            DrawBorder(sb, inputRect, Color.Yellow, 2);
+
+            string wrappedText = WrapText(_font, value + "_", inputRect.Width - 20);
+            sb.DrawString(_font, wrappedText, new Vector2(inputRect.X + 10, inputRect.Y + 10), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+
+            y += 120;
+            sb.DrawString(_font, "Press Enter to confirm custom text", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+
+        private string WrapText(SpriteFont font, string text, float maxLineWidth)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            string[] words = text.Split(' ');
+            string result = "";
+            string currentLine = "";
+
+            foreach (string word in words)
+            {
+                if (font.MeasureString(currentLine + word).X < maxLineWidth)
+                {
+                    currentLine += word + " ";
+                }
+                else
+                {
+                    result += currentLine + "\n";
+                    currentLine = word + " ";
+                }
+            }
+            return result + currentLine;
         }
     }
 }

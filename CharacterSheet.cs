@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -40,7 +41,7 @@ public class CharacterSheet
         _prevScrollValue = 0;
     }
 
-    public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character)
+    public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character, Campaign? campaign = null)
     {
         var vp = graphics.Viewport;
 
@@ -90,6 +91,12 @@ public class CharacterSheet
             DrawMiddleColumn(spriteBatch, c, col2X, contentY, col2Width, contentHeight);
             DrawRightColumn(spriteBatch, c, col3X, contentY, col3Width, contentHeight);
             
+            if (campaign != null)
+            {
+                int journalY = contentY + 1100; // Position below the main columns
+                DrawAdventureJournal(spriteBatch, campaign, sheetX + padding, journalY, sheetWidth - padding * 2);
+            }
+
             spriteBatch.End();
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             graphics.ScissorRectangle = previousScissor;
@@ -671,6 +678,68 @@ public class CharacterSheet
             return $"{item.DamageDice} {item.DamageType.ToLower()}";
         }
         return "1d6";
+    }
+
+    private void DrawAdventureJournal(SpriteBatch spriteBatch, Campaign campaign, int x, int y, int width)
+    {
+        int height = 400;
+        var rect = new Rectangle(x, y, width, height);
+        spriteBatch.Draw(_pixel, rect, Color.White);
+        DrawBorder(spriteBatch, rect, Color.Black, 2);
+
+        spriteBatch.DrawString(_font, "ADVENTURE JOURNAL", new Vector2(x + 10, y + 10), Color.DarkRed, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+
+        int currentY = y + 50;
+        int sectionHeight = 110;
+
+        DrawAdventureSection(spriteBatch, "THE BEGINNING (HOOK)", campaign.AdventureHook, x + 10, currentY, width - 20, sectionHeight, Color.DarkBlue);
+        currentY += sectionHeight + 5;
+
+        DrawAdventureSection(spriteBatch, "THE MIDDLE (DEVELOPMENT)", campaign.AdventureMiddle, x + 10, currentY, width - 20, sectionHeight, Color.DarkGreen);
+        currentY += sectionHeight + 5;
+
+        DrawAdventureSection(spriteBatch, "THE ENDING (CLIMAX)", campaign.AdventureEnding, x + 10, currentY, width - 20, sectionHeight, Color.DarkOrange);
+    }
+
+    private void DrawAdventureSection(SpriteBatch spriteBatch, string title, string content, int x, int y, int width, int height, Color titleColor)
+    {
+        var rect = new Rectangle(x, y, width, height);
+        spriteBatch.Draw(_pixel, rect, Color.Black * 0.05f);
+        DrawBorder(spriteBatch, rect, Color.Black * 0.2f, 1);
+
+        spriteBatch.DrawString(_font, title, new Vector2(x + 5, y + 5), titleColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        if (!string.IsNullOrEmpty(content))
+        {
+            string wrapped = WrapText(_font, content, width - 20);
+            spriteBatch.DrawString(_font, wrapped, new Vector2(x + 10, y + 25), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            spriteBatch.DrawString(_font, "No details available.", new Vector2(x + 10, y + 25), Color.Gray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private string WrapText(SpriteFont font, string text, float maxLineWidth)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        string[] words = text.Split(' ');
+        string result = "";
+        string currentLine = "";
+
+        foreach (string word in words)
+        {
+            if (font.MeasureString(currentLine + word).X * 0.7f < maxLineWidth)
+            {
+                currentLine += word + " ";
+            }
+            else
+            {
+                result += currentLine + "\n";
+                currentLine = word + " ";
+            }
+        }
+        return result + currentLine;
     }
 
     private bool GetSkillProficiency(Character c, string skill)
