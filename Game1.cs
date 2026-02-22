@@ -1559,7 +1559,15 @@ public class Game1 : Game
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                             {
-                                _playerCreature.MoveTo(tx, ty, tz);
+                                var path = _combatManager.GetPath(_playerCreature, tx, ty, tz);
+                                if (path != null)
+                                {
+                                    for (int i = 1; i < path.Count; i++)
+                                    {
+                                        var step = path[i];
+                                        _playerCreature.MoveTo(step.x, step.y, step.z);
+                                    }
+                                }
                                 UpdateVision();
                             }
                         }
