@@ -142,11 +142,14 @@ A MonoGame-based D&D 5th Edition character management and tactical combat system
 - .NET 6.0 or higher
 - MonoGame Framework
 - DefaultFont.xnb in Content directory (build with MonoGame Pipeline Tool)
+- System font "DejaVu Sans" (Linux package: `fonts-dejavu-core`)
 
 ## Building & Running
 1. Open the project in Visual Studio or Rider
 2. Build the Content.mgcb file using MonoGame Pipeline Tool
 3. Build and run the project
+
+If content build fails with `Could not find "DejaVu Sans" font file`, install the DejaVu fonts package for your OS and rebuild the content pipeline.
 
 ## Credits
 Built with MonoGame Framework
