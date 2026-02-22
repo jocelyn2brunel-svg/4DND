@@ -28,6 +28,9 @@ public class Game1 : Game
     private BasicEffect _basicEffect = null!;
     private VertexBuffer _cubeVertexBuffer = null!;
     private IndexBuffer _cubeIndexBuffer = null!;
+    private VertexBuffer _capsuleVertexBuffer = null!;
+    private IndexBuffer _capsuleIndexBuffer = null!;
+    private int _capsulePrimitiveCount = 0;
     private VertexBuffer _tileVertexBuffer = null!;
     private IndexBuffer _tileIndexBuffer = null!;
 
@@ -441,6 +444,144 @@ public class Game1 : Game
         var tileIndices = new short[] { 0, 1, 2, 0, 2, 3 };
         _tileIndexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, tileIndices.Length, BufferUsage.WriteOnly);
         _tileIndexBuffer.SetData(tileIndices);
+
+        const int longitudeSegments = 16;
+        const int hemisphereLatitudeSegments = 8;
+        const int cylinderSegments = 1;
+        const float capsuleRadius = 0.5f;
+        const float capsuleBodyHeight = 1.0f;
+        float hemisphereCenterBottom = capsuleRadius;
+        float hemisphereCenterTop = hemisphereCenterBottom + capsuleBodyHeight;
+
+        var capsuleVertices = new List<VertexPositionNormalColor>();
+        var capsuleIndices = new List<short>();
+
+        short AddCapsuleVertex(Vector3 position, Vector3 normal)
+        {
+            capsuleVertices.Add(new VertexPositionNormalColor(position, Vector3.Normalize(normal), Color.White));
+            return (short)(capsuleVertices.Count - 1);
+        }
+
+        void AddTriangle(short a, short b, short c)
+        {
+            capsuleIndices.Add(a);
+            capsuleIndices.Add(b);
+            capsuleIndices.Add(c);
+        }
+
+        var cylinderRings = new List<short[]>();
+        for (int ring = 0; ring <= cylinderSegments; ring++)
+        {
+            float t = ring / (float)cylinderSegments;
+            float z = hemisphereCenterBottom + (t * capsuleBodyHeight);
+            var ringIndices = new short[longitudeSegments + 1];
+            for (int lon = 0; lon <= longitudeSegments; lon++)
+            {
+                float angle = MathHelper.TwoPi * lon / longitudeSegments;
+                float x = MathF.Cos(angle) * capsuleRadius;
+                float y = MathF.Sin(angle) * capsuleRadius;
+                ringIndices[lon] = AddCapsuleVertex(new Vector3(x, y, z), new Vector3(x, y, 0f));
+            }
+
+            cylinderRings.Add(ringIndices);
+        }
+
+        for (int ring = 0; ring < cylinderSegments; ring++)
+        {
+            var lower = cylinderRings[ring];
+            var upper = cylinderRings[ring + 1];
+            for (int lon = 0; lon < longitudeSegments; lon++)
+            {
+                short l0 = lower[lon];
+                short l1 = lower[lon + 1];
+                short u0 = upper[lon];
+                short u1 = upper[lon + 1];
+                AddTriangle(l0, u0, u1);
+                AddTriangle(l0, u1, l1);
+            }
+        }
+
+        short[] BuildHemisphereRings(float centerZ, bool isUpper)
+        {
+            var seamRing = new short[longitudeSegments + 1];
+            for (int lat = 1; lat <= hemisphereLatitudeSegments; lat++)
+            {
+                float t = lat / (float)hemisphereLatitudeSegments;
+                float phi = t * MathHelper.PiOver2;
+                float ringRadius = capsuleRadius * MathF.Cos(phi);
+                float localZ = capsuleRadius * MathF.Sin(phi);
+                float z = isUpper ? centerZ + localZ : centerZ - localZ;
+
+                var currentRing = new short[longitudeSegments + 1];
+                for (int lon = 0; lon <= longitudeSegments; lon++)
+                {
+                    float angle = MathHelper.TwoPi * lon / longitudeSegments;
+                    float x = MathF.Cos(angle) * ringRadius;
+                    float y = MathF.Sin(angle) * ringRadius;
+                    Vector3 position = new Vector3(x, y, z);
+                    Vector3 normal = position - new Vector3(0f, 0f, centerZ);
+                    currentRing[lon] = AddCapsuleVertex(position, normal);
+                }
+
+                if (lat == 1)
+                {
+                    seamRing = currentRing;
+                }
+                else
+                {
+                    for (int lon = 0; lon < longitudeSegments; lon++)
+                    {
+                        short p0 = seamRing[lon];
+                        short p1 = seamRing[lon + 1];
+                        short c0 = currentRing[lon];
+                        short c1 = currentRing[lon + 1];
+                        if (isUpper)
+                        {
+                            AddTriangle(p0, c0, c1);
+                            AddTriangle(p0, c1, p1);
+                        }
+                        else
+                        {
+                            AddTriangle(p0, c1, c0);
+                            AddTriangle(p0, p1, c1);
+                        }
+                    }
+
+                    seamRing = currentRing;
+                }
+            }
+
+            short pole = AddCapsuleVertex(new Vector3(0f, 0f, isUpper ? centerZ + capsuleRadius : centerZ - capsuleRadius), isUpper ? Vector3.Up : Vector3.Down);
+            for (int lon = 0; lon < longitudeSegments; lon++)
+            {
+                short a = seamRing[lon];
+                short b = seamRing[lon + 1];
+                if (isUpper) AddTriangle(a, pole, b);
+                else AddTriangle(a, b, pole);
+            }
+
+            return seamRing;
+        }
+
+        var lowerHemisphereSeam = BuildHemisphereRings(hemisphereCenterBottom, false);
+        var upperHemisphereSeam = BuildHemisphereRings(hemisphereCenterTop, true);
+
+        var lowerCylinderRing = cylinderRings[0];
+        var upperCylinderRing = cylinderRings[^1];
+        for (int lon = 0; lon < longitudeSegments; lon++)
+        {
+            AddTriangle(lowerHemisphereSeam[lon], lowerCylinderRing[lon + 1], lowerCylinderRing[lon]);
+            AddTriangle(lowerHemisphereSeam[lon], lowerHemisphereSeam[lon + 1], lowerCylinderRing[lon + 1]);
+
+            AddTriangle(upperHemisphereSeam[lon], upperCylinderRing[lon], upperCylinderRing[lon + 1]);
+            AddTriangle(upperHemisphereSeam[lon], upperCylinderRing[lon + 1], upperHemisphereSeam[lon + 1]);
+        }
+
+        _capsuleVertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionNormalColor), capsuleVertices.Count, BufferUsage.WriteOnly);
+        _capsuleVertexBuffer.SetData(capsuleVertices.ToArray());
+        _capsuleIndexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, capsuleIndices.Count, BufferUsage.WriteOnly);
+        _capsuleIndexBuffer.SetData(capsuleIndices.ToArray());
+        _capsulePrimitiveCount = capsuleIndices.Count / 3;
     }
 
     private void Draw3DGrid(int zLevel)
@@ -521,35 +662,23 @@ public class Game1 : Game
         if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) return;
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
-        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
-        float visualHeight = capsuleHeight + (2f * capsuleRadius);
-        Draw3DCube(creature.X, creature.Y, creature.Z, visualHeight, color);
-        if (creature.Z > 0)
-        {
-            Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f);
-            float lineStartZ = creature.Z + capsuleRadius;
-            Draw3DLine(new Vector3(creature.X, creature.Y, lineStartZ), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f);
-        }
+        float size = creature.Size switch { CreatureSize.Tiny => 0.4f, CreatureSize.Small => 0.7f, CreatureSize.Large => 1.5f, CreatureSize.Huge => 2.0f, CreatureSize.Gargantuan => 2.5f, _ => 0.9f };
+        Draw3DCapsule(creature.X, creature.Y, creature.Z, size * 0.45f, size * 0.9f, color);
+        if (creature.Z > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.X, creature.Y, creature.Z), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f); }
     }
 
-    private static (float Radius, float Height) GetCreatureCapsuleDimensions(CreatureSize size)
+    private void Draw3DCapsule(float x, float y, float z, float radius, float height, Color color)
     {
-        return size switch
-        {
-            CreatureSize.Tiny => (0.18f, 0.28f),
-            CreatureSize.Small => (0.28f, 0.44f),
-            CreatureSize.Medium => (0.35f, 0.55f),
-            CreatureSize.Large => (0.60f, 0.90f),
-            CreatureSize.Huge => (0.80f, 1.20f),
-            CreatureSize.Gargantuan => (1.00f, 1.50f),
-            _ => (0.35f, 0.55f)
-        };
-    }
-
-    private static float GetCreatureVisualTopZ(Creature creature)
-    {
-        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
-        return creature.Z + capsuleHeight + (2f * capsuleRadius);
+        // Capsule mesh is authored with radius 0.5 and total unit height 2.0 (body=1.0 + 2*hemispheres)
+        float capsuleTotalHeight = height + (radius * 2f);
+        Vector3 scale = new Vector3(radius / 0.5f, radius / 0.5f, capsuleTotalHeight / 2.0f);
+        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z);
+        _basicEffect.DiffuseColor = color.ToVector3();
+        _basicEffect.Alpha = color.A / 255f;
+        _basicEffect.LightingEnabled = true;
+        GraphicsDevice.SetVertexBuffer(_capsuleVertexBuffer);
+        GraphicsDevice.Indices = _capsuleIndexBuffer;
+        foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _capsulePrimitiveCount); }
     }
 
     private void Draw3DCube(float x, float y, float z, float scale, Color color)
@@ -2078,8 +2207,8 @@ public class Game1 : Game
                     _spriteBatch.DrawString(_font, "Wall (Blocks Move/Vision)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     legendY += 35;
                     
-                    // Creature indicators (top of cube)
-                    _spriteBatch.DrawString(_font, "Creature Indicators:", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                    // Creature indicators (top of unit)
+                    _spriteBatch.DrawString(_font, "Creature Indicators (top of unit):", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                     legendY += 20;
                     
                     _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Gold);
