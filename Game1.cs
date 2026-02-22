@@ -1489,13 +1489,21 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.Black);
         UpdateCameraMatrices();
 
+        int? hoveredX = null;
+        int? hoveredY = null;
+
         if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
         {
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DGrid(_currentViewLevel);
             Draw3DCreatures();
             var hovered = GetHoveredTile();
-            if (hovered.HasValue) Draw3DTile(hovered.Value.x, hovered.Value.y, _currentViewLevel, Color.Yellow * 0.5f);
+            if (hovered.HasValue)
+            {
+                hoveredX = hovered.Value.x;
+                hoveredY = hovered.Value.y;
+                Draw3DTile(hoveredX.Value, hoveredY.Value, _currentViewLevel, Color.Yellow * 0.5f);
+            }
             Draw3DLine(Vector3.Zero, new Vector3(5, 0, 0), Color.Red);
             Draw3DLine(Vector3.Zero, new Vector3(0, 5, 0), Color.Lime);
             Draw3DLine(Vector3.Zero, new Vector3(0, 0, 5), Color.Blue);
