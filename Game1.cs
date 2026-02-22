@@ -1399,6 +1399,17 @@ public class Game1 : Game
                 }
             }
 
+            if (_showCharacterSheet)
+            {
+                var closeSheetButtonRect = _characterSheet.GetCloseButtonRect(GraphicsDevice.Viewport);
+                if (mouse.LeftButton == ButtonState.Pressed &&
+                    _prevMouse.LeftButton == ButtonState.Released &&
+                    closeSheetButtonRect.Contains(mouse.Position))
+                {
+                    _showCharacterSheet = false;
+                }
+            }
+
             var inventoryButtonRect = GetInventoryButtonRect(GraphicsDevice.Viewport);
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released && inventoryButtonRect.Contains(mouse.Position))
             {

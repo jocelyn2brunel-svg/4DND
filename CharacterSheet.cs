@@ -12,6 +12,10 @@ public class CharacterSheet
     private float _scrollOffset = 0f;
     private int _prevScrollValue = 0;
     private const int CONTENT_HEIGHT = 1600;
+    private const int Margin = 20;
+    private const int ScrollbarWidth = 20;
+    private const int CloseButtonWidth = 120;
+    private const int CloseButtonHeight = 36;
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -50,9 +54,9 @@ public class CharacterSheet
         if (_font != null && character != null)
         {
             var c = character;
-            int margin = 20;
+            int margin = Margin;
             int padding = 10;
-            int scrollbarWidth = 20;
+            int scrollbarWidth = ScrollbarWidth;
             
             int sheetWidth = vp.Width - margin * 2 - scrollbarWidth - 10;
             int sheetHeight = vp.Height - margin * 2;
@@ -109,7 +113,32 @@ public class CharacterSheet
             var hint = "Press C to close | Mouse wheel to scroll";
             var hintSize = _font.MeasureString(hint);
             spriteBatch.DrawString(_font, hint, new Vector2((vp.Width - hintSize.X) / 2, vp.Height - 30), Color.White * 0.8f);
+
+            DrawCloseButton(spriteBatch, vp);
         }
+    }
+
+    public Rectangle GetCloseButtonRect(Viewport viewport)
+    {
+        int x = viewport.Width - Margin - CloseButtonWidth;
+        int y = Margin + 4;
+        return new Rectangle(x, y, CloseButtonWidth, CloseButtonHeight);
+    }
+
+    private void DrawCloseButton(SpriteBatch spriteBatch, Viewport viewport)
+    {
+        var closeButtonRect = GetCloseButtonRect(viewport);
+        spriteBatch.Draw(_pixel, closeButtonRect, new Color(140, 40, 40));
+        DrawBorder(spriteBatch, closeButtonRect, Color.Black, 2);
+
+        var text = "Quitter";
+        var textSize = _font.MeasureString(text);
+        var textPos = new Vector2(
+            closeButtonRect.X + (closeButtonRect.Width - textSize.X * 0.7f) * 0.5f,
+            closeButtonRect.Y + (closeButtonRect.Height - textSize.Y * 0.7f) * 0.5f
+        );
+
+        spriteBatch.DrawString(_font, text, textPos, Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
     private void DrawScrollbar(SpriteBatch spriteBatch, int x, int y, int width, int height, int maxScroll)
@@ -398,13 +427,13 @@ public class CharacterSheet
         // Equipped items
         if (c.InventoryData.EquippedArmor != null)
         {
-            spriteBatch.DrawString(_font, $"• {c.InventoryData.EquippedArmor}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"Â• {c.InventoryData.EquippedArmor}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             itemY += lineHeight;
         }
         
         if (c.InventoryData.EquippedShield != null)
         {
-            spriteBatch.DrawString(_font, $"• {c.InventoryData.EquippedShield}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"Â• {c.InventoryData.EquippedShield}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             itemY += lineHeight;
         }
         
@@ -422,13 +451,13 @@ public class CharacterSheet
             
             if (leftColCount < maxItemsPerCol)
             {
-                spriteBatch.DrawString(_font, $"• {item}", new Vector2(col1, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, $"Â• {item}", new Vector2(col1, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                 itemY += lineHeight - 2;
                 leftColCount++;
             }
             else
             {
-                spriteBatch.DrawString(_font, $"• {item}", new Vector2(col2, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, $"Â• {item}", new Vector2(col2, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                 itemY += lineHeight - 2;
             }
         }
