@@ -8,9 +8,9 @@ namespace _4DND
     public class InfiniteGrid3D<T>
     {
         private readonly Dictionary<(int x, int y, int z), T> _cells = new();
-        private readonly Func<T>? _defaultFactory;
+        private readonly Func<int, int, int, T>? _defaultFactory;
 
-        public InfiniteGrid3D(Func<T>? defaultFactory = null)
+        public InfiniteGrid3D(Func<int, int, int, T>? defaultFactory = null)
         {
             _defaultFactory = defaultFactory;
         }
@@ -20,7 +20,7 @@ namespace _4DND
         public T? Get(int x, int y, int z, T? defaultValue = default)
         {
             if (_cells.TryGetValue((x, y, z), out var v)) return v;
-            return _defaultFactory != null ? _defaultFactory() : defaultValue;
+            return _defaultFactory != null ? _defaultFactory(x, y, z) : defaultValue;
         }
 
         public bool Remove(int x, int y, int z) => _cells.Remove((x, y, z));

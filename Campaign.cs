@@ -159,6 +159,9 @@ namespace _4DND
         
         // Current map viewing scale
         public MapScale CurrentScale { get; set; } = MapScale.Province;
+
+        // Tactical scale constants
+        public const int TacticalUnitsPerMile = 1056; // 1 mile = 5280 feet, 1 square = 5 feet => 1056 squares
         
         /// <summary>
         /// Gets the distance represented by one hex at the given scale (in miles)
@@ -308,13 +311,29 @@ namespace _4DND
 
         /// <summary>
         /// Converts Cartesian coordinates to axial hex coordinates (pointy-top).
-        /// Assumes 1 hex unit = distance between centers.
+        /// Assumes 1 hex unit = distance between centers (horizontal).
         /// </summary>
         public static (int q, int r) CartesianToAxial(float x, float y)
         {
-            float r_float = y * 2f / (float)Math.Sqrt(3);
+            // For pointy-top hexes with unit spacing (distance between centers = 1.0)
+            // x = sqrt(3) * (q + r/2)
+            // y = 1.5 * r / sqrt(3)  Wait, if we want distance between centers to be 1.0:
+            // The distance between centers of (0,0) and (1,0) is sqrt(3)*L.
+            // If we want this distance to be 1.0, then sqrt(3)*L = 1.0 => L = 1/sqrt(3).
+            // Then y = 1.5 * L * r = 1.5 / sqrt(3) * r = sqrt(3)/2 * r.
+
+            float r_float = y / ((float)Math.Sqrt(3) / 2f);
             float q_float = x - r_float / 2f;
             return RoundToHex(q_float, r_float);
+        }
+
+        /// <summary>
+        /// Converts tactical grid coordinates (5ft squares) to campaign hex coordinates (1 mile hexes).
+        /// </summary>
+        public static (int q, int r) TacticalToHex(int x, int y)
+        {
+            // We want one hex to be TacticalUnitsPerMile wide (center-to-center horizontally).
+            return CartesianToAxial((float)x / TacticalUnitsPerMile, (float)y / TacticalUnitsPerMile);
         }
         
         /// <summary>
