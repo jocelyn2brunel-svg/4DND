@@ -143,15 +143,11 @@ public class Game1 : Game
         _visionSystem.Grid = _grid;
         _visionSystem.GlobalDaylight = true; // Morning/Daylight by default
 
-        // Create a 3D test structure
+        // Generate a full grassy ground plane
         for (int x = -10; x <= 10; x++)
-            _grid.Set(x, 0, 0, x % 2 == 0 ? TileType.Floor : TileType.Empty);
-
-        for (int y = -6; y <= 6; y++)
         {
-            _grid.Set(0, y, 0, (y % 2) == 0 ? TileType.Grass : TileType.Floor);
-            _grid.Set(-1, y, 0, (y % 2) == 0 ? TileType.Water : TileType.Empty);
-            _grid.Set(1, y, 0, (y % 3) == 0 ? TileType.DifficultTerrain : TileType.Empty);
+            for (int y = -10; y <= 10; y++)
+                _grid.Set(x, y, 0, TileType.Grass);
         }
         
         // Add some walls
