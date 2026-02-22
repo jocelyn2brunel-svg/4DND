@@ -170,7 +170,7 @@ public class CharacterCreation
             }
 
             if (randomNameRect.Contains(mouse.Position))
-                _tooltipText = "Generer un nom aleatoire";
+                _tooltipText = "Generate a random fantasy name";
 
             if (IsMouseClicked(mouse, _prevMouse, randomNameRect))
             {
@@ -436,7 +436,7 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, randomNameRect, randomNameColor);
         DrawBorder(spriteBatch, randomNameRect, 1, Color.White * 0.7f);
 
-        var randomNameText = "Nom aleatoire";
+        var randomNameText = "[D6] Nom aleatoire";
         var randomNameTextSize = _font.MeasureString(randomNameText);
         spriteBatch.DrawString(_font, randomNameText, new Vector2(randomNameRect.X + (randomNameRect.Width - randomNameTextSize.X * 0.65f) / 2, randomNameRect.Y + (randomNameRect.Height - randomNameTextSize.Y * 0.65f) / 2), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
         
