@@ -129,8 +129,10 @@ namespace _4DND
                 {
                     var pos = HexToScreen(x, y, center);
                     
-                    // Draw hex outline with proper size
-                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.DarkGray * 0.3f);
+                    // Fill center + outline so tiles remain visible on dark backgrounds
+                    int centerSize = Math.Max(2, (int)(_tileSize * _zoom * 0.18f));
+                    sb.Draw(_pixel, new Rectangle((int)pos.X - centerSize / 2, (int)pos.Y - centerSize / 2, centerSize, centerSize), Color.SlateGray * 0.45f);
+                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.LightSlateGray * 0.75f);
                 }
             }
         }

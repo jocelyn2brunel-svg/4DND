@@ -1551,6 +1551,7 @@ public class Game1 : Game
 
         if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
         {
+            GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DGrid(_currentViewLevel);
             Draw3DCreatures();
@@ -1564,6 +1565,7 @@ public class Game1 : Game
             Draw3DLine(Vector3.Zero, new Vector3(5, 0, 0), Color.Red);
             Draw3DLine(Vector3.Zero, new Vector3(0, 5, 0), Color.Lime);
             Draw3DLine(Vector3.Zero, new Vector3(0, 0, 5), Color.Blue);
+            GraphicsDevice.RasterizerState = RasterizerState.CullCounterClockwiseFace;
         }
 
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
