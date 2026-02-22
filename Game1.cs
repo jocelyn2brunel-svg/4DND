@@ -14,7 +14,7 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
-    private InfiniteGrid3D<TileType> _grid = new();
+    private InfiniteGrid3D<TileType> _tacticalMap = new();
     private Texture2D _pixel = null!;
 
     // 3D Camera system
@@ -139,23 +139,23 @@ public class Game1 : Game
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
         Initialize3DRendering();
-        _combatManager.Grid = _grid;
-        _visionSystem.Grid = _grid;
+        _combatManager.TacticalMap = _tacticalMap;
+        _visionSystem.TacticalMap = _tacticalMap;
         _visionSystem.GlobalDaylight = true; // Morning/Daylight by default
 
         // Generate a full grassy ground plane
         for (int x = -10; x <= 10; x++)
         {
             for (int y = -10; y <= 10; y++)
-                _grid.Set(x, y, 0, TileType.Grass);
+                _tacticalMap.Set(x, y, 0, TileType.Grass);
         }
         
         // Add some walls
         for (int i = -5; i <= 5; i++)
         {
             if (i == 0) continue; // Doorway
-            _grid.Set(i, 3, 0, TileType.Wall);
-            _grid.Set(i, 3, 1, TileType.Wall);
+            _tacticalMap.Set(i, 3, 0, TileType.Wall);
+            _tacticalMap.Set(i, 3, 1, TileType.Wall);
         }
 
         // Add some platforms at different heights
@@ -163,8 +163,8 @@ public class Game1 : Game
         {
             for (int i = -3; i <= 3; i++)
             {
-                _grid.Set(i, i, z, TileType.Floor);
-                _grid.Set(-i, i, z, TileType.Floor);
+                _tacticalMap.Set(i, i, z, TileType.Floor);
+                _tacticalMap.Set(-i, i, z, TileType.Floor);
             }
         }
         
@@ -207,7 +207,7 @@ public class Game1 : Game
                 if (enemyX == 0 && enemyY == 0 && enemyZ == 0) continue;
 
                 // Don't spawn inside a wall
-                if (_grid.Get(enemyX, enemyY, enemyZ) == TileType.Wall) continue;
+                if (_tacticalMap.Get(enemyX, enemyY, enemyZ) == TileType.Wall) continue;
 
                 // Don't spawn where another creature is
                 if (_combatManager.GetCreatureAt(enemyX, enemyY, enemyZ) != null) continue;
@@ -234,7 +234,7 @@ public class Game1 : Game
                     // Non-flying creatures must be at ground level (Z=0) and on a floor
                     if (enemyZ == 0)
                     {
-                        var tile = _grid.Get(enemyX, enemyY, 0);
+                        var tile = _tacticalMap.Get(enemyX, enemyY, 0);
                         if (tile == TileType.Floor || tile == TileType.Grass || tile == TileType.DifficultTerrain)
                         {
                             isValidPosition = true;
@@ -587,7 +587,7 @@ public class Game1 : Game
 
         List<VertexPositionNormalColor> wallVertices = new();
 
-        foreach (var cell in _grid.EnumerateNonEmpty())
+        foreach (var cell in _tacticalMap.EnumerateNonEmpty())
         {
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
@@ -646,10 +646,10 @@ public class Game1 : Game
     {
         // Check neighbors to see which edges need a vertical plane
         // A plane is drawn if the neighbor is NOT a wall
-        bool north = _grid.Get(x, y + 1, z) != TileType.Wall;
-        bool south = _grid.Get(x, y - 1, z) != TileType.Wall;
-        bool east = _grid.Get(x + 1, y, z) != TileType.Wall;
-        bool west = _grid.Get(x - 1, y, z) != TileType.Wall;
+        bool north = _tacticalMap.Get(x, y + 1, z) != TileType.Wall;
+        bool south = _tacticalMap.Get(x, y - 1, z) != TileType.Wall;
+        bool east = _tacticalMap.Get(x + 1, y, z) != TileType.Wall;
+        bool west = _tacticalMap.Get(x - 1, y, z) != TileType.Wall;
 
         const float halfTile = 0.5f;
         const float wallHeight = 1.0f;
@@ -701,10 +701,10 @@ public class Game1 : Game
         Vector3 bl = new Vector3(x - halfTile, y + halfTile, topZ);
 
         // Check neighbors to avoid drawing caps where walls are continuous
-        bool north = _grid.Get(x, y + 1, z) != TileType.Wall;
-        bool south = _grid.Get(x, y - 1, z) != TileType.Wall;
-        bool east = _grid.Get(x + 1, y, z) != TileType.Wall;
-        bool west = _grid.Get(x - 1, y, z) != TileType.Wall;
+        bool north = _tacticalMap.Get(x, y + 1, z) != TileType.Wall;
+        bool south = _tacticalMap.Get(x, y - 1, z) != TileType.Wall;
+        bool east = _tacticalMap.Get(x + 1, y, z) != TileType.Wall;
+        bool west = _tacticalMap.Get(x - 1, y, z) != TileType.Wall;
 
         if (north) AddCapSegment(vertices, bl, br, thickness, color);
         if (south) AddCapSegment(vertices, tr, tl, thickness, color);
@@ -736,7 +736,7 @@ public class Game1 : Game
         Color gridOutlineColor = new Color(40, 50, 60);
         List<VertexPositionColor> vertices = new();
 
-        foreach (var cell in _grid.EnumerateNonEmpty())
+        foreach (var cell in _tacticalMap.EnumerateNonEmpty())
         {
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
@@ -1767,7 +1767,7 @@ public class Game1 : Game
                         int ty = hovered.Value.y;
                         int tz = _currentViewLevel;
 
-                        var tileType = _grid.Get(tx, ty, tz);
+                        var tileType = _tacticalMap.Get(tx, ty, tz);
                         if (tileType != TileType.Wall && tileType != TileType.Empty)
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
@@ -2679,7 +2679,7 @@ public class Game1 : Game
             int ty = hoveredY.Value;
             int tz = _currentViewLevel;
             
-            var tileType = _grid.Get(tx, ty, tz);
+            var tileType = _tacticalMap.Get(tx, ty, tz);
             var lightLevel = _visionSystem.GetLightLevel(tx, ty, tz);
             var isVisible = _visionSystem.IsVisible(tx, ty, tz);
             

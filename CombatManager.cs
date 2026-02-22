@@ -9,8 +9,8 @@ namespace _4DND;
 
 public class CombatManager
 {
-    private readonly record struct GridNode(int X, int Y, int Z);
-    public InfiniteGrid3D<TileType>? Grid { get; set; }
+    private readonly record struct TacticalMapNode(int X, int Y, int Z);
+    public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
     private int _currentRound = 0;
@@ -123,7 +123,7 @@ public class CombatManager
     /// </summary>
     private bool CanOccupySpace(CreatureSize size, int x, int y, int z, Creature? movingCreature = null)
     {
-        if (Grid == null) return true;
+        if (TacticalMap == null) return true;
         
         var (width, height) = SizeHelper.GetSpaceInSquares(size);
         
@@ -136,7 +136,7 @@ public class CombatManager
                 int checkY = y + dy;
                 
                 // Check if tile is blocked
-                var tileType = Grid.Get(checkX, checkY, z);
+                var tileType = TacticalMap.Get(checkX, checkY, z);
                 if (tileType == TileType.Wall || tileType == TileType.Empty)
                     return false;
                 
@@ -208,7 +208,7 @@ public class CombatManager
 
     public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)
     {
-        List<GridNode>? bestPath = null;
+        List<TacticalMapNode>? bestPath = null;
 
         for (int dx = -1; dx <= 1; dx++)
         {
@@ -243,18 +243,18 @@ public class CombatManager
         return (step.X, step.Y, step.Z);
     }
 
-    private List<GridNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
+    private List<TacticalMapNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
     {
-        var start = new GridNode(creature.X, creature.Y, creature.Z);
-        var goal = new GridNode(targetX, targetY, targetZ);
+        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        var goal = new TacticalMapNode(targetX, targetY, targetZ);
 
         if (start == goal)
-            return new List<GridNode> { start };
+            return new List<TacticalMapNode> { start };
 
-        var openSet = new List<GridNode> { start };
-        var cameFrom = new Dictionary<GridNode, GridNode>();
-        var gScore = new Dictionary<GridNode, int> { [start] = 0 };
-        var fScore = new Dictionary<GridNode, int> { [start] = Heuristic(start, goal) };
+        var openSet = new List<TacticalMapNode> { start };
+        var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
+        var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
 
         while (openSet.Count > 0)
         {
@@ -282,7 +282,7 @@ public class CombatManager
         return null;
     }
 
-    private IEnumerable<GridNode> GetNeighbors(Creature creature, GridNode node)
+    private IEnumerable<TacticalMapNode> GetNeighbors(Creature creature, TacticalMapNode node)
     {
         int minDz = creature.CanFly ? -1 : 0;
         int maxDz = creature.CanFly ? 1 : 0;
@@ -305,25 +305,25 @@ public class CombatManager
                     if (!IsDiagonalMoveAllowed(node.X, node.Y, node.Z, nx, ny, nz))
                         continue;
 
-                    yield return new GridNode(nx, ny, nz);
+                    yield return new TacticalMapNode(nx, ny, nz);
                 }
             }
         }
     }
 
-    private static int Heuristic(GridNode a, GridNode b)
+    private static int Heuristic(TacticalMapNode a, TacticalMapNode b)
     {
         return Max(Max(Abs(b.X - a.X), Abs(b.Y - a.Y)), Abs(b.Z - a.Z)) * 5;
     }
 
-    private int GetMoveCost(GridNode node)
+    private int GetMoveCost(TacticalMapNode node)
     {
-        return Grid != null && Grid.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
+        return TacticalMap != null && TacticalMap.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
     }
 
-    private static List<GridNode> ReconstructPath(Dictionary<GridNode, GridNode> cameFrom, GridNode current)
+    private static List<TacticalMapNode> ReconstructPath(Dictionary<TacticalMapNode, TacticalMapNode> cameFrom, TacticalMapNode current)
     {
-        var path = new List<GridNode> { current };
+        var path = new List<TacticalMapNode> { current };
         while (cameFrom.TryGetValue(current, out var prev))
         {
             current = prev;
@@ -334,7 +334,7 @@ public class CombatManager
         return path;
     }
 
-    private int CalculatePathCost(List<GridNode> path)
+    private int CalculatePathCost(List<TacticalMapNode> path)
     {
         int cost = 0;
         for (int i = 1; i < path.Count; i++)
@@ -345,7 +345,7 @@ public class CombatManager
 
     public bool IsPathBlocked(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        if (Grid == null) return false;
+        if (TacticalMap == null) return false;
 
         int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
         if (dist == 0) return false;
@@ -357,7 +357,7 @@ public class CombatManager
             int cy = (int)Math.Round(y1 + (y2 - y1) * t);
             int cz = (int)Math.Round(z1 + (z2 - z1) * t);
 
-            if (Grid.Get(cx, cy, cz) == TileType.Wall)
+            if (TacticalMap.Get(cx, cy, cz) == TileType.Wall)
                 return true;
 
             float tPrev = (float)(i - 1) / dist;
@@ -386,7 +386,7 @@ public class CombatManager
             int cz = (int)Math.Round(z1 + (z2 - z1) * t);
 
             totalCost += 5;
-            if (Grid != null && Grid.Get(cx, cy, cz) == TileType.DifficultTerrain)
+            if (TacticalMap != null && TacticalMap.Get(cx, cy, cz) == TileType.DifficultTerrain)
                 totalCost += 5;
         }
 
@@ -395,7 +395,7 @@ public class CombatManager
 
     private bool IsDiagonalMoveAllowed(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        if (Grid == null) return true;
+        if (TacticalMap == null) return true;
 
         int dx = x2 - x1;
         int dy = y2 - y1;
@@ -404,17 +404,17 @@ public class CombatManager
         // 2D diagonals check
         if (Abs(dx) == 1 && Abs(dy) == 1 && dz == 0)
         {
-            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1 + dy, z1) == TileType.Wall)
+            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall || TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall)
                 return false;
         }
         if (Abs(dx) == 1 && Abs(dz) == 1 && dy == 0)
         {
-            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall || TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
                 return false;
         }
         if (Abs(dy) == 1 && Abs(dz) == 1 && dx == 0)
         {
-            if (Grid.Get(x1, y1 + dy, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+            if (TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall || TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
                 return false;
         }
 
@@ -422,9 +422,9 @@ public class CombatManager
         if (Abs(dx) == 1 && Abs(dy) == 1 && Abs(dz) == 1)
         {
             // If any adjacent square that shares a face with the path is a wall, block it
-            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall ||
-                Grid.Get(x1, y1 + dy, z1) == TileType.Wall ||
-                Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall ||
+                TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall ||
+                TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
                 return false;
         }
 
@@ -433,7 +433,7 @@ public class CombatManager
     
     public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        // Chebyshev distance (5e Grid Rules: diagonals cost same as straight)
+        // Chebyshev distance (5e grid rules: diagonals cost same as straight)
         return Max(Max(Abs(x2 - x1), Abs(y2 - y1)), Abs(z2 - z1));
     }
     
