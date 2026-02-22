@@ -17,13 +17,23 @@ public class Game1 : Game
     private InfiniteGrid3D<bool> _grid = new();
     private Texture2D _pixel = null!;
     private int _cellSize = 24;
-    private Vector2 _camera = Vector2.Zero;
-    private float _zoom = 1f;
+
+    // 3D Camera system
+    private Vector3 _cameraTarget = Vector3.Zero;
+    private float _cameraYaw = MathHelper.ToRadians(45f);
+    private float _cameraPitch = MathHelper.ToRadians(-35f);
+    private float _cameraDistance = 20f;
+    private float _targetYaw = MathHelper.ToRadians(45f);
+    private const float RotationSpeed = 5f; // Rad per second for transition
+
+    private BasicEffect _basicEffect = null!;
+    private VertexBuffer _cubeVertexBuffer = null!;
+    private IndexBuffer _cubeIndexBuffer = null!;
+    private VertexBuffer _tileVertexBuffer = null!;
+    private IndexBuffer _tileIndexBuffer = null!;
+
     private int _prevScrollValue = 0;
     private int _currentViewLevel = 0; // Current Z-level being viewed
-
-    private float _rotation = 0f;
-    private const float RotationSpeed = MathHelper.PiOver2;
 
     private enum AppState { MainMenu, CharacterSelect, CharacterCreate, CampaignSelect, CampaignCreate, Playing }
     private AppState _state = AppState.MainMenu;
@@ -123,6 +133,8 @@ public class Game1 : Game
         _characterSheet = new CharacterSheet(_font, _pixel);
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
+
+        Initialize3DRendering();
 
         // Create a 3D test structure
         for (int x = -10; x <= 10; x++)
@@ -360,6 +372,107 @@ public class Game1 : Game
         }
     }
     
+    private void UpdateCameraMatrices()
+    {
+        float aspectRatio = GraphicsDevice.Viewport.AspectRatio;
+
+        // Projection Matrix
+        _basicEffect.Projection = Matrix.CreatePerspectiveFieldOfView(
+            MathHelper.ToRadians(45f),
+            aspectRatio,
+            0.1f,
+            1000f);
+
+        // Calculate Camera Position
+        // Rotate a vector based on Yaw and Pitch, then add it to Target
+        Vector3 direction = new Vector3(0, _cameraDistance, 0);
+        Matrix rotation = Matrix.CreateRotationX(_cameraPitch) * Matrix.CreateRotationZ(_cameraYaw);
+        Vector3 cameraPosition = _cameraTarget + Vector3.Transform(direction, rotation);
+
+        // View Matrix
+        _basicEffect.View = Matrix.CreateLookAt(
+            cameraPosition,
+            _cameraTarget,
+            Vector3.UnitZ // Up is Z
+        );
+    }
+
+    private void Initialize3DRendering()
+    {
+        _basicEffect = new BasicEffect(GraphicsDevice);
+        _basicEffect.VertexColorEnabled = true;
+        _basicEffect.LightingEnabled = true;
+        _basicEffect.EnableDefaultLighting();
+
+        // Create Cube (for creatures)
+        // Vertices for a unit cube (from -0.5 to 0.5 in X/Y, 0 to 1 in Z)
+        var cubeVertices = new VertexPositionNormalColor[]
+        {
+            // Bottom face (Z=0)
+            new(new(-0.5f, -0.5f, 0), Vector3.Down, Color.White),
+            new(new(0.5f, -0.5f, 0), Vector3.Down, Color.White),
+            new(new(0.5f, 0.5f, 0), Vector3.Down, Color.White),
+            new(new(-0.5f, 0.5f, 0), Vector3.Down, Color.White),
+            // Top face (Z=1)
+            new(new(-0.5f, -0.5f, 1), Vector3.Up, Color.White),
+            new(new(0.5f, -0.5f, 1), Vector3.Up, Color.White),
+            new(new(0.5f, 0.5f, 1), Vector3.Up, Color.White),
+            new(new(-0.5f, 0.5f, 1), Vector3.Up, Color.White),
+            // Left face (X=-0.5)
+            new(new(-0.5f, -0.5f, 0), Vector3.Left, Color.White),
+            new(new(-0.5f, 0.5f, 0), Vector3.Left, Color.White),
+            new(new(-0.5f, 0.5f, 1), Vector3.Left, Color.White),
+            new(new(-0.5f, -0.5f, 1), Vector3.Left, Color.White),
+            // Right face (X=0.5)
+            new(new(0.5f, -0.5f, 0), Vector3.Right, Color.White),
+            new(new(0.5f, -0.5f, 1), Vector3.Right, Color.White),
+            new(new(0.5f, 0.5f, 1), Vector3.Right, Color.White),
+            new(new(0.5f, 0.5f, 0), Vector3.Right, Color.White),
+            // Front face (Y=-0.5)
+            new(new(-0.5f, -0.5f, 0), Vector3.Forward, Color.White),
+            new(new(0.5f, -0.5f, 0), Vector3.Forward, Color.White),
+            new(new(0.5f, -0.5f, 1), Vector3.Forward, Color.White),
+            new(new(-0.5f, -0.5f, 1), Vector3.Forward, Color.White),
+            // Back face (Y=0.5)
+            new(new(-0.5f, 0.5f, 0), Vector3.Backward, Color.White),
+            new(new(-0.5f, 0.5f, 1), Vector3.Backward, Color.White),
+            new(new(0.5f, 0.5f, 1), Vector3.Backward, Color.White),
+            new(new(0.5f, 0.5f, 0), Vector3.Backward, Color.White),
+        };
+
+        _cubeVertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionNormalColor), cubeVertices.Length, BufferUsage.WriteOnly);
+        _cubeVertexBuffer.SetData(cubeVertices);
+
+        var cubeIndices = new short[]
+        {
+            0, 1, 2, 0, 2, 3, // Bottom
+            4, 6, 5, 4, 7, 6, // Top
+            8, 9, 10, 8, 10, 11, // Left
+            12, 13, 14, 12, 14, 15, // Right
+            16, 17, 18, 16, 18, 19, // Front
+            20, 21, 22, 20, 22, 23 // Back
+        };
+
+        _cubeIndexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, cubeIndices.Length, BufferUsage.WriteOnly);
+        _cubeIndexBuffer.SetData(cubeIndices);
+
+        // Create Tile (Quad)
+        var tileVertices = new VertexPositionNormalColor[]
+        {
+            new(new(-0.5f, -0.5f, 0), Vector3.Up, Color.White),
+            new(new(0.5f, -0.5f, 0), Vector3.Up, Color.White),
+            new(new(0.5f, 0.5f, 0), Vector3.Up, Color.White),
+            new(new(-0.5f, 0.5f, 0), Vector3.Up, Color.White),
+        };
+
+        _tileVertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionNormalColor), tileVertices.Length, BufferUsage.WriteOnly);
+        _tileVertexBuffer.SetData(tileVertices);
+
+        var tileIndices = new short[] { 0, 1, 2, 0, 2, 3 };
+        _tileIndexBuffer = new IndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, tileIndices.Length, BufferUsage.WriteOnly);
+        _tileIndexBuffer.SetData(tileIndices);
+    }
+
     private void SaveCampaign()
     {
         try
@@ -1117,27 +1230,11 @@ public class Game1 : Game
                         // Click on grid to attack
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
-                            var vp = GraphicsDevice.Viewport;
-                            var screenCenter = new Vector2(vp.Width / 2f, vp.Height / 2f);
-                            var origin = screenCenter + _camera;
-                            
-                            var mp = mouse.Position.ToVector2();
-                            var rel = mp - origin;
-                            
-                            float tileW = _cellSize * _zoom;
-                            float tileH = _cellSize * 0.5f * _zoom;
-                            float a = tileW * 0.5f;
-                            float b = tileH * 0.5f;
-                            
-                            if (a != 0 && b != 0)
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
                             {
-                                float rx = rel.X;
-                                float ry = rel.Y;
-                                float wx = ((rx / a) + (ry / b)) * 0.5f;
-                                float wy = ((ry / b) - (rx / a)) * 0.5f;
-                                
-                                int tx = (int)Math.Floor(wx);
-                                int ty = (int)Math.Floor(wy);
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
                                 
                                 var target = _combatManager.GetCreatureAt(tx, ty, _currentViewLevel);
                                 if (target != null && !target.IsPlayer && currentCombatant.HasAction)
@@ -1172,27 +1269,11 @@ public class Game1 : Game
                         // Simple: click to move
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
-                            var vp = GraphicsDevice.Viewport;
-                            var screenCenter = new Vector2(vp.Width / 2f, vp.Height / 2f);
-                            var origin = screenCenter + _camera;
-                            
-                            var mp = mouse.Position.ToVector2();
-                            var rel = mp - origin;
-                            
-                            float tileW = _cellSize * _zoom;
-                            float tileH = _cellSize * 0.5f * _zoom;
-                            float a = tileW * 0.5f;
-                            float b = tileH * 0.5f;
-                            
-                            if (a != 0 && b != 0)
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
                             {
-                                float rx = rel.X;
-                                float ry = rel.Y;
-                                float wx = ((rx / a) + (ry / b)) * 0.5f;
-                                float wy = ((ry / b) - (rx / a)) * 0.5f;
-                                
-                                int tx = (int)Math.Floor(wx);
-                                int ty = (int)Math.Floor(wy);
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
                                 
                                 // Check if tile is empty and within movement range
                                 if (_combatManager.GetCreatureAt(tx, ty, _currentViewLevel) == null)
@@ -1312,24 +1393,40 @@ public class Game1 : Game
             Exit();
 
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-        float speed = 400f * dt;
 
-        if (kb.IsKeyDown(Keys.Left) || kb.IsKeyDown(Keys.A)) _camera.X += speed;
-        if (kb.IsKeyDown(Keys.Right) || kb.IsKeyDown(Keys.D)) _camera.X -= speed;
-        if (kb.IsKeyDown(Keys.Up) || kb.IsKeyDown(Keys.W)) _camera.Y += speed;
-        if (kb.IsKeyDown(Keys.Down) || kb.IsKeyDown(Keys.S)) _camera.Y -= speed;
+        // Rotation logic (45-degree increments with Q/E)
+        if (kb.IsKeyDown(Keys.Q) && !_prevKb.IsKeyDown(Keys.Q))
+            _targetYaw -= MathHelper.ToRadians(45f);
+        if (kb.IsKeyDown(Keys.E) && !_prevKb.IsKeyDown(Keys.E))
+            _targetYaw += MathHelper.ToRadians(45f);
 
-        if (kb.IsKeyDown(Keys.Q)) _rotation -= RotationSpeed * dt;
-        if (kb.IsKeyDown(Keys.E)) _rotation += RotationSpeed * dt;
+        // Smooth yaw interpolation
+        _cameraYaw = MathHelper.Lerp(_cameraYaw, _targetYaw, RotationSpeed * dt);
 
-        if (_rotation > MathHelper.Pi) _rotation -= MathHelper.TwoPi;
-        if (_rotation < -MathHelper.Pi) _rotation += MathHelper.TwoPi;
+        // Movement logic
+        float moveSpeed = 10f * dt;
+        Vector3 moveDir = Vector3.Zero;
 
+        if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)) moveDir.Y -= 1;
+        if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down)) moveDir.Y += 1;
+        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)) moveDir.X -= 1;
+        if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right)) moveDir.X += 1;
+
+        if (moveDir != Vector3.Zero)
+        {
+            moveDir.Normalize();
+            // Rotate move direction by camera yaw
+            var rotMatrix = Matrix.CreateRotationZ(_cameraYaw);
+            moveDir = Vector3.Transform(moveDir, rotMatrix);
+            _cameraTarget += moveDir * moveSpeed;
+        }
+
+        // Zoom logic
         int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
         if (scrollDelta != 0)
         {
-            _zoom += scrollDelta * 0.001f;
-            _zoom = MathHelper.Clamp(_zoom, 0.1f, 5f);
+            _cameraDistance -= scrollDelta * 0.01f;
+            _cameraDistance = MathHelper.Clamp(_cameraDistance, 5f, 50f);
             _prevScrollValue = mouse.ScrollWheelValue;
         }
         
@@ -1342,6 +1439,8 @@ public class Game1 : Game
                 RecalculateVision();
             }
         }
+
+        UpdateCameraMatrices();
 
         _prevKb = kb;
         _prevMouse = mouse;
@@ -1569,6 +1668,203 @@ public class Game1 : Game
         }
     }
     
+    private void Draw3DGrid(int zLevel)
+    {
+        _basicEffect.World = Matrix.Identity;
+        _basicEffect.DiffuseColor = Color.White.ToVector3();
+        _basicEffect.Alpha = 1.0f;
+        _basicEffect.LightingEnabled = false; // Grid lines shouldn't be affected by light
+
+        int range = 20;
+
+        // Draw grid lines at zLevel
+        for (int x = -range; x <= range; x++)
+        {
+            Draw3DLine(new Vector3(x, -range, zLevel), new Vector3(x, range, zLevel), Color.Gray * 0.5f);
+        }
+        for (int y = -range; y <= range; y++)
+        {
+            Draw3DLine(new Vector3(-range, y, zLevel), new Vector3(range, y, zLevel), Color.Gray * 0.5f);
+        }
+
+        // Draw filled tiles for non-empty cells in the grid at this level
+        _basicEffect.LightingEnabled = true;
+        foreach (var cell in _grid.EnumerateNonEmpty())
+        {
+            if (cell.Key.z == zLevel && cell.Value)
+            {
+                Draw3DTile(cell.Key.x, cell.Key.y, cell.Key.z, Color.SlateGray);
+            }
+            else if (cell.Key.z < zLevel && cell.Value)
+            {
+                // Draw lower levels with transparency
+                Draw3DTile(cell.Key.x, cell.Key.y, cell.Key.z, Color.SlateGray * 0.3f);
+            }
+        }
+    }
+
+    private void Draw3DLine(Vector3 start, Vector3 end, Color color)
+    {
+        var vertices = new[]
+        {
+            new VertexPositionColor(start, color),
+            new VertexPositionColor(end, color)
+        };
+
+        foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+        {
+            pass.Apply();
+            GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices, 0, 1);
+        }
+    }
+
+    private void Draw3DTile(int x, int y, int z, Color color)
+    {
+        _basicEffect.World = Matrix.CreateTranslation(x, y, z);
+        _basicEffect.DiffuseColor = color.ToVector3();
+        _basicEffect.Alpha = color.A / 255f;
+
+        GraphicsDevice.SetVertexBuffer(_tileVertexBuffer);
+        GraphicsDevice.Indices = _tileIndexBuffer;
+        foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+        {
+            pass.Apply();
+            GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 2);
+        }
+    }
+
+    private void Draw3DCreatures()
+    {
+        if (_combatManager.InCombat)
+        {
+            foreach (var creature in _combatManager.Combatants)
+            {
+                if (creature.IsAlive())
+                {
+                    Draw3DCreature(creature);
+                }
+            }
+        }
+        else if (_playerCreature != null)
+        {
+            Draw3DCreature(_playerCreature);
+            foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()))
+            {
+                Draw3DCreature(creature);
+            }
+        }
+    }
+
+    private void Draw3DCreature(Creature creature)
+    {
+        if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))
+            return;
+
+        Color color = creature.DisplayColor;
+
+        float sizeMultiplier = creature.Size switch
+        {
+            CreatureSize.Tiny => 0.4f,
+            CreatureSize.Small => 0.7f,
+            CreatureSize.Medium => 0.9f,
+            CreatureSize.Large => 1.5f,
+            CreatureSize.Huge => 2.0f,
+            CreatureSize.Gargantuan => 2.5f,
+            _ => 0.9f
+        };
+
+        Draw3DCube(creature.X, creature.Y, creature.Z, sizeMultiplier, color);
+
+        // Draw shadow on ground if elevated
+        if (creature.Z > 0)
+        {
+            Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f);
+            Draw3DLine(new Vector3(creature.X, creature.Y, creature.Z), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f);
+        }
+    }
+
+    private void Draw3DCreatureUI(Creature creature)
+    {
+        if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))
+            return;
+
+        if (_font == null) return;
+
+        // Project creature top position to screen
+        Vector3 worldPos = new Vector3(creature.X, creature.Y, creature.Z + 1.2f); // Slightly above the cube
+        Vector3 screenPos = GraphicsDevice.Viewport.Project(worldPos, _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+
+        if (screenPos.Z < 0 || screenPos.Z > 1) return; // Behind camera or too far
+
+        Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
+
+        // Draw health bar
+        int barWidth = 60;
+        int barHeight = 6;
+        Rectangle bgRect = new Rectangle((int)pos.X - barWidth / 2, (int)pos.Y - 20, barWidth, barHeight);
+        _spriteBatch.Draw(_pixel, bgRect, Color.DarkRed);
+
+        float hpPercent = (float)creature.CurrentHP / creature.MaxHP;
+        Rectangle hpRect = new Rectangle(bgRect.X, bgRect.Y, (int)(barWidth * hpPercent), barHeight);
+        _spriteBatch.Draw(_pixel, hpRect, Color.Green);
+
+        // Draw name label in a "bubble"
+        string displayName = $"{creature.Name} [Z{creature.Z}]";
+        if (creature.IsFlying) displayName += " ✈";
+
+        Vector2 nameSize = _font.MeasureString(displayName) * 0.6f;
+        Rectangle nameBg = new Rectangle((int)pos.X - (int)nameSize.X / 2 - 4, (int)pos.Y - 40, (int)nameSize.X + 8, (int)nameSize.Y + 4);
+
+        _spriteBatch.Draw(_pixel, nameBg, Color.Black * 0.6f);
+        _spriteBatch.DrawString(_font, displayName, new Vector2(nameBg.X + 4, nameBg.Y + 2), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+    }
+
+    private (int x, int y)? GetHoveredTile()
+    {
+        var mouse = Mouse.GetState();
+        var vp = GraphicsDevice.Viewport;
+
+        Vector3 nearSource = new Vector3(mouse.X, mouse.Y, 0f);
+        Vector3 farSource = new Vector3(mouse.X, mouse.Y, 1f);
+
+        Vector3 nearPoint = vp.Unproject(nearSource, _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+        Vector3 farPoint = vp.Unproject(farSource, _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+
+        Vector3 direction = farPoint - nearPoint;
+        direction.Normalize();
+
+        Ray ray = new Ray(nearPoint, direction);
+
+        // Plane at Z = _currentViewLevel
+        Plane plane = new Plane(Vector3.UnitZ, -_currentViewLevel);
+
+        float? d = ray.Intersects(plane);
+        if (d.HasValue)
+        {
+            Vector3 hit = nearPoint + direction * d.Value;
+            return ((int)Math.Round(hit.X), (int)Math.Round(hit.Y));
+        }
+
+        return null;
+    }
+
+    private void Draw3DCube(float x, float y, float z, float scale, Color color)
+    {
+        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z);
+        _basicEffect.DiffuseColor = color.ToVector3();
+        _basicEffect.Alpha = 1.0f;
+        _basicEffect.LightingEnabled = true;
+
+        GraphicsDevice.SetVertexBuffer(_cubeVertexBuffer);
+        GraphicsDevice.Indices = _cubeIndexBuffer;
+
+        foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+        {
+            pass.Apply();
+            GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 12);
+        }
+    }
+
     private void DrawIsometricCube(SpriteBatch sb, Vector2 baseCenter, float width, float height, Color color)
     {
         float halfWidth = width * 0.5f;
@@ -1689,11 +1985,48 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.Black);
 
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+        UpdateCameraMatrices();
 
         var vp = GraphicsDevice.Viewport;
-        var screenCenter = new Vector2(vp.Width / 2f, vp.Height / 2f);
-        var origin = screenCenter + _camera;
+
+        // Draw 3D elements if playing
+        if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
+        {
+            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+            Draw3DGrid(_currentViewLevel);
+            Draw3DCreatures();
+
+            // Draw highlight for hovered tile
+            var hovered = GetHoveredTile();
+            if (hovered.HasValue)
+            {
+                Draw3DTile(hovered.Value.x, hovered.Value.y, _currentViewLevel, Color.Yellow * 0.5f);
+            }
+
+            // Draw origin axis (in 3D)
+            float axisLength = 5f;
+            Draw3DLine(Vector3.Zero, new Vector3(axisLength, 0, 0), Color.Red);
+            Draw3DLine(Vector3.Zero, new Vector3(0, axisLength, 0), Color.Lime);
+            Draw3DLine(Vector3.Zero, new Vector3(0, 0, axisLength), Color.Blue);
+        }
+
+        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+
+        // Draw 3D elements UI
+        if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
+        {
+            if (_combatManager.InCombat)
+            {
+                foreach (var creature in _combatManager.Combatants)
+                    if (creature.IsAlive()) Draw3DCreatureUI(creature);
+            }
+            else if (_playerCreature != null)
+            {
+                Draw3DCreatureUI(_playerCreature);
+                foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()))
+                    Draw3DCreatureUI(creature);
+            }
+        }
 
         // MAIN MENU
         if (_state == AppState.MainMenu)
@@ -1933,103 +2266,17 @@ public class Game1 : Game
             return;
         }
 
-        // GAMEPLAY RENDERING
-        float tileW = _cellSize * _zoom;
-        float tileH = _cellSize * 0.5f * _zoom;
-        
+        // GAMEPLAY RENDERING (NOW IN 3D)
         int? hoveredX = null;
         int? hoveredY = null;
 
-        if (!_inMainMenu)
+        if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
         {
-            var mouse = Mouse.GetState();
-            var mp = mouse.Position.ToVector2();
-            var rel = mp - origin;
-
-            float a = tileW * 0.5f;
-            float b = tileH * 0.5f;
-
-            if (a != 0 && b != 0)
+            var hovered = GetHoveredTile();
+            if (hovered.HasValue)
             {
-                float rx = rel.X;
-                float ry = rel.Y;
-                float wx = ((rx / a) + (ry / b)) * 0.5f;
-                float wy = ((ry / b) - (rx / a)) * 0.5f;
-                
-                int tx = (int)System.Math.Floor(wx);
-                int ty = (int)System.Math.Floor(wy);
-                
-                hoveredX = tx;
-                hoveredY = ty;
-
-                var center = origin + new Vector2(((tx + 0.5f) - (ty + 0.5f)) * a, ((tx + 0.5f) + (ty + 0.5f)) * b);
-
-                var top = center + new Vector2(0, -b);
-                var right = center + new Vector2(a, 0);
-                var bottom = center + new Vector2(0, b);
-                var left = center + new Vector2(-a, 0);
-
-                DrawLine(_spriteBatch, _pixel, top, right, Color.Yellow, 3f);
-                DrawLine(_spriteBatch, _pixel, right, bottom, Color.Yellow, 3f);
-                DrawLine(_spriteBatch, _pixel, bottom, left, Color.Yellow, 3f);
-                DrawLine(_spriteBatch, _pixel, left, top, Color.Yellow, 3f);
-            }
-        }
-
-        int range = (int)((Math.Max(vp.Width, vp.Height) / Math.Min(tileW, tileH))) + 6;
-        int xmin = -range, xmax = range;
-        int ymin = -range, ymax = range;
-
-        // Draw grid for current level and levels below (with transparency)
-        for (int drawZ = 0; drawZ <= Math.Max(_currentViewLevel, _playerCreature?.Z ?? 0); drawZ++)
-        {
-            float levelAlpha = (drawZ == _currentViewLevel) ? 1.0f : 0.3f;
-            float levelZOffset = -drawZ * (tileH * 0.5f);
-            Color gridColor = (drawZ == _currentViewLevel) ? Color.White : Color.Gray;
-            gridColor *= levelAlpha;
-            
-            for (int y = ymin; y <= ymax; y++)
-            {
-                var start = origin + new Vector2((xmin - y) * tileW * 0.5f, (xmin + y) * tileH * 0.5f + levelZOffset);
-                var end = origin + new Vector2((xmax - y) * tileW * 0.5f, (xmax + y) * tileH * 0.5f + levelZOffset);
-                DrawLine(_spriteBatch, _pixel, start, end, gridColor, 1f);
-            }
-
-            for (int x = xmin; x <= xmax; x++)
-            {
-                var start = origin + new Vector2((x - ymin) * tileW * 0.5f, (x + ymin) * tileH * 0.5f + levelZOffset);
-                var end = origin + new Vector2((x - ymax) * tileW * 0.5f, (x + ymax) * tileH * 0.5f + levelZOffset);
-                DrawLine(_spriteBatch, _pixel, start, end, gridColor, 1f);
-            }
-        }
-
-        // Draw origin axis (at Z=0)
-        var originCenter = origin + new Vector2(0, 0);
-        float axisLength = 100f * _zoom;
-        DrawLine(_spriteBatch, _pixel, originCenter, originCenter + new Vector2(axisLength * 0.5f, axisLength * 0.25f), Color.Red, 2f);
-        DrawLine(_spriteBatch, _pixel, originCenter, originCenter + new Vector2(-axisLength * 0.5f, axisLength * 0.25f), Color.Lime, 2f);
-        DrawLine(_spriteBatch, _pixel, originCenter, originCenter + new Vector2(0, -axisLength), Color.Blue, 2f);
-        _spriteBatch.Draw(_pixel, new Rectangle((int)originCenter.X - 2, (int)originCenter.Y - 2, 4, 4), Color.Red);
-        
-        // Draw creatures in combat
-        if (_combatManager.InCombat)
-        {
-            foreach (var creature in _combatManager.Combatants)
-            {
-                if (creature.IsAlive())
-                {
-                    DrawCreature(_spriteBatch, creature, origin, tileW, tileH);
-                }
-            }
-        }
-        else if (_playerCreature != null)
-        {
-            // Draw player and enemies in exploration mode
-            DrawCreature(_spriteBatch, _playerCreature, origin, tileW, tileH);
-            
-            foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()))
-            {
-                DrawCreature(_spriteBatch, creature, origin, tileW, tileH);
+                hoveredX = hovered.Value.x;
+                hoveredY = hovered.Value.y;
             }
         }
         
@@ -2372,5 +2619,28 @@ public class Game1 : Game
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+}
+
+public struct VertexPositionNormalColor : IVertexType
+{
+    public Vector3 Position;
+    public Vector3 Normal;
+    public Color Color;
+
+    public static readonly VertexDeclaration VertexDeclaration = new VertexDeclaration
+    (
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+        new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
+        new VertexElement(24, VertexElementFormat.Color, VertexElementUsage.Color, 0)
+    );
+
+    VertexDeclaration IVertexType.VertexDeclaration => VertexDeclaration;
+
+    public VertexPositionNormalColor(Vector3 position, Vector3 normal, Color color)
+    {
+        Position = position;
+        Normal = normal;
+        Color = color;
     }
 }
