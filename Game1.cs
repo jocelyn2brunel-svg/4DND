@@ -1565,7 +1565,7 @@ public class Game1 : Game
             Draw3DLine(Vector3.Zero, new Vector3(5, 0, 0), Color.Red);
             Draw3DLine(Vector3.Zero, new Vector3(0, 5, 0), Color.Lime);
             Draw3DLine(Vector3.Zero, new Vector3(0, 0, 5), Color.Blue);
-            GraphicsDevice.RasterizerState = RasterizerState.CullCounterClockwiseFace;
+            GraphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
         }
 
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
