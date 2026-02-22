@@ -1411,7 +1411,10 @@ public class Game1 : Game
             }
 
             var inventoryButtonRect = GetInventoryButtonRect(GraphicsDevice.Viewport);
-            if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released && inventoryButtonRect.Contains(mouse.Position))
+            if (!_showCharacterSheet &&
+                mouse.LeftButton == ButtonState.Pressed &&
+                _prevMouse.LeftButton == ButtonState.Released &&
+                inventoryButtonRect.Contains(mouse.Position))
             {
                 _showCharacterSheet = true;
                 _characterSheet.ResetScroll();
