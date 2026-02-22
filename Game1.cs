@@ -1599,7 +1599,7 @@ public class Game1 : Game
         // CHARACTER SHEET
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
         {
-            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter);
+            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -1824,6 +1824,28 @@ public class Game1 : Game
                 }
             }
 
+            // Draw campaign summary for selected campaign
+            if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
+            {
+                var selCampaign = _campaigns[_campaignIndex];
+                int summaryWidth = 400;
+                int summaryHeight = menuHeight;
+                var summaryRect = new Rectangle(menuRect.Right + 20, menuRect.Y, summaryWidth, summaryHeight);
+
+                _spriteBatch.Draw(_pixel, summaryRect, Color.DarkSlateGray * 0.9f);
+                DrawBorder(_spriteBatch, _pixel, summaryRect, Color.Yellow * 0.5f, 2);
+
+                int sy = summaryRect.Y + 20;
+                _spriteBatch.DrawString(_font, "Adventure Summary", new Vector2(summaryRect.X + 20, sy), Color.Yellow);
+                sy += 40;
+
+                DrawSummarySection("HOOK", selCampaign.AdventureHook, summaryRect.X + 20, ref sy, summaryWidth - 40);
+                sy += 20;
+                DrawSummarySection("MIDDLE", selCampaign.AdventureMiddle, summaryRect.X + 20, ref sy, summaryWidth - 40);
+                sy += 20;
+                DrawSummarySection("ENDING", selCampaign.AdventureEnding, summaryRect.X + 20, ref sy, summaryWidth - 40);
+            }
+
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -1841,7 +1863,7 @@ public class Game1 : Game
         // CHARACTER SHEET
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
         {
-            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter);
+            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -2122,6 +2144,49 @@ public class Game1 : Game
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+
+    private void DrawBorder(SpriteBatch sb, Texture2D pixel, Rectangle rect, Color color, int thickness)
+    {
+        sb.Draw(pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+        sb.Draw(pixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
+        sb.Draw(pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+        sb.Draw(pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
+    }
+
+    private void DrawSummarySection(string title, string content, int x, ref int y, int width)
+    {
+        _spriteBatch.DrawString(_font, title + ":", new Vector2(x, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        y += 20;
+
+        string text = string.IsNullOrEmpty(content) ? "No data available." : content;
+        string wrapped = WrapText(text, width);
+        _spriteBatch.DrawString(_font, wrapped, new Vector2(x + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
+        var textSize = _font.MeasureString(wrapped) * 0.6f;
+        y += (int)textSize.Y + 10;
+    }
+
+    private string WrapText(string text, float maxLineWidth)
+    {
+        if (_font == null || string.IsNullOrEmpty(text)) return "";
+        string[] words = text.Split(' ');
+        string result = "";
+        string currentLine = "";
+
+        foreach (string word in words)
+        {
+            if (_font.MeasureString(currentLine + word).X * 0.6f < maxLineWidth)
+            {
+                currentLine += word + " ";
+            }
+            else
+            {
+                result += currentLine + "\n";
+                currentLine = word + " ";
+            }
+        }
+        return result + currentLine;
     }
 }
 

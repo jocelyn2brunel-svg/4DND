@@ -82,6 +82,9 @@ namespace _4DND
         // Campaign progress
         public int SessionCount { get; set; }
         public string CurrentObjective { get; set; } = "";
+        public string AdventureHook { get; set; } = "";
+        public string AdventureMiddle { get; set; } = "";
+        public string AdventureEnding { get; set; } = "";
         public List<string> CompletedObjectives { get; set; } = new();
         
         // Party information

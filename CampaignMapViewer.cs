@@ -21,6 +21,7 @@ namespace _4DND
         private Location _selectedLocation = null;
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
+        private bool _showAdventureDetails = false;
         
         public CampaignMapViewer(SpriteFont font, Texture2D pixel)
         {
@@ -61,6 +62,12 @@ namespace _4DND
                 // (This is simplified - in real game would need proper screen-to-world transform)
                 _selectedLocation = null;
             }
+
+            // Toggle adventure details with J
+            if (kb.IsKeyDown(Keys.J) && !prevKb.IsKeyDown(Keys.J))
+            {
+                _showAdventureDetails = !_showAdventureDetails;
+            }
             
             _prevMouse = mouse;
         }
@@ -96,10 +103,15 @@ namespace _4DND
             // Draw info panel
             DrawInfoPanel(sb, vp, campaign);
             
+            if (_showAdventureDetails)
+            {
+                DrawAdventureDetails(sb, vp, campaign);
+            }
+
             // Instructions
             if (_font != null)
             {
-                sb.DrawString(_font, "WASD: Pan | Mouse Wheel/+/-: Zoom | M: Close Map", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, "WASD: Pan | Zoom: Mouse Wheel | J: Toggle Journal | M: Close Map", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
         }
         
@@ -258,6 +270,71 @@ namespace _4DND
             }
         }
         
+        private void DrawAdventureDetails(SpriteBatch sb, Viewport vp, Campaign campaign)
+        {
+            int width = 600;
+            int height = 500;
+            var rect = new Rectangle((vp.Width - width) / 2, (vp.Height - height) / 2, width, height);
+
+            sb.Draw(_pixel, rect, Color.Black * 0.95f);
+            DrawBorder(sb, rect, Color.Gold, 2);
+
+            int y = rect.Y + 20;
+            sb.DrawString(_font, "Adventure Journal", new Vector2(rect.X + 20, y), Color.Gold, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+            y += 50;
+
+            DrawAdventureSection(sb, "HOOK", campaign.AdventureHook, rect.X + 20, ref y, width - 40);
+            y += 20;
+            DrawAdventureSection(sb, "MIDDLE", campaign.AdventureMiddle, rect.X + 20, ref y, width - 40);
+            y += 20;
+            DrawAdventureSection(sb, "ENDING", campaign.AdventureEnding, rect.X + 20, ref y, width - 40);
+
+            sb.DrawString(_font, "Press J to close", new Vector2(rect.X + width - 150, rect.Y + height - 30), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawAdventureSection(SpriteBatch sb, string title, string content, int x, ref int y, int width)
+        {
+            sb.DrawString(_font, title + ":", new Vector2(x, y), Color.Orange, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            y += 25;
+
+            string text = string.IsNullOrEmpty(content) ? "No data available." : content;
+            string wrapped = WrapText(text, width);
+            sb.DrawString(_font, wrapped, new Vector2(x + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+            var textSize = _font.MeasureString(wrapped) * 0.7f;
+            y += (int)textSize.Y + 5;
+        }
+
+        private string WrapText(string text, float maxLineWidth)
+        {
+            if (_font == null || string.IsNullOrEmpty(text)) return "";
+            string[] words = text.Split(' ');
+            string result = "";
+            string currentLine = "";
+
+            foreach (string word in words)
+            {
+                if (_font.MeasureString(currentLine + word).X * 0.7f < maxLineWidth)
+                {
+                    currentLine += word + " ";
+                }
+                else
+                {
+                    result += currentLine + "\n";
+                    currentLine = word + " ";
+                }
+            }
+            return result + currentLine;
+        }
+
+        private void DrawBorder(SpriteBatch sb, Rectangle rect, Color color, int thickness)
+        {
+            sb.Draw(_pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+            sb.Draw(_pixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
+            sb.Draw(_pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+            sb.Draw(_pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
+        }
+
         private void DrawLine(SpriteBatch sb, Vector2 start, Vector2 end, Color color, float thickness)
         {
             float distance = Vector2.Distance(start, end);
