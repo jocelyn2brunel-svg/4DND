@@ -14,56 +14,66 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
-    private InfiniteGrid<bool> _grid = new();
+    private InfiniteGrid3D<bool> _grid = new();
     private Texture2D _pixel = null!;
     private int _cellSize = 24;
     private Vector2 _camera = Vector2.Zero;
     private float _zoom = 1f;
     private int _prevScrollValue = 0;
+    private int _currentViewLevel = 0; // Current Z-level being viewed
 
     private float _rotation = 0f;
     private const float RotationSpeed = MathHelper.PiOver2;
 
-    private enum AppState { MainMenu, CharacterSelect, CharacterCreate, Playing }
+    private enum AppState { MainMenu, CharacterSelect, CharacterCreate, CampaignSelect, CampaignCreate, Playing }
     private AppState _state = AppState.MainMenu;
 
     private bool _inMainMenu => _state == AppState.MainMenu;
-    private readonly string[] _mainMenuItems = new[] { "New Game", "Continue", "Load Game", "Options", "Desktop" };
+    private readonly string[] _mainMenuItems = new[] { "Single Player", "Multiplayer", "Options", "Desktop" };
     private int _mainMenuIndex = 0;
 
     private List<Character> _characters = new();
     private int _characterIndex = 0;
     private string _savesDir = "saves";
     private string _charsFile = "characters.json";
-    private Character? _currentCharacter = null;
+    private string _campaignsFile = "campaigns.json";
+    private Character _currentCharacter = null;
+    private Campaign _currentCampaign = null;
+    private bool _isMultiplayerMode = false;
+    
+    private List<Campaign> _campaigns = new();
+    private int _campaignIndex = 0;
 
     private CharacterCreation _characterCreation = null!;
     private CharacterSheet _characterSheet = null!;
+    private CampaignCreation _campaignCreation = null!;
+    private CampaignMapViewer _campaignMapViewer = null!;
 
     private bool _isMenuOpen = false;
     private int _menuIndex = 0;
     private readonly string[] _menuItems = new[] { "Continue", "Options", "Main Menu", "Desktop" };
+    
+    private bool _showCampaignMap = false;
 
     private KeyboardState _prevKb;
     private SpriteFont _font = null!;
 
-    private bool _escapeHandled = false;
     private bool _showCharacterSheet = false;
 
     private CombatManager _combatManager = new();
-    private Creature? _playerCreature = null;
+    private Creature _playerCreature = null;
     private List<string> _combatLog = new();
     private const int MAX_COMBAT_LOG = 5;
     
     // Vision and lighting system
     private VisionSystem _visionSystem = new();
     private bool _showVisionOverlay = true;
+    private bool _visionNeedsUpdate = false;
     
     // Combat UI state
     private enum CombatAction { None, Move, Attack, EndTurn }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showCombatUI = false;
-    private bool _turnActionExecuted = false;
     private MouseState _prevMouse;
 
     public Game1()
@@ -72,10 +82,21 @@ public class Game1 : Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
+        
+        // Configure borderless fullscreen window
+        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+        _graphics.HardwareModeSwitch = false;
+        _graphics.IsFullScreen = false;
     }
 
     protected override void Initialize()
     {
+        // Apply borderless fullscreen after initialization
+        Window.IsBorderless = true;
+        Window.Position = new Point(0, 0);
+        _graphics.ApplyChanges();
+        
         _prevKb = Keyboard.GetState();
         _prevMouse = Mouse.GetState();
         base.Initialize();
@@ -92,7 +113,7 @@ public class Game1 : Game
         {
             _font = Content.Load<SpriteFont>("DefaultFont");
         }
-        catch (Microsoft.Xna.Framework.Content.ContentLoadException ex)
+        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
         {
             _font = null!;
             System.Console.WriteLine("Warning: DefaultFont not found. Build the Content/Content.mgcb with the MonoGame Pipeline Tool to generate DefaultFont.xnb. Menu text will be hidden.");
@@ -100,14 +121,27 @@ public class Game1 : Game
 
         _characterCreation = new CharacterCreation(_font, _pixel);
         _characterSheet = new CharacterSheet(_font, _pixel);
+        _campaignCreation = new CampaignCreation(_font, _pixel);
+        _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
+        // Create a 3D test structure
         for (int x = -10; x <= 10; x++)
-            _grid.Set(x, 0, x % 2 == 0);
+            _grid.Set(x, 0, 0, x % 2 == 0);
 
         for (int y = -6; y <= 6; y++)
         {
-            _grid.Set(0, y, true);
-            _grid.Set(1, y, (y % 3) == 0);
+            _grid.Set(0, y, 0, true);
+            _grid.Set(1, y, 0, (y % 3) == 0);
+        }
+        
+        // Add some platforms at different heights
+        for (int z = 1; z <= 3; z++)
+        {
+            for (int i = -3; i <= 3; i++)
+            {
+                _grid.Set(i, i, z, true);
+                _grid.Set(-i, i, z, true);
+            }
         }
         
         // Spawn some test enemies
@@ -124,7 +158,53 @@ public class Game1 : Game
     
     private void SpawnTestEnemies()
     {
-        // Don't spawn enemies yet - wait for player to enter game
+        // Spawn some initial enemies for exploration mode
+        var rand = new Random();
+        var enemies = new List<Creature>();
+        
+        // Create 3-5 enemies scattered around at various heights
+        int numEnemies = rand.Next(3, 6);
+        
+        for (int i = 0; i < numEnemies; i++)
+        {
+            int enemyX = rand.Next(-8, 9);
+            int enemyY = rand.Next(-8, 9);
+            int enemyZ = rand.Next(0, 4); // Random height from 0 to 3
+            
+            // Don't spawn at origin (player spawn)
+            if (enemyX == 0 && enemyY == 0 && enemyZ == 0)
+            {
+                enemyX = 5;
+                enemyY = 5;
+                enemyZ = 1;
+            }
+            
+            int enemyType = rand.Next(0, 7);
+            Creature enemy = enemyType switch
+            {
+                0 => Creature.CreateGoblin(enemyX, enemyY, enemyZ),
+                1 => Creature.CreateOrc(enemyX, enemyY, enemyZ),
+                2 => Creature.CreateSkeleton(enemyX, enemyY, enemyZ),
+                3 => Creature.CreateWolf(enemyX, enemyY, enemyZ),
+                4 => Creature.CreateKobold(enemyX, enemyY, enemyZ),
+                5 => Creature.CreateUmberHulk(enemyX, enemyY, enemyZ),
+                _ => Creature.CreateCouatl(enemyX, enemyY, enemyZ)
+            };
+            
+            // Flying creatures start flying at elevated positions
+            if (enemy.CanFly && enemyZ > 0)
+            {
+                enemy.IsFlying = true;
+            }
+            
+            enemies.Add(enemy);
+        }
+        
+        // Add enemies to combat manager for tracking (but don't start combat yet)
+        foreach (var enemy in enemies)
+        {
+            _combatManager.Combatants.Add(enemy);
+        }
     }
     
     private void StartCombatWithNearbyEnemies()
@@ -134,35 +214,21 @@ public class Game1 : Game
         var combatants = new List<Creature>();
         combatants.Add(_playerCreature);
         
-        // Add 2-3 random enemies nearby
-        var rand = new Random();
-        int numEnemies = rand.Next(2, 4);
+        // Add existing enemies to combat
+        var existingEnemies = _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()).ToList();
+        combatants.AddRange(existingEnemies);
         
-        for (int i = 0; i < numEnemies; i++)
-        {
-            int enemyX = _playerCreature.X + rand.Next(-3, 4);
-            int enemyY = _playerCreature.Y + rand.Next(-3, 4);
-            
-            int enemyType = rand.Next(0, 5);
-            Creature enemy = enemyType switch
-            {
-                0 => Creature.CreateGoblin(enemyX, enemyY),
-                1 => Creature.CreateOrc(enemyX, enemyY),
-                2 => Creature.CreateSkeleton(enemyX, enemyY),
-                3 => Creature.CreateWolf(enemyX, enemyY),
-                _ => Creature.CreateKobold(enemyX, enemyY)
-            };
-            
-            combatants.Add(enemy);
-        }
-        
+        // Clear and restart with proper initiative
+        _combatManager.Combatants.Clear();
         _combatManager.StartCombat(combatants);
         _showCombatUI = true;
-        _turnActionExecuted = false;
+        _selectedAction = CombatAction.None;
         AddToCombatLog("Combat started!");
+        AddToCombatLog($"Round {_combatManager.CurrentRound} begins!");
         
         // Setup lighting for combat
         SetupCombatLighting();
+        UpdateVision();
     }
     
     private void SetupCombatLighting()
@@ -173,24 +239,28 @@ public class Game1 : Game
         if (_playerCreature != null)
         {
             // Player carries a torch
-            var torch = LightSource.Torch(_playerCreature.X, _playerCreature.Y);
+            var torch = LightSource.Torch(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
             torch.AttachedTo = _playerCreature;
             _visionSystem.AddLightSource(torch);
         }
         
-        // Add some ambient light sources
+        // Add some ambient light sources at different heights
         var rand = new Random();
         for (int i = 0; i < 2; i++)
         {
             int lx = rand.Next(-10, 11);
             int ly = rand.Next(-10, 11);
-            _visionSystem.AddLightSource(LightSource.Lantern(lx, ly));
+            int lz = rand.Next(0, 4);
+            _visionSystem.AddLightSource(LightSource.Lantern(lx, ly, lz));
         }
-        
-        UpdateVision();
     }
     
     private void UpdateVision()
+    {
+        _visionNeedsUpdate = true;
+    }
+    
+    private void RecalculateVision()
     {
         if (_playerCreature != null)
         {
@@ -201,12 +271,14 @@ public class Game1 : Game
                 {
                     light.X = light.AttachedTo.X;
                     light.Y = light.AttachedTo.Y;
+                    light.Z = light.AttachedTo.Z;
                 }
             }
             
             _visionSystem.CalculateLighting();
             _visionSystem.CalculateVisibility(_playerCreature);
         }
+        _visionNeedsUpdate = false;
     }
     
     private void AddToCombatLog(string message)
@@ -237,6 +309,28 @@ public class Game1 : Game
             _characters = new List<Character>();
         }
     }
+    
+    private void LoadCampaigns()
+    {
+        try
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir, _campaignsFile);
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                _campaigns = JsonSerializer.Deserialize<List<Campaign>>(json) ?? new List<Campaign>();
+            }
+            else
+            {
+                _campaigns = new List<Campaign>();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("Failed to load campaigns: " + ex.Message);
+            _campaigns = new List<Campaign>();
+        }
+    }
 
     private void SaveCharacters()
     {
@@ -252,6 +346,63 @@ public class Game1 : Game
         }
     }
     
+    private void SaveCampaigns()
+    {
+        try
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir, _campaignsFile);
+            var json = JsonSerializer.Serialize(_campaigns);
+            File.WriteAllText(path, json);
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("Failed to save campaigns: " + ex.Message);
+        }
+    }
+    
+    private void SaveCampaign()
+    {
+        try
+        {
+            if (_currentCampaign == null) return;
+            
+            // Load existing campaigns
+            LoadCampaigns();
+            
+            // Update or add current campaign
+            var existing = _campaigns.FindIndex(c => c.Name == _currentCampaign.Name);
+            if (existing >= 0)
+                _campaigns[existing] = _currentCampaign;
+            else
+                _campaigns.Add(_currentCampaign);
+            
+            // Save
+            SaveCampaigns();
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("Failed to save campaign: " + ex.Message);
+        }
+    }
+    
+    private void LoadCampaign(string campaignName)
+    {
+        try
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir, _campaignsFile);
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                var campaigns = JsonSerializer.Deserialize<List<Campaign>>(json) ?? new List<Campaign>();
+                _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("Failed to load campaign: " + ex.Message);
+        }
+    }
+
     private bool IsExistingCharacterIndex(int index)
     {
         return _characters != null && index >= 0 && index < _characters.Count;
@@ -262,12 +413,58 @@ public class Game1 : Game
         return Math.Max(1, (_characters?.Count ?? 0) + 1);
     }
     
+    private void ExecuteMainMenuAction(int index)
+    {
+        var sel = _mainMenuItems[index];
+        if (sel == "Single Player")
+        {
+            _isMultiplayerMode = false;
+            LoadCharacters();
+            _state = AppState.CharacterSelect;
+        }
+        else if (sel == "Multiplayer")
+        {
+            _isMultiplayerMode = true;
+            LoadCharacters();
+            _state = AppState.CharacterSelect;
+        }
+        else if (sel == "Options")
+        {
+            _isMenuOpen = true;
+            _menuIndex = 1;
+        }
+        else if (sel == "Desktop")
+        {
+            Exit();
+        }
+    }
+
+    private void ExecuteMenuAction(int index)
+    {
+        var sel = _menuItems[index];
+        if (sel == "Continue")
+        {
+            _isMenuOpen = false;
+        }
+        else if (sel == "Options")
+        {
+            // placeholder
+        }
+        else if (sel == "Main Menu")
+        {
+            _state = AppState.MainMenu;
+            _isMenuOpen = false;
+        }
+        else if (sel == "Desktop")
+        {
+            Exit();
+        }
+    }
+    
     protected override void Update(GameTime gameTime)
     {
         var kb = Keyboard.GetState();
         var mouse = Mouse.GetState();
-
-        _escapeHandled = false;
 
         // MAIN MENU
         if (_state == AppState.MainMenu)
@@ -293,12 +490,13 @@ public class Game1 : Game
                 if (itemRect.Contains(mouse.Position))
                 {
                     _mainMenuIndex = i;
-                    if (mouse.LeftButton == ButtonState.Pressed)
+                    if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         ExecuteMainMenuAction(i);
                 }
             }
 
             _prevKb = kb;
+            _prevMouse = mouse;
             base.Update(gameTime);
             return;
         }
@@ -310,6 +508,7 @@ public class Game1 : Game
             {
                 _state = AppState.MainMenu;
                 _prevKb = kb;
+                _prevMouse = mouse;
                 base.Update(gameTime);
                 return;
             }
@@ -335,7 +534,25 @@ public class Game1 : Game
                 if (IsExistingCharacterIndex(_characterIndex))
                 {
                     _currentCharacter = _characters[_characterIndex];
-                    _state = AppState.Playing;
+                    if (_isMultiplayerMode)
+                    {
+                        // Initialize player creature when entering game (only if not already created)
+                        if (_currentCharacter != null && _playerCreature == null)
+                        {
+                            _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                            _combatManager.Combatants.Clear();
+                            SpawnTestEnemies();
+                        }
+                        
+                        // TODO: Go to multiplayer lobby
+                        _state = AppState.Playing;
+                    }
+                    else
+                    {
+                        LoadCampaigns();
+                        _campaignIndex = 0;
+                        _state = AppState.CampaignSelect;
+                    }
                 }
                 else
                 {
@@ -355,10 +572,11 @@ public class Game1 : Game
             var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
             if (backRect.Contains(mouse.Position))
             {
-                if (mouse.LeftButton == ButtonState.Pressed)
+                if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                 {
                     _state = AppState.MainMenu;
                     _prevKb = kb;
+                    _prevMouse = mouse;
                     base.Update(gameTime);
                     return;
                 }
@@ -373,7 +591,7 @@ public class Game1 : Game
                 
                 if (deleteRect.Contains(mouse.Position))
                 {
-                    if (mouse.LeftButton == ButtonState.Pressed)
+                    if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                     {
                         _characters.RemoveAt(i);
                         SaveCharacters();
@@ -394,12 +612,30 @@ public class Game1 : Game
                     {
                         _characterIndex = i;
                         
-                        if (mouse.LeftButton == ButtonState.Pressed)
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             if (IsExistingCharacterIndex(i))
                             {
                                 _currentCharacter = _characters[i];
-                                _state = AppState.Playing;
+                                if (_isMultiplayerMode)
+                                {
+                                    // Initialize player creature when entering game (only if not already created)
+                                    if (_currentCharacter != null && _playerCreature == null)
+                                    {
+                                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                                        _combatManager.Combatants.Clear();
+                                        SpawnTestEnemies();
+                                    }
+                                    
+                                    // TODO: Go to multiplayer lobby
+                                    _state = AppState.Playing;
+                                }
+                                else
+                                {
+                                    LoadCampaigns();
+                                    _campaignIndex = 0;
+                                    _state = AppState.CampaignSelect;
+                                }
                             }
                             else
                             {
@@ -413,6 +649,7 @@ public class Game1 : Game
             }
 
             _prevKb = kb;
+            _prevMouse = mouse;
             base.Update(gameTime);
             return;
         }
@@ -420,7 +657,7 @@ public class Game1 : Game
         // CHARACTER CREATION
         if (_state == AppState.CharacterCreate)
         {
-            bool continueCreation = _characterCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Character? newCharacter);
+            bool continueCreation = _characterCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Character newCharacter);
             
             if (!continueCreation)
             {
@@ -432,10 +669,230 @@ public class Game1 : Game
                 _characters.Add(newCharacter);
                 SaveCharacters();
                 _currentCharacter = newCharacter;
+                if (_isMultiplayerMode)
+                {
+                    // Initialize player creature only if not already created
+                    if (_playerCreature == null)
+                    {
+                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                        _combatManager.Combatants.Clear();
+                        SpawnTestEnemies();
+                    }
+                    // TODO: Go to multiplayer lobby
+                    _state = AppState.Playing;
+                }
+                else
+                {
+                    LoadCampaigns();
+                    _campaignIndex = 0;
+                    _state = AppState.CampaignSelect;
+                }
+            }
+
+            _prevKb = kb;
+            _prevMouse = mouse;
+            base.Update(gameTime);
+            return;
+        }
+        
+        // CAMPAIGN SELECT
+        if (_state == AppState.CampaignSelect)
+        {
+            if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+            {
+                _state = AppState.CharacterSelect;
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
+            if (kb.IsKeyDown(Keys.Up) && !_prevKb.IsKeyDown(Keys.Up))
+                _campaignIndex = Math.Max(0, _campaignIndex - 1);
+            if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
+                _campaignIndex = Math.Min(_campaigns.Count, _campaignIndex + 1);
+            
+            if (kb.IsKeyDown(Keys.Delete) && !_prevKb.IsKeyDown(Keys.Delete))
+            {
+                if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
+                {
+                    _campaigns.RemoveAt(_campaignIndex);
+                    SaveCampaigns();
+                    if (_campaignIndex >= _campaigns.Count)
+                        _campaignIndex = Math.Max(0, _campaigns.Count - 1);
+                }
+            }
+
+            if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
+            {
+                if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
+                {
+                    _currentCampaign = _campaigns[_campaignIndex];
+                    if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
+                    {
+                        _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
+                        _currentCampaign.LastPlayedDate = DateTime.Now;
+                        SaveCampaigns();
+                    }
+                    
+                    // Initialize player creature when entering game (only once!)
+                    if (_currentCharacter != null && _playerCreature == null)
+                    {
+                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                        
+                        // Clear existing enemies first to avoid duplicates
+                        _combatManager.Combatants.Clear();
+                        SpawnTestEnemies();
+                    }
+                    
+                    _state = AppState.Playing;
+                }
+                else
+                {
+                    _campaignCreation.Reset();
+                    _state = AppState.CampaignCreate;
+                }
+            }
+
+            var vp = GraphicsDevice.Viewport;
+            int menuWidth = 480;
+            int itemHeight = 48;
+            int padding = 12;
+            int titleHeight = 80;
+            int menuHeight = titleHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + 40;
+            var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
+
+            var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+            if (backRect.Contains(mouse.Position))
+            {
+                if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                {
+                    _state = AppState.CharacterSelect;
+                    _prevKb = kb;
+                    _prevMouse = mouse;
+                    base.Update(gameTime);
+                    return;
+                }
+            }
+
+            bool clickedDelete = false;
+
+            for (int i = 0; i < _campaigns.Count; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
+                
+                if (deleteRect.Contains(mouse.Position))
+                {
+                    if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                    {
+                        _campaigns.RemoveAt(i);
+                        SaveCampaigns();
+                        if (_campaignIndex >= _campaigns.Count)
+                            _campaignIndex = Math.Max(0, _campaigns.Count - 1);
+                        clickedDelete = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!clickedDelete)
+            {
+                for (int i = 0; i <= _campaigns.Count; i++)
+                {
+                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                    if (itemRect.Contains(mouse.Position))
+                    {
+                        _campaignIndex = i;
+                        
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        {
+                            if (i < _campaigns.Count)
+                            {
+                                _currentCampaign = _campaigns[i];
+                                if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
+                                {
+                                    _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
+                                    _currentCampaign.LastPlayedDate = DateTime.Now;
+                                    SaveCampaigns();
+                                }
+                                
+                                // Initialize player creature when entering game (only if not already created)
+                                if (_currentCharacter != null && _playerCreature == null)
+                                {
+                                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                                    _combatManager.Combatants.Clear();
+                                    SpawnTestEnemies();
+                                }
+                                 
+                                _state = AppState.Playing;
+                            }
+                            else
+                            {
+                                _campaignCreation.Reset();
+                                _state = AppState.CampaignCreate;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            _prevKb = kb;
+            _prevMouse = mouse;
+            base.Update(gameTime);
+            return;
+        }
+
+        // CAMPAIGN CREATION
+        if (_state == AppState.CampaignCreate)
+        {
+            bool continueCampaign = _campaignCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Campaign newCampaign);
+            
+            if (!continueCampaign)
+            {
+                LoadCampaigns();
+                _state = AppState.CampaignSelect;
+            }
+            else if (newCampaign != null)
+            {
+                _currentCampaign = newCampaign;
+                if (_currentCharacter != null)
+                {
+                    _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
+                }
+                SaveCampaign();
+                
+                // Initialize player creature when entering game (only if not already created)
+                if (_currentCharacter != null && _playerCreature == null)
+                {
+                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                    _combatManager.Combatants.Clear();
+                    SpawnTestEnemies();
+                }
+                
                 _state = AppState.Playing;
             }
 
             _prevKb = kb;
+            _prevMouse = mouse;
+            base.Update(gameTime);
+            return;
+        }
+
+        // CAMPAIGN MAP VIEWER
+        if (_showCampaignMap && _state == AppState.Playing)
+        {
+            _campaignMapViewer.Update(_currentCampaign, mouse, kb, _prevKb);
+            
+            // Close map with M
+            if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
+            {
+                _showCampaignMap = false;
+            }
+            
+            _prevKb = kb;
+            _prevMouse = mouse;
             base.Update(gameTime);
             return;
         }
@@ -445,7 +902,6 @@ public class Game1 : Game
         {
             _isMenuOpen = !_isMenuOpen;
             if (_isMenuOpen) _menuIndex = 0;
-            _escapeHandled = true;
         }
 
         if (_isMenuOpen)
@@ -470,16 +926,17 @@ public class Game1 : Game
                 if (itemRect.Contains(mouse.Position))
                 {
                     _menuIndex = i;
-                    if (mouse.LeftButton == ButtonState.Pressed)
+                    if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         ExecuteMenuAction(i);
                 }
             }
 
             _prevKb = kb;
+            _prevMouse = mouse;
             base.Update(gameTime);
             return;
         }
-
+        
         if (_state == AppState.Playing)
         {
             if (kb.IsKeyDown(Keys.C) && !_prevKb.IsKeyDown(Keys.C))
@@ -491,17 +948,82 @@ public class Game1 : Game
                 }
             }
             
+            // Toggle campaign map with M
+            if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
+            {
+                _showCampaignMap = !_showCampaignMap;
+            }
+            
+            // Change view level with PageUp/PageDown
+            if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
+            {
+                _currentViewLevel++;
+                AddToCombatLog($"Viewing level {_currentViewLevel}");
+            }
+            if (kb.IsKeyDown(Keys.PageDown) && !_prevKb.IsKeyDown(Keys.PageDown))
+            {
+                _currentViewLevel = Math.Max(0, _currentViewLevel - 1);
+                AddToCombatLog($"Viewing level {_currentViewLevel}");
+            }
+            
+            // Test: Make a strength check with X
+            if (kb.IsKeyDown(Keys.X) && !_prevKb.IsKeyDown(Keys.X) && _currentCharacter != null)
+            {
+                var check = _currentCharacter.MakeAbilityCheck("Strength", DndMath.DifficultyClass.Medium);
+                AddToCombatLog(check.GetSimpleMessage());
+                System.Console.WriteLine(check.GetDetailedMessage());
+            }
+            
+            // Test: Make a stealth check with Z
+            if (kb.IsKeyDown(Keys.Z) && !_prevKb.IsKeyDown(Keys.Z) && _currentCharacter != null)
+            {
+                var check = _currentCharacter.MakeSkillCheck("Stealth", DndMath.DifficultyClass.Hard);
+                AddToCombatLog(check.GetSimpleMessage());
+                System.Console.WriteLine(check.GetDetailedMessage());
+            }
+            
+            // Test: Make a saving throw with N
+            if (kb.IsKeyDown(Keys.N) && !_prevKb.IsKeyDown(Keys.N) && _currentCharacter != null)
+            {
+                var check = _currentCharacter.MakeSavingThrow("Dexterity", DndMath.DifficultyClass.Hard);
+                AddToCombatLog(check.GetSimpleMessage());
+                System.Console.WriteLine(check.GetDetailedMessage());
+            }
+            
+            // Toggle flying mode with Space (for flying creatures)
+            if (kb.IsKeyDown(Keys.Space) && !_prevKb.IsKeyDown(Keys.Space) && _playerCreature != null)
+            {
+                if (_playerCreature.CanFly)
+                {
+                    _playerCreature.IsFlying = !_playerCreature.IsFlying;
+                    AddToCombatLog(_playerCreature.IsFlying ? "Now flying!" : "Landing...");
+                }
+            }
+            
+            // Ascend/Descend with R/T (for flying creatures)
+            if (kb.IsKeyDown(Keys.R) && !_prevKb.IsKeyDown(Keys.R) && _playerCreature != null)
+            {
+                if (_playerCreature.CanFly && _playerCreature.IsFlying)
+                {
+                    _playerCreature.Z++;
+                    AddToCombatLog($"Ascended to level {_playerCreature.Z}");
+                    UpdateVision();
+                }
+            }
+            if (kb.IsKeyDown(Keys.T) && !_prevKb.IsKeyDown(Keys.T) && _playerCreature != null)
+            {
+                if (_playerCreature.CanFly && _playerCreature.IsFlying)
+                {
+                    _playerCreature.Z = Math.Max(0, _playerCreature.Z - 1);
+                    AddToCombatLog($"Descended to level {_playerCreature.Z}");
+                    UpdateVision();
+                }
+            }
+            
             // Toggle vision overlay with V
             if (kb.IsKeyDown(Keys.V) && !_prevKb.IsKeyDown(Keys.V))
             {
                 _showVisionOverlay = !_showVisionOverlay;
-            }
-            
-            // Toggle daylight with L
-            if (kb.IsKeyDown(Keys.L) && !_prevKb.IsKeyDown(Keys.L))
-            {
-                _visionSystem.GlobalDaylight = !_visionSystem.GlobalDaylight;
-                UpdateVision();
             }
             
             // Test: Toggle Blinded condition with B (for testing)
@@ -523,7 +1045,7 @@ public class Game1 : Game
             // Test: Create Fog Cloud with F
             if (kb.IsKeyDown(Keys.F) && !_prevKb.IsKeyDown(Keys.F) && _playerCreature != null)
             {
-                var fogCloud = AreaEffect.FogCloud(_playerCreature.X, _playerCreature.Y);
+                var fogCloud = AreaEffect.FogCloud(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
                 _visionSystem.AddAreaEffect(fogCloud);
                 AddToCombatLog("Fog Cloud created!");
                 UpdateVision();
@@ -532,7 +1054,7 @@ public class Game1 : Game
             // Test: Create Darkness with K
             if (kb.IsKeyDown(Keys.K) && !_prevKb.IsKeyDown(Keys.K) && _playerCreature != null)
             {
-                var darkness = AreaEffect.Darkness(_playerCreature.X, _playerCreature.Y);
+                var darkness = AreaEffect.Darkness(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
                 _visionSystem.AddAreaEffect(darkness);
                 AddToCombatLog("Darkness spell cast!");
                 UpdateVision();
@@ -541,10 +1063,9 @@ public class Game1 : Game
             // Toggle combat UI with Tab
             if (kb.IsKeyDown(Keys.Tab) && !_prevKb.IsKeyDown(Keys.Tab))
             {
-                if (!_combatManager.InCombat && _currentCharacter != null)
+                if (!_combatManager.InCombat && _currentCharacter != null && _playerCreature != null)
                 {
-                    // Create player creature and start combat
-                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                    // Start combat with existing creatures
                     StartCombatWithNearbyEnemies();
                 }
                 else
@@ -557,6 +1078,7 @@ public class Game1 : Game
             {
                 _characterSheet.Update(mouse);
                 _prevKb = kb;
+                _prevMouse = mouse;
                 base.Update(gameTime);
                 return;
             }
@@ -576,10 +1098,17 @@ public class Game1 : Game
                     if (kb.IsKeyDown(Keys.D3) && !_prevKb.IsKeyDown(Keys.D3))
                     {
                         // End turn
+                        int prevRound = _combatManager.CurrentRound;
                         _combatManager.NextTurn();
+                        int newRound = _combatManager.CurrentRound;
+                        
+                        if (newRound > prevRound)
+                        {
+                            AddToCombatLog($"=== Round {newRound} ===");
+                        }
+                        
                         AddToCombatLog($"{currentCombatant.Name} ended turn");
                         _selectedAction = CombatAction.None;
-                        _turnActionExecuted = false;
                     }
                     
                     // Handle attack action
@@ -610,16 +1139,12 @@ public class Game1 : Game
                                 int tx = (int)Math.Floor(wx);
                                 int ty = (int)Math.Floor(wy);
                                 
-                                var target = _combatManager.GetCreatureAt(tx, ty);
-                                if (target != null && !target.IsPlayer)
+                                var target = _combatManager.GetCreatureAt(tx, ty, _currentViewLevel);
+                                if (target != null && !target.IsPlayer && currentCombatant.HasAction)
                                 {
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
                                     _selectedAction = CombatAction.None;
-                                    
-                                    // Auto end turn after attack
-                                    _combatManager.NextTurn();
-                                    _turnActionExecuted = false;
                                     
                                     // Check if combat ended
                                     if (!_combatManager.InCombat)
@@ -632,6 +1157,10 @@ public class Game1 : Game
                                             SaveCharacters();
                                         }
                                     }
+                                }
+                                else if (target != null && !currentCombatant.HasAction)
+                                {
+                                    AddToCombatLog("No action available!");
                                 }
                             }
                         }
@@ -666,72 +1195,108 @@ public class Game1 : Game
                                 int ty = (int)Math.Floor(wy);
                                 
                                 // Check if tile is empty and within movement range
-                                if (_combatManager.GetCreatureAt(tx, ty) == null)
+                                if (_combatManager.GetCreatureAt(tx, ty, _currentViewLevel) == null)
                                 {
-                                    int dist = Math.Abs(tx - currentCombatant.X) + Math.Abs(ty - currentCombatant.Y);
-                                    int maxMove = currentCombatant.Speed / 5; // 5 feet per tile
-                        
-                                    if (dist <= maxMove)
+                                    if (_combatManager.CanMove(currentCombatant, tx, ty, _currentViewLevel))
                                     {
-                                        currentCombatant.X = tx;
-                                        currentCombatant.Y = ty;
-                                        AddToCombatLog($"{currentCombatant.Name} moved to ({tx}, {ty})");
+                                        int distanceMoved = (Math.Abs(tx - currentCombatant.X) + Math.Abs(ty - currentCombatant.Y) + Math.Abs(_currentViewLevel - currentCombatant.Z)) * 5;
+                                        _combatManager.Move(currentCombatant, tx, ty, _currentViewLevel);
+                                        AddToCombatLog($"{currentCombatant.Name} moved to ({tx}, {ty}, {_currentViewLevel}) [{distanceMoved}ft, {currentCombatant.MovementRemaining}ft remaining]");
                                         _selectedAction = CombatAction.None;
                                         
                                         // Update vision after movement
                                         UpdateVision();
+                                    }
+                                    else
+                                    {
+                                        AddToCombatLog("Out of movement range!");
                                     }
                                 }
                             }
                         }
                     }
                 }
-                else if (currentCombatant != null && !currentCombatant.IsPlayer && !_turnActionExecuted)
+                else if (currentCombatant != null && !currentCombatant.IsPlayer)
                 {
-                    // AI turn - execute once per turn
-                    _turnActionExecuted = true;
-                    var playerCreature = _combatManager.Combatants.FirstOrDefault(c => c.IsPlayer);
-                    
-                    if (playerCreature != null)
+                    // AI turn - check if they have action
+                    if (currentCombatant.HasAction || currentCombatant.MovementRemaining > 0)
                     {
-                        if (_combatManager.IsInMeleeRange(currentCombatant, playerCreature))
+                        var playerCreature = _combatManager.Combatants.FirstOrDefault(c => c.IsPlayer);
+                        
+                        if (playerCreature != null)
                         {
-                            // Attack
-                            var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
-                            AddToCombatLog(result.GetMessage());
-                        }
-                        else
-                        {
-                            // Move towards player
-                            int dx = Math.Sign(playerCreature.X - currentCombatant.X);
-                            int dy = Math.Sign(playerCreature.Y - currentCombatant.Y);
-                            
-                            int newX = currentCombatant.X + dx;
-                            int newY = currentCombatant.Y + dy;
-                            
-                            if (_combatManager.GetCreatureAt(newX, newY) == null)
+                            if (_combatManager.IsInMeleeRange(currentCombatant, playerCreature) && currentCombatant.HasAction)
                             {
-                                currentCombatant.X = newX;
-                                currentCombatant.Y = newY;
-                                AddToCombatLog($"{currentCombatant.Name} moved");
-                                UpdateVision();
+                                // Attack
+                                var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
+                                AddToCombatLog(result.GetMessage());
+                            }
+                            else if (currentCombatant.MovementRemaining > 0)
+                            {
+                                // Move towards player (3D pathfinding)
+                                int dx = Math.Sign(playerCreature.X - currentCombatant.X);
+                                int dy = Math.Sign(playerCreature.Y - currentCombatant.Y);
+                                int dz = Math.Sign(playerCreature.Z - currentCombatant.Z);
+                                
+                                // Prioritize horizontal movement, then vertical if can fly
+                                int newX = currentCombatant.X;
+                                int newY = currentCombatant.Y;
+                                int newZ = currentCombatant.Z;
+                                
+                                if (dx != 0 || dy != 0)
+                                {
+                                    newX = currentCombatant.X + dx;
+                                    newY = currentCombatant.Y + dy;
+                                }
+                                else if (dz != 0 && currentCombatant.CanFly)
+                                {
+                                    newZ = currentCombatant.Z + dz;
+                                    currentCombatant.IsFlying = true;
+                                }
+                                
+                                if (_combatManager.GetCreatureAt(newX, newY, newZ) == null && _combatManager.CanMove(currentCombatant, newX, newY, newZ))
+                                {
+                                    _combatManager.Move(currentCombatant, newX, newY, newZ);
+                                    AddToCombatLog($"{currentCombatant.Name} moved");
+                                    UpdateVision();
+                                }
+                            }
+                            else
+                            {
+                                // Out of actions and movement, end turn
+                                int prevRound = _combatManager.CurrentRound;
+                                _combatManager.NextTurn();
+                                int newRound = _combatManager.CurrentRound;
+                        
+                                if (newRound > prevRound)
+                                {
+                                    AddToCombatLog($"=== Round {newRound} ===");
+                                }
                             }
                         }
-                        
-                        // End AI turn
+                    }
+                    else
+                    {
+                        // No actions left, end turn
+                        int prevRound = _combatManager.CurrentRound;
                         _combatManager.NextTurn();
-                        _turnActionExecuted = false;
+                        int newRound = _combatManager.CurrentRound;
                         
-                        // Check if combat ended
-                        if (!_combatManager.InCombat)
+                        if (newRound > prevRound)
                         {
-                            AddToCombatLog("Combat ended!");
-                            _showCombatUI = false;
-                            if (_playerCreature != null && _currentCharacter != null)
-                            {
-                                _playerCreature.UpdateCharacter(_currentCharacter);
-                                SaveCharacters();
-                            }
+                            AddToCombatLog($"=== Round {newRound} ===");
+                        }
+                    }
+                    
+                    // Check if combat ended
+                    if (!_combatManager.InCombat)
+                    {
+                        AddToCombatLog("Combat ended!");
+                        _showCombatUI = false;
+                        if (_playerCreature != null && _currentCharacter != null)
+                        {
+                            _playerCreature.UpdateCharacter(_currentCharacter);
+                            SaveCharacters();
                         }
                     }
                 }
@@ -771,69 +1336,16 @@ public class Game1 : Game
         // Update vision if in combat
         if (_combatManager.InCombat)
         {
-            UpdateVision();
+            // Only recalculate if needed
+            if (_visionNeedsUpdate)
+            {
+                RecalculateVision();
+            }
         }
 
         _prevKb = kb;
+        _prevMouse = mouse;
         base.Update(gameTime);
-    }
-
-    private void ExecuteMainMenuAction(int index)
-    {
-        var sel = _mainMenuItems[index];
-        if (sel == "New Game")
-        {
-            _characterCreation.Reset();
-            _state = AppState.CharacterCreate;
-        }
-        else if (sel == "Continue")
-        {
-            if (_currentCharacter != null)
-            {
-                _state = AppState.Playing;
-            }
-            else
-            {
-                LoadCharacters();
-                _state = AppState.CharacterSelect;
-            }
-        }
-        else if (sel == "Load Game")
-        {
-            LoadCharacters();
-            _state = AppState.CharacterSelect;
-        }
-        else if (sel == "Options")
-        {
-            _isMenuOpen = true;
-            _menuIndex = 1;
-        }
-        else if (sel == "Desktop")
-        {
-            Exit();
-        }
-    }
-
-    private void ExecuteMenuAction(int index)
-    {
-        var sel = _menuItems[index];
-        if (sel == "Continue")
-        {
-            _isMenuOpen = false;
-        }
-        else if (sel == "Options")
-        {
-            // placeholder
-        }
-        else if (sel == "Main Menu")
-        {
-            _state = AppState.MainMenu;
-            _isMenuOpen = false;
-        }
-        else if (sel == "Desktop")
-        {
-            Exit();
-        }
     }
 
     private void DrawLine(SpriteBatch sb, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
@@ -844,20 +1356,22 @@ public class Game1 : Game
         sb.Draw(pixel, start, null, color, angle, Vector2.Zero, new Vector2(distance, thickness), SpriteEffects.None, 0f);
     }
     
-    private void DrawTileWithLighting(SpriteBatch sb, int x, int y, Vector2 origin, float tileW, float tileH)
+    private void DrawTileWithLighting(SpriteBatch sb, int x, int y, int z, Vector2 origin, float tileW, float tileH)
     {
-        if (!_showVisionOverlay)
+        if (!_showVisionOverlay || _playerCreature == null)
             return;
         
-        bool isVisible = _visionSystem.IsVisible(x, y);
-        var tint = _visionSystem.GetFogOfWarTint(x, y, isVisible);
+        bool isVisible = _visionSystem.IsVisible(x, y, z);
+        var tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
         
         // If tile is completely black, draw black overlay
         if (tint == Color.Black)
         {
             float a = tileW * 0.5f;
             float b = tileH * 0.5f;
-            var center = origin + new Vector2(((x + 0.5f) - (y + 0.5f)) * a, ((x + 0.5f) + (y + 0.5f)) * b);
+            // Add Z offset for height
+            float zOffset = -z * (tileH * 0.5f);
+            var center = origin + new Vector2(((x + 0.5f) - (y + 0.5f)) * a, ((x + 0.5f) + (y + 0.5f)) * b + zOffset);
             var top = center + new Vector2(0, -b);
             var right = center + new Vector2(a, 0);
             var bottom = center + new Vector2(0, b);
@@ -871,7 +1385,8 @@ public class Game1 : Game
             // Draw dimmed overlay for dim light or darkvision
             float a = tileW * 0.5f;
             float b = tileH * 0.5f;
-            var center = origin + new Vector2(((x + 0.5f) - (y + 0.5f)) * a, ((x + 0.5f) + (y + 0.5f)) * b);
+            float zOffset = -z * (tileH * 0.5f);
+            var center = origin + new Vector2(((x + 0.5f) - (y + 0.5f)) * a, ((x + 0.5f) + (y + 0.5f)) * b + zOffset);
             var top = center + new Vector2(0, -b);
             var right = center + new Vector2(a, 0);
             var bottom = center + new Vector2(0, b);
@@ -880,7 +1395,7 @@ public class Game1 : Game
             DrawFilledDiamond(sb, top, right, bottom, left, tint * 0.6f);
         }
     }
-    
+
     private void DrawFilledDiamond(SpriteBatch sb, Vector2 top, Vector2 right, Vector2 bottom, Vector2 left, Color color)
     {
         // Draw as two triangles
@@ -916,8 +1431,8 @@ public class Game1 : Game
     
     private void DrawCreature(SpriteBatch sb, Creature creature, Vector2 origin, float tileW, float tileH)
     {
-        // Only draw if visible
-        if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y))
+        // Only apply vision checks when in combat with vision overlay enabled
+        if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))
         {
             return;
         }
@@ -925,16 +1440,32 @@ public class Game1 : Game
         float a = tileW * 0.5f;
         float b = tileH * 0.5f;
         
-        var center = origin + new Vector2(((creature.X + 0.5f) - (creature.Y + 0.5f)) * a, ((creature.X + 0.5f) + (creature.Y + 0.5f)) * b);
+        // Scale cube size based on creature size
+        float sizeMultiplier = creature.Size switch
+        {
+            CreatureSize.Tiny => 0.4f,
+            CreatureSize.Small => 0.7f,
+            CreatureSize.Medium => 1.0f,
+            CreatureSize.Large => 1.5f,
+            CreatureSize.Huge => 2.0f,
+            CreatureSize.Gargantuan => 2.5f,
+            _ => 1.0f
+        };
         
-        // Draw creature as colored circle
-        int radius = (int)(b * 1.5f);
+        // Calculate cube dimensions
+        float cubeWidth = tileW * 0.4f * sizeMultiplier;
+        float cubeHeight = tileH * 2.0f * sizeMultiplier;
+        
+        // Add Z offset for height (creatures appear higher on screen when at higher Z)
+        float zOffset = -creature.Z * (tileH * 0.5f);
+        var baseCenter = origin + new Vector2(((creature.X + 0.5f) - (creature.Y + 0.5f)) * a, ((creature.X + 0.5f) + (creature.Y + 0.5f)) * b + zOffset);
+        
         Color creatureColor = creature.DisplayColor;
         
         // Apply lighting tint if vision overlay is enabled
-        if (_showVisionOverlay)
+        if (_showVisionOverlay && _playerCreature != null)
         {
-            var tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, true);
+            var tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature);
             creatureColor = new Color(
                 (creature.DisplayColor.R * tint.R) / 255,
                 (creature.DisplayColor.G * tint.G) / 255,
@@ -942,45 +1473,76 @@ public class Game1 : Game
             );
         }
         
-        sb.Draw(_pixel, new Rectangle((int)center.X - radius, (int)center.Y - radius, radius * 2, radius * 2), null, creatureColor, 0f, Vector2.Zero, SpriteEffects.None, 0f);
+        // Draw isometric cube
+        DrawIsometricCube(sb, baseCenter, cubeWidth, cubeHeight, creatureColor);
         
-        // Draw vision type indicator
-        if (creature.HasBlindSight)
+        // Draw shadow on ground level if elevated (Z > 0)
+        if (creature.Z > 0)
         {
-            // Small blue dot for blindsight
-            sb.Draw(_pixel, new Rectangle((int)center.X + radius - 4, (int)center.Y - radius, 4, 4), Color.Cyan);
+            float groundZOffset = 0;
+            var shadowCenter = origin + new Vector2(((creature.X + 0.5f) - (creature.Y + 0.5f)) * a, ((creature.X + 0.5f) + (creature.Y + 0.5f)) * b + groundZOffset);
+            
+            // Draw shadow as flat diamond
+            float shadowSize = cubeWidth * 0.6f;
+            var shadowTop = shadowCenter + new Vector2(0, -shadowSize * 0.5f);
+            var shadowRight = shadowCenter + new Vector2(shadowSize * 0.5f, 0);
+            var shadowBottom = shadowCenter + new Vector2(0, shadowSize * 0.5f);
+            var shadowLeft = shadowCenter + new Vector2(-shadowSize * 0.5f, 0);
+            
+            DrawLine(sb, _pixel, shadowTop, shadowRight, Color.Black * 0.3f, 2f);
+            DrawLine(sb, _pixel, shadowRight, shadowBottom, Color.Black * 0.3f, 2f);
+            DrawLine(sb, _pixel, shadowBottom, shadowLeft, Color.Black * 0.3f, 2f);
+            DrawLine(sb, _pixel, shadowLeft, shadowTop, Color.Black * 0.3f, 2f);
+            
+            // Draw vertical line connecting creature to shadow
+            DrawLine(sb, _pixel, baseCenter, shadowCenter, Color.Gray * 0.3f, 1f);
+        }
+        
+        // Draw vision type indicators (top of cube)
+        var topOfCube = baseCenter - new Vector2(0, cubeHeight);
+        int indicatorX = (int)topOfCube.X + (int)(cubeWidth * 0.25f);
+        int indicatorY = (int)topOfCube.Y - 8;
+        
+        if (creature.HasTrueSight)
+        {
+            sb.Draw(_pixel, new Rectangle(indicatorX, indicatorY, 6, 6), Color.Gold);
+        }
+        else if (creature.HasBlindSight)
+        {
+            sb.Draw(_pixel, new Rectangle(indicatorX, indicatorY, 6, 6), Color.Cyan);
+        }
+        else if (creature.HasTremorsense)
+        {
+            sb.Draw(_pixel, new Rectangle(indicatorX, indicatorY, 6, 6), Color.Orange);
         }
         else if (creature.DarkvisionRange >= 120)
         {
-            // Small purple dot for superior darkvision
-            sb.Draw(_pixel, new Rectangle((int)center.X + radius - 4, (int)center.Y - radius, 4, 4), Color.Purple);
+            sb.Draw(_pixel, new Rectangle(indicatorX, indicatorY, 5, 5), Color.Purple);
         }
         else if (creature.DarkvisionRange > 0)
         {
-            // Small yellow dot for normal darkvision
-            sb.Draw(_pixel, new Rectangle((int)center.X + radius - 4, (int)center.Y - radius, 4, 4), Color.Yellow);
+            sb.Draw(_pixel, new Rectangle(indicatorX, indicatorY, 5, 5), Color.Yellow);
         }
         
-        // Draw sunlight sensitivity indicator
+        // Draw sunlight sensitivity indicator (top-left)
         if (creature.HasSunlightSensitivity && (_visionSystem.GlobalDaylight || _visionSystem.GetLightLevel(creature.X, creature.Y) == LightType.Bright))
         {
-            // Orange triangle for sunlight sensitivity
-            sb.Draw(_pixel, new Rectangle((int)center.X - radius, (int)center.Y - radius, 4, 4), Color.Orange);
+            sb.Draw(_pixel, new Rectangle(indicatorX - (int)(cubeWidth * 0.5f), indicatorY, 5, 5), Color.Orange);
         }
         
-        // Draw condition indicator
+        // Draw condition indicator (on front face of cube)
         if (creature.Conditions != Condition.None)
         {
-            sb.Draw(_pixel, new Rectangle((int)center.X - radius, (int)center.Y + radius - 4, 4, 4), Color.Red);
+            sb.Draw(_pixel, new Rectangle((int)baseCenter.X - 3, (int)baseCenter.Y - (int)(cubeHeight * 0.5f) - 3, 6, 6), Color.Red);
         }
         
-        // Draw health bar
+        // Draw health bar above cube
         if (_font != null)
         {
-            int barWidth = radius * 2;
-            int barHeight = 4;
-            int barX = (int)center.X - radius;
-            int barY = (int)center.Y + radius + 4;
+            int barWidth = (int)(cubeWidth * 1.2f);
+            int barHeight = 5;
+            int barX = (int)topOfCube.X - barWidth / 2;
+            int barY = (int)topOfCube.Y - 15;
             
             // Background
             sb.Draw(_pixel, new Rectangle(barX, barY, barWidth, barHeight), Color.DarkRed);
@@ -988,10 +1550,138 @@ public class Game1 : Game
             float healthPercent = (float)creature.CurrentHP / creature.MaxHP;
             sb.Draw(_pixel, new Rectangle(barX, barY, (int)(barWidth * healthPercent), barHeight), Color.Green);
             
-            // Name
+            // Name (with size indicator and Z-level)
             var safeName = SafeString(creature.Name);
-            var nameSize = _font.MeasureString(safeName);
-            sb.DrawString(_font, safeName, new Vector2(center.X - nameSize.X * 0.25f, center.Y - radius - 20), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            var sizePrefix = creature.Size switch
+            {
+                CreatureSize.Tiny => "[T]",
+                CreatureSize.Small => "[S]",
+                CreatureSize.Medium => "[M]",
+                CreatureSize.Large => "[L]",
+                CreatureSize.Huge => "[H]",
+                CreatureSize.Gargantuan => "[G]",
+                _ => ""
+            };
+            var flyingIndicator = creature.IsFlying ? "✈" : "";
+            var displayName = $"{sizePrefix} {safeName} [Z{creature.Z}]{flyingIndicator}";
+            var nameSize = _font.MeasureString(displayName);
+            sb.DrawString(_font, displayName, new Vector2(topOfCube.X - nameSize.X * 0.25f, barY - 18), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        }
+    }
+    
+    private void DrawIsometricCube(SpriteBatch sb, Vector2 baseCenter, float width, float height, Color color)
+    {
+        float halfWidth = width * 0.5f;
+        float quarterWidth = width * 0.25f;
+        
+        // Define cube corners in isometric space
+        // Base (bottom) corners
+        var bottomFrontLeft = baseCenter + new Vector2(-halfWidth, 0);
+        var bottomFrontRight = baseCenter + new Vector2(0, quarterWidth);
+        var bottomBackRight = baseCenter + new Vector2(halfWidth, 0);
+        var bottomBackLeft = baseCenter + new Vector2(0, -quarterWidth);
+        
+        // Top corners
+        var topFrontLeft = bottomFrontLeft - new Vector2(0, height);
+        var topFrontRight = bottomFrontRight - new Vector2(0, height);
+        var topBackRight = bottomBackRight - new Vector2(0, height);
+        var topBackLeft = bottomBackLeft - new Vector2(0, height);
+        
+        // Draw filled faces with different shades
+        Color leftFaceColor = new Color(
+            (int)(color.R * 0.6f),
+            (int)(color.G * 0.6f),
+            (int)(color.B * 0.6f)
+        );
+        Color rightFaceColor = new Color(
+            (int)(color.R * 0.8f),
+            (int)(color.G * 0.8f),
+            (int)(color.B * 0.8f)
+        );
+        Color topFaceColor = color;
+        
+        // Fill left face
+        DrawFilledQuad(sb, bottomFrontLeft, topFrontLeft, topBackLeft, bottomBackLeft, leftFaceColor);
+        
+        // Fill right face
+        DrawFilledQuad(sb, bottomFrontRight, topFrontRight, topBackRight, bottomBackRight, rightFaceColor);
+        
+        // Fill top face
+        DrawFilledQuad(sb, topFrontLeft, topFrontRight, topBackRight, topBackLeft, topFaceColor);
+        
+        // Draw cube edges (outline)
+        Color edgeColor = Color.Black * 0.5f;
+        float edgeThickness = 2f;
+        
+        // Bottom edges
+        DrawLine(sb, _pixel, bottomFrontLeft, bottomFrontRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomFrontRight, bottomBackRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomBackRight, bottomBackLeft, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomBackLeft, bottomFrontLeft, edgeColor, edgeThickness);
+        
+        // Top edges
+        DrawLine(sb, _pixel, topFrontLeft, topFrontRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, topFrontRight, topBackRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, topBackRight, topBackLeft, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, topBackLeft, topFrontLeft, edgeColor, edgeThickness);
+        
+        // Vertical edges
+        DrawLine(sb, _pixel, bottomFrontLeft, topFrontLeft, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomFrontRight, topFrontRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomBackRight, topBackRight, edgeColor, edgeThickness);
+        DrawLine(sb, _pixel, bottomBackLeft, topBackLeft, edgeColor, edgeThickness);
+    }
+    
+    private void DrawFilledQuad(SpriteBatch sb, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color color)
+    {
+        // Draw quad as filled area using horizontal lines
+        // Find min and max Y to determine scanning range
+        float minY = Math.Min(Math.Min(p1.Y, p2.Y), Math.Min(p3.Y, p4.Y));
+        float maxY = Math.Max(Math.Max(p1.Y, p2.Y), Math.Max(p3.Y, p4.Y));
+        
+        int steps = (int)(maxY - minY) + 1;
+        
+        for (int i = 0; i < steps; i++)
+        {
+            float y = minY + i;
+            var intersections = new List<float>();
+            
+            // Check intersection with each edge
+            AddLineIntersection(intersections, p1, p2, y);
+            AddLineIntersection(intersections, p2, p3, y);
+            AddLineIntersection(intersections, p3, p4, y);
+            AddLineIntersection(intersections, p4, p1, y);
+            
+            if (intersections.Count >= 2)
+            {
+                intersections.Sort();
+                for (int j = 0; j < intersections.Count - 1; j += 2)
+                {
+                    var start = new Vector2(intersections[j], y);
+                    var end = new Vector2(intersections[j + 1], y);
+                    if (Vector2.Distance(start, end) > 0.5f)
+                    {
+                        DrawLine(sb, _pixel, start, end, color, 1f);
+                    }
+                }
+            }
+        }
+    }
+    
+    private void AddLineIntersection(List<float> intersections, Vector2 p1, Vector2 p2, float y)
+    {
+        // Find X coordinate where line segment intersects horizontal line at y
+        if ((p1.Y <= y && p2.Y >= y) || (p2.Y <= y && p1.Y >= y))
+        {
+            if (Math.Abs(p2.Y - p1.Y) > 0.001f)
+            {
+                float t = (y - p1.Y) / (p2.Y - p1.Y);
+                if (t >= 0 && t <= 1)
+                {
+                    float x = p1.X + t * (p2.X - p1.X);
+                    intersections.Add(x);
+                }
+            }
         }
     }
 
@@ -1069,7 +1759,7 @@ public class Game1 : Game
 
             if (_font != null)
             {
-                var title = "Choose a Character";
+                var title = _isMultiplayerMode ? "Choose a Character (Multiplayer)" : "Choose a Character (Single Player)";
                 var size = _font.MeasureString(title);
                 var pos = new Vector2(menuRect.X + (menuWidth - size.X) / 2, menuRect.Y + 12);
                 _spriteBatch.DrawString(_font, title, pos, Color.White);
@@ -1131,11 +1821,113 @@ public class Game1 : Game
             base.Draw(gameTime);
             return;
         }
+        
+        // CAMPAIGN SELECT
+        if (_state == AppState.CampaignSelect)
+        {
+            _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.85f);
+
+            int menuWidth = 480;
+            int itemHeight = 48;
+            int padding = 12;
+            int titleHeight = 80;
+            int menuHeight = titleHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + 40;
+            var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
+
+            _spriteBatch.Draw(_pixel, menuRect, Color.DarkSlateGray * 0.95f);
+
+            if (_font != null)
+            {
+                var title = "Select a Campaign";
+                var size = _font.MeasureString(title);
+                var pos = new Vector2(menuRect.X + (menuWidth - size.X) / 2, menuRect.Y + 12);
+                _spriteBatch.DrawString(_font, title, pos, Color.White);
+                
+                // Back button
+                var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+                var mouse = Mouse.GetState();
+                var backColor = backRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
+                _spriteBatch.Draw(_pixel, backRect, backColor);
+                var backText = "< Back";
+                var backTextSize = _font.MeasureString(backText);
+                _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
+                
+                // Hint at bottom
+                var hint = "Press Delete to remove campaign | Esc to go back";
+                var hintSize = _font.MeasureString(hint);
+                _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (menuWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
+            }
+
+            for (int i = 0; i < _campaigns.Count; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var col = (i == _campaignIndex) ? Color.LightGray : Color.Gray;
+                _spriteBatch.Draw(_pixel, itemRect, col);
+
+                if (_font != null)
+                {
+                    var campaign = _campaigns[i];
+                    var label = $"{campaign.Name} ({campaign.PartyMembers.Count} members)";
+                    var m = _font.MeasureString(label);
+                    var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
+                    var textCol = (i == _campaignIndex) ? Color.Black : Color.White;
+                    _spriteBatch.DrawString(_font, label, p, textCol);
+
+                    // Delete button
+                    var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
+                    var deleteColor = deleteRect.Contains(Mouse.GetState().Position) ? Color.DarkRed : Color.Red * 0.7f;
+                    _spriteBatch.Draw(_pixel, deleteRect, deleteColor);
+                    
+                    var deleteText = "Delete";
+                    var deleteSize = _font.MeasureString(deleteText);
+                    _spriteBatch.DrawString(_font, deleteText, new Vector2(deleteRect.X + (deleteRect.Width - deleteSize.X) / 2, deleteRect.Y + (deleteRect.Height - deleteSize.Y) / 2), Color.White);
+                }
+            }
+
+            // "Create New" option
+            {
+                int newIndex = _campaigns.Count;
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + newIndex * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var col = (newIndex == _campaignIndex) ? Color.LightGray : Color.Gray;
+                _spriteBatch.Draw(_pixel, itemRect, col);
+
+                if (_font != null)
+                {
+                    var label = "Create New Campaign";
+                    var m = _font.MeasureString(label);
+                    var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
+                    var textCol = (newIndex == _campaignIndex) ? Color.Black : Color.White;
+                    _spriteBatch.DrawString(_font, label, p, textCol);
+                }
+            }
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+        
+        // CAMPAIGN CREATION
+        if (_state == AppState.CampaignCreate)
+        {
+            _campaignCreation.Draw(gameTime, _spriteBatch, GraphicsDevice);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
 
         // CHARACTER SHEET
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
         {
             _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+        
+        // CAMPAIGN MAP
+        if (_showCampaignMap && _state == AppState.Playing && _currentCampaign != null)
+        {
+            _campaignMapViewer.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -1163,7 +1955,7 @@ public class Game1 : Game
                 float ry = rel.Y;
                 float wx = ((rx / a) + (ry / b)) * 0.5f;
                 float wy = ((ry / b) - (rx / a)) * 0.5f;
-
+                
                 int tx = (int)System.Math.Floor(wx);
                 int ty = (int)System.Math.Floor(wy);
                 
@@ -1188,20 +1980,30 @@ public class Game1 : Game
         int xmin = -range, xmax = range;
         int ymin = -range, ymax = range;
 
-        for (int y = ymin; y <= ymax; y++)
+        // Draw grid for current level and levels below (with transparency)
+        for (int drawZ = 0; drawZ <= Math.Max(_currentViewLevel, _playerCreature?.Z ?? 0); drawZ++)
         {
-            var start = origin + new Vector2((xmin - y) * tileW * 0.5f, (xmin + y) * tileH * 0.5f);
-            var end = origin + new Vector2((xmax - y) * tileW * 0.5f, (xmax + y) * tileH * 0.5f);
-            DrawLine(_spriteBatch, _pixel, start, end, Color.White, 1f);
+            float levelAlpha = (drawZ == _currentViewLevel) ? 1.0f : 0.3f;
+            float levelZOffset = -drawZ * (tileH * 0.5f);
+            Color gridColor = (drawZ == _currentViewLevel) ? Color.White : Color.Gray;
+            gridColor *= levelAlpha;
+            
+            for (int y = ymin; y <= ymax; y++)
+            {
+                var start = origin + new Vector2((xmin - y) * tileW * 0.5f, (xmin + y) * tileH * 0.5f + levelZOffset);
+                var end = origin + new Vector2((xmax - y) * tileW * 0.5f, (xmax + y) * tileH * 0.5f + levelZOffset);
+                DrawLine(_spriteBatch, _pixel, start, end, gridColor, 1f);
+            }
+
+            for (int x = xmin; x <= xmax; x++)
+            {
+                var start = origin + new Vector2((x - ymin) * tileW * 0.5f, (x + ymin) * tileH * 0.5f + levelZOffset);
+                var end = origin + new Vector2((x - ymax) * tileW * 0.5f, (x + ymax) * tileH * 0.5f + levelZOffset);
+                DrawLine(_spriteBatch, _pixel, start, end, gridColor, 1f);
+            }
         }
 
-        for (int x = xmin; x <= xmax; x++)
-        {
-            var start = origin + new Vector2((x - ymin) * tileW * 0.5f, (x + ymin) * tileH * 0.5f);
-            var end = origin + new Vector2((x - ymax) * tileW * 0.5f, (x + ymax) * tileH * 0.5f);
-            DrawLine(_spriteBatch, _pixel, start, end, Color.White, 1f);
-        }
-
+        // Draw origin axis (at Z=0)
         var originCenter = origin + new Vector2(0, 0);
         float axisLength = 100f * _zoom;
         DrawLine(_spriteBatch, _pixel, originCenter, originCenter + new Vector2(axisLength * 0.5f, axisLength * 0.25f), Color.Red, 2f);
@@ -1220,15 +2022,28 @@ public class Game1 : Game
                 }
             }
         }
+        else if (_playerCreature != null)
+        {
+            // Draw player and enemies in exploration mode
+            DrawCreature(_spriteBatch, _playerCreature, origin, tileW, tileH);
+            
+            foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()))
+            {
+                DrawCreature(_spriteBatch, creature, origin, tileW, tileH);
+            }
+        }
         
         // Draw fog of war / lighting overlay
         if (_combatManager.InCombat && _showVisionOverlay)
         {
-            for (int y = ymin; y <= ymax; y++)
+            for (int z = 0; z <= Math.Max(_currentViewLevel, _playerCreature?.Z ?? 0); z++)
             {
-                for (int x = xmin; x <= xmax; x++)
+                for (int y = ymin; y <= ymax; y++)
                 {
-                    DrawTileWithLighting(_spriteBatch, x, y, origin, tileW, tileH);
+                    for (int x = xmin; x <= xmax; x++)
+                    {
+                        DrawTileWithLighting(_spriteBatch, x, y, z, origin, tileW, tileH);
+                    }
                 }
             }
             
@@ -1239,7 +2054,8 @@ public class Game1 : Game
                 {
                     float a = tileW * 0.5f;
                     float b = tileH * 0.5f;
-                    var center = origin + new Vector2(((source.X + 0.5f) - (source.Y + 0.5f)) * a, ((source.X + 0.5f) + (source.Y + 0.5f)) * b);
+                    float zOffset = -source.Z * (b * 0.5f);
+                    var center = origin + new Vector2(((source.X + 0.5f) - (source.Y + 0.5f)) * a, ((source.X + 0.5f) + (source.Y + 0.5f)) * b + zOffset);
                     
                     int lightRadius = (int)(b * 0.8f);
                     _spriteBatch.Draw(_pixel, new Rectangle((int)center.X - lightRadius, (int)center.Y - lightRadius, lightRadius * 2, lightRadius * 2), null, source.LightColor * 0.8f, 0f, Vector2.Zero, SpriteEffects.None, 0f);
@@ -1251,7 +2067,8 @@ public class Game1 : Game
             {
                 float a = tileW * 0.5f;
                 float b = tileH * 0.5f;
-                var center = origin + new Vector2(((effect.X + 0.5f) - (effect.Y + 0.5f)) * a, ((effect.X + 0.5f) + (effect.Y + 0.5f)) * b);
+                float zOffset = -effect.Z * (b * 0.5f);
+                var center = origin + new Vector2(((effect.X + 0.5f) - (effect.Y + 0.5f)) * a, ((effect.X + 0.5f) + (effect.Y + 0.5f)) * b + zOffset);
                 
                 int effectRadius = (int)((effect.Radius / 5.0f) * tileW * 0.5f);
                 
@@ -1273,7 +2090,7 @@ public class Game1 : Game
                     var p1 = center + new Vector2((float)Math.Cos(rad) * effectRadius, (float)Math.Sin(rad) * effectRadius);
                     float rad2 = MathHelper.ToRadians(angle + 10);
                     var p2 = center + new Vector2((float)Math.Cos(rad2) * effectRadius, (float)Math.Sin(rad2) * effectRadius);
-                    
+
                     DrawLine(_spriteBatch, _pixel, p1, p2, effectColor, 2f);
                 }
             }
@@ -1283,7 +2100,8 @@ public class Game1 : Game
             {
                 float a = tileW * 0.5f;
                 float b = tileH * 0.5f;
-                var center = origin + new Vector2(((_playerCreature.X + 0.5f) - (_playerCreature.Y + 0.5f)) * a, ((_playerCreature.X + 0.5f) + (_playerCreature.Y + 0.5f)) * b);
+                float zOffset = -_playerCreature.Z * (b * 0.5f);
+                var center = origin + new Vector2(((_playerCreature.X + 0.5f) - (_playerCreature.Y + 0.5f)) * a, ((_playerCreature.X + 0.5f) + (_playerCreature.Y + 0.5f)) * b + zOffset);
                 
                 int darkvisionRadius = (int)((_playerCreature.DarkvisionRange / 5.0f) * tileW * 0.5f);
                 
@@ -1294,7 +2112,7 @@ public class Game1 : Game
                     var p1 = center + new Vector2((float)Math.Cos(rad) * darkvisionRadius, (float)Math.Sin(rad) * darkvisionRadius);
                     float rad2 = MathHelper.ToRadians(angle + 15);
                     var p2 = center + new Vector2((float)Math.Cos(rad2) * darkvisionRadius, (float)Math.Sin(rad2) * darkvisionRadius);
-                    
+
                     DrawLine(_spriteBatch, _pixel, p1, p2, Color.Purple * 0.3f, 1f);
                 }
             }
@@ -1304,7 +2122,7 @@ public class Game1 : Game
         if (_showCombatUI && _combatManager.InCombat)
         {
             // Combat panel at top
-            int panelHeight = 200;
+            int panelHeight = 220;
             var combatPanel = new Rectangle(0, 0, vp.Width, panelHeight);
             _spriteBatch.Draw(_pixel, combatPanel, Color.Black * 0.8f);
             
@@ -1312,12 +2130,42 @@ public class Game1 : Game
             {
                 int y = 10;
                 
+                // Round counter
+                var roundText = $"=== ROUND {_combatManager.CurrentRound} ===";
+                var roundSize = _font.MeasureString(roundText);
+                _spriteBatch.DrawString(_font, roundText, new Vector2((vp.Width - roundSize.X) / 2, y), Color.Gold);
+                y += 30;
+                
                 // Current turn
                 var currentCombatant = _combatManager.CurrentCombatant;
                 if (currentCombatant != null)
                 {
                     var turnText = $"Turn: {SafeString(currentCombatant.Name)} (HP: {currentCombatant.CurrentHP}/{currentCombatant.MaxHP})";
                     _spriteBatch.DrawString(_font, turnText, new Vector2(10, y), Color.Yellow);
+                    y += 25;
+                    
+                    // Action economy display
+                    var actionIcon = currentCombatant.HasAction ? "[✓]" : "[X]";
+                    var bonusIcon = currentCombatant.HasBonusAction ? "[✓]" : "[X]";
+                    var reactionIcon = currentCombatant.HasReaction ? "[✓]" : "[X]";
+                    var movementText = $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft";
+                    
+                    var actionColor = currentCombatant.HasAction ? Color.Green : Color.DarkGray;
+                    var bonusColor = currentCombatant.HasBonusAction ? Color.Green : Color.DarkGray;
+                    var reactionColor = currentCombatant.HasReaction ? Color.Green : Color.DarkGray;
+                    var movementColor = currentCombatant.MovementRemaining > 0 ? Color.Cyan : Color.DarkGray;
+                    
+                    _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, actionIcon, new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    
+                    _spriteBatch.DrawString(_font, "Bonus:", new Vector2(130, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, bonusIcon, new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    
+                    _spriteBatch.DrawString(_font, "Reaction:", new Vector2(250, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, reactionIcon, new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    
+                    _spriteBatch.DrawString(_font, "Move:", new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, movementText, new Vector2(450, y), movementColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     y += 25;
                     
                     // Initiative order
@@ -1386,10 +2234,10 @@ public class Game1 : Game
                     legendY += 25;
                     
                     // Darkness with darkvision
-                    if (_playerCreature.DarkvisionRange > 0)
+                    if (_playerCreature != null && _playerCreature.DarkvisionRange > 0)
                     {
-                        _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), new Color(64, 64, 96));
-                        _spriteBatch.DrawString(_font, "Darkness (Darkvision)", new Vector2(legendX + 25, legendY), new Color(150, 150, 180), 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                        _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), new Color(96, 96, 96));
+                        _spriteBatch.DrawString(_font, "Darkness (Darkvision, Grayscale)", new Vector2(legendX + 25, legendY), new Color(150, 150, 180), 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                         legendY += 25;
                     }
                     
@@ -1398,21 +2246,29 @@ public class Game1 : Game
                     _spriteBatch.DrawString(_font, "Darkness (Heavily Obscured)", new Vector2(legendX + 25, legendY), Color.DarkGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     legendY += 35;
                     
-                    // Creature indicators
+                    // Creature indicators (top of cube)
                     _spriteBatch.DrawString(_font, "Creature Indicators:", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                     legendY += 20;
                     
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Yellow);
-                    _spriteBatch.DrawString(_font, "Darkvision 60ft", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Gold);
+                    _spriteBatch.DrawString(_font, "Truesight (See All)", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    legendY += 18;
+                    
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Cyan);
+                    _spriteBatch.DrawString(_font, "Blindsight", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    legendY += 18;
+                    
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Orange);
+                    _spriteBatch.DrawString(_font, "Tremorsense", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     legendY += 18;
                     
                     _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Purple);
                     _spriteBatch.DrawString(_font, "Superior Darkvision 120ft", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     legendY += 18;
                     
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Cyan);
-                    _spriteBatch.DrawString(_font, "Blindsight", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Yellow);
+                    _spriteBatch.DrawString(_font, "Darkvision 60ft", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    legendY += 20;
                     
                     _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Orange);
                     _spriteBatch.DrawString(_font, "Sunlight Sensitivity", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -1424,14 +2280,23 @@ public class Game1 : Game
                 }
                 
                 // Instructions
-                var hint = "Press Tab to toggle combat UI | ESC for menu";
+                var hint = "Press Tab to toggle combat UI | ESC for menu | PageUp/Down: Change level";
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, panelHeight - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 
-                // Test keybindings
-                var testHint = "Test: [B]linded [F]og Cloud [K]Darkness";
+                // Test keybinding
+                var testHint = "Test: [B]linded [F]og [K]Darkness | [Space]Fly [R]Up [T]Down | [X]STR [Z]Stealth [N]Save";
                 var testHintSize = _font.MeasureString(testHint);
                 _spriteBatch.DrawString(_font, testHint, new Vector2(vp.Width - testHintSize.X - 10, panelHeight - 50), Color.Yellow * 0.6f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                
+                // Display current view level
+                var levelHint = $"View Level: Z{_currentViewLevel}";
+                if (_playerCreature != null && _playerCreature.CanFly)
+                {
+                    levelHint += $" | Player: Z{_playerCreature.Z} {(_playerCreature.IsFlying ? "[FLYING]" : "[GROUND]")}";
+                }
+                var levelHintSize = _font.MeasureString(levelHint);
+                _spriteBatch.DrawString(_font, levelHint, new Vector2(10, panelHeight - 25), Color.Cyan * 0.8f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
         }
         
@@ -1440,16 +2305,19 @@ public class Game1 : Game
         {
             int tx = hoveredX.Value;
             int ty = hoveredY.Value;
+            int tz = _currentViewLevel;
             
-            var lightLevel = _visionSystem.GetLightLevel(tx, ty);
-            var isVisible = _visionSystem.IsVisible(tx, ty);
+            var lightLevel = _visionSystem.GetLightLevel(tx, ty, tz);
+            var isVisible = _visionSystem.IsVisible(tx, ty, tz);
             
-            var creature = _combatManager.GetCreatureAt(tx, ty);
+            var creature = _combatManager.GetCreatureAt(tx, ty, tz);
             
-            var tooltip = $"Tile ({tx}, {ty}) | Light: {lightLevel} | Visible: {isVisible}";
+            var tooltip = $"Tile ({tx}, {ty}, Z{tz}) | Light: {lightLevel} | Visible: {isVisible}";
             if (creature != null && isVisible)
             {
-                tooltip += $" | {creature.Name} (HP: {creature.CurrentHP}/{creature.MaxHP})";
+                var sizeDesc = SizeHelper.GetSpaceDescription(creature.Size);
+                var flyingStatus = creature.IsFlying ? " [FLYING]" : "";
+                tooltip += $" | {creature.Name} ({creature.Size}, {sizeDesc}) HP: {creature.CurrentHP}/{creature.MaxHP}{flyingStatus}";
             }
             
             var tooltipSize = _font.MeasureString(tooltip);

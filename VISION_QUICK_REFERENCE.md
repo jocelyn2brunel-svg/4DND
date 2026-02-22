@@ -11,9 +11,29 @@
 | Type | Range | Special |
 |------|-------|---------|
 | Normal | 120 ft | Needs light |
-| Darkvision | 60 ft | Darkness ? Dim |
-| Superior Darkvision | 120 ft | Darkness ? Dim |
-| Blindsight | 30 ft | No light needed |
+| Darkvision | 60 ft | Darkness ? Dim (grayscale), Dim ? Bright |
+| Superior Darkvision | 120 ft | Darkness ? Dim (grayscale), Dim ? Bright |
+| Blindsight | 30 ft | No light needed, detects invisible |
+| Tremorsense | 60 ft | Detects vibrations, needs ground contact |
+| Truesight | 120 ft | Sees all: darkness, invisible, illusions, ethereal |
+
+## How Darkvision Works
+- **In Darkness**: Sees as if it were dim light (shades of gray only)
+- **In Dim Light**: Sees as if it were bright light
+- **Cannot discern color in darkness**
+
+## How Tremorsense Works
+- Detects vibrations within radius
+- Must be in contact with same ground/substance
+- Cannot detect flying or incorporeal creatures
+- Works when blinded
+
+## How Truesight Works
+- Sees in normal and magical darkness
+- Sees invisible creatures and objects
+- Automatically detects visual illusions
+- Sees original form of shapechangers
+- Can see into Ethereal Plane
 
 ## Races with Darkvision
 - **60 ft**: Elf, Dwarf, Half-Orc, Tiefling, Gnome, Half-Elf

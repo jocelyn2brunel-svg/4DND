@@ -1,5 +1,61 @@
 # Changelog - 4DND Combat & Inventory Update
 
+## Version 3.0 - D20 Check System & D&D 5e Rules
+
+### New Features
+
+#### 1. D20 Check System (Official D&D 5e Rules)
+**Files Added:**
+- `D20Check.cs` - Complete d20 roll system following the three-step process:
+  1. Roll the die and add a modifier
+  2. Apply circumstantial bonuses/penalties
+  3. Compare the total to a target number (DC or AC)
+- `D20CheckExamples.cs` - 10 comprehensive examples showing how to use the system
+- `GUIDE_D20_CHECKS.md` - Complete documentation of the d20 check system
+
+**Features:**
+- **Difficulty Class (DC) system** with standard values:
+  - Very Easy (DC 5)
+  - Easy (DC 10)
+  - Medium (DC 15)
+  - Hard (DC 20)
+  - Very Hard (DC 25)
+  - Nearly Impossible (DC 30)
+- **Advantage/Disadvantage** system:
+  - Roll two d20s, take higher (advantage) or lower (disadvantage)
+  - Multiple sources don't stack
+  - Advantage and disadvantage cancel each other out
+- **Three types of checks**:
+  - Ability checks (Strength, Dexterity, etc.)
+  - Skill checks (Athletics, Stealth, Perception, etc.)
+  - Saving throws (against spells, traps, etc.)
+- **Natural 1 and Natural 20**:
+  - Attack rolls: Natural 1 = automatic miss, Natural 20 = critical hit
+  - Other checks: Natural 1 or 20 just add to the total
+- **Circumstantial bonuses/penalties** (e.g., Guidance spell, Bless, etc.)
+- **Detailed and simple message formats** for displaying results
+
+**Extension Methods Added:**
+- `Character.MakeAbilityCheck(ability, dc, advantage, disadvantage, bonus)`
+- `Character.MakeSkillCheck(skill, dc, advantage, disadvantage, bonus)`
+- `Character.MakeSavingThrow(ability, dc, advantage, disadvantage, bonus)`
+- `Creature.MakeAbilityCheck(ability, dc, advantage, disadvantage, bonus)`
+- `Creature.MakeSavingThrow(ability, dc, advantage, disadvantage, bonus)`
+
+**Modified Files:**
+- `DndMath.cs` - Added DifficultyClass constants and MeetsDC() method
+- `CombatManager.cs` - Updated MakeAttack() to use D20Check system
+- `SkillCheck.cs` - Updated to use D20Check internally (maintains backward compatibility)
+- `Creature.cs` - Added saving throw proficiency properties
+- `VisionSystem.cs` - Updated perception checks to use new D20Check system
+
+**Integration:**
+- Combat system automatically uses D20Checks for attack rolls
+- Vision system affects checks (disadvantage in dim light, auto-fail in darkness)
+- Conditions affect checks (advantage/disadvantage based on status)
+- Critical hits on natural 20 (attack rolls only)
+- Automatic miss on natural 1 (attack rolls only)
+
 ## Version 2.0 - Combat & Equipment System
 
 ### New Features

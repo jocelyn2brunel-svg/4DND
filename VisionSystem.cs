@@ -12,9 +12,9 @@ public class VisionSystem
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
     
-    private Dictionary<(int, int), LightType> _lightMap = new();
-    private HashSet<(int, int)> _visibleTiles = new();
-    private HashSet<(int, int)> _exploredTiles = new();
+    private Dictionary<(int, int, int), LightType> _lightMap = new();
+    private HashSet<(int, int, int)> _visibleTiles = new();
+    private HashSet<(int, int, int)> _exploredTiles = new();
     
     public bool GlobalDaylight { get; set; } = false;
     
@@ -61,27 +61,32 @@ public class VisionSystem
         {
             if (!source.IsActive) continue;
             
-            int brightTiles = source.BrightRadius / 5;
-            int dimTiles = source.DimRadius / 5;
+            int brightTiles = Math.Min(source.BrightRadius / 5, 20); // Limit to reasonable range
+            int dimTiles = Math.Min(source.DimRadius / 5, 30);
             
-            for (int dy = -dimTiles; dy <= dimTiles; dy++)
+            for (int dz = -dimTiles; dz <= dimTiles; dz++)
             {
-                for (int dx = -dimTiles; dx <= dimTiles; dx++)
+                for (int dy = -dimTiles; dy <= dimTiles; dy++)
                 {
-                    int tx = source.X + dx;
-                    int ty = source.Y + dy;
-                    
-                    int distance = Math.Abs(dx) + Math.Abs(dy);
-                    
-                    if (distance <= brightTiles)
+                    for (int dx = -dimTiles; dx <= dimTiles; dx++)
                     {
-                        SetLightLevel(tx, ty, LightType.Bright);
-                    }
-                    else if (distance <= dimTiles)
-                    {
-                        if (GetLightLevel(tx, ty) != LightType.Bright)
+                        int tx = source.X + dx;
+                        int ty = source.Y + dy;
+                        int tz = source.Z + dz;
+                        
+                        // 3D Manhattan distance
+                        int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                        
+                        if (distance <= brightTiles)
                         {
-                            SetLightLevel(tx, ty, LightType.Dim);
+                            SetLightLevel(tx, ty, tz, LightType.Bright);
+                        }
+                        else if (distance <= dimTiles)
+                        {
+                            if (GetLightLevel(tx, ty, tz) != LightType.Bright)
+                            {
+                                SetLightLevel(tx, ty, tz, LightType.Dim);
+                            }
                         }
                     }
                 }
@@ -92,22 +97,26 @@ public class VisionSystem
         {
             if (!effect.IsActive) continue;
             
-            int effectTiles = effect.Radius / 5;
+            int effectTiles = Math.Min(effect.Radius / 5, 20); // Limit to reasonable range
             
-            for (int dy = -effectTiles; dy <= effectTiles; dy++)
+            for (int dz = -effectTiles; dz <= effectTiles; dz++)
             {
-                for (int dx = -effectTiles; dx <= effectTiles; dx++)
+                for (int dy = -effectTiles; dy <= effectTiles; dy++)
                 {
-                    int tx = effect.X + dx;
-                    int ty = effect.Y + dy;
-                    
-                    int distance = Math.Abs(dx) + Math.Abs(dy);
-                    
-                    if (distance <= effectTiles)
+                    for (int dx = -effectTiles; dx <= effectTiles; dx++)
                     {
-                        if (effect.EffectType == LightType.Darkness)
+                        int tx = effect.X + dx;
+                        int ty = effect.Y + dy;
+                        int tz = effect.Z + dz;
+                        
+                        int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                        
+                        if (distance <= effectTiles)
                         {
-                            SetLightLevel(tx, ty, LightType.Darkness);
+                            if (effect.EffectType == LightType.Darkness)
+                            {
+                                SetLightLevel(tx, ty, tz, LightType.Darkness);
+                            }
                         }
                     }
                 }
@@ -115,16 +124,16 @@ public class VisionSystem
         }
     }
     
-    private void SetLightLevel(int x, int y, LightType level)
+    private void SetLightLevel(int x, int y, int z, LightType level)
     {
-        var key = (x, y);
+        var key = (x, y, z);
         if (!_lightMap.ContainsKey(key) || level > _lightMap[key])
         {
             _lightMap[key] = level;
         }
     }
     
-    public LightType GetLightLevel(int x, int y)
+    public LightType GetLightLevel(int x, int y, int z = 0)
     {
         if (GlobalDaylight)
         {
@@ -133,7 +142,7 @@ public class VisionSystem
                 if (!effect.IsActive) continue;
                 if (effect.EffectType != LightType.Darkness) continue;
                 
-                int distance = Math.Abs(x - effect.X) + Math.Abs(y - effect.Y);
+                int distance = Math.Abs(x - effect.X) + Math.Abs(y - effect.Y) + Math.Abs(z - effect.Z);
                 int effectTiles = effect.Radius / 5;
                 
                 if (distance <= effectTiles)
@@ -145,7 +154,7 @@ public class VisionSystem
             return LightType.Bright;
         }
         
-        var key = (x, y);
+        var key = (x, y, z);
         return _lightMap.ContainsKey(key) ? _lightMap[key] : LightType.Darkness;
     }
     
@@ -155,23 +164,37 @@ public class VisionSystem
         
         if (observer.IsBlinded())
         {
+            // Blindsight and Tremorsense work even when blinded
+            if (observer.HasBlindSight)
+            {
+                AddBlindsightVision(observer);
+            }
+            
+            if (observer.HasTremorsense)
+            {
+                AddTremorsenseVision(observer);
+            }
+            
             return;
         }
         
         int visionRange = CalculateVisionRange(observer);
-        int visionTiles = visionRange / 5;
+        int visionTiles = Math.Min(visionRange / 5, 30); // Limit to reasonable range
         
-        for (int dy = -visionTiles; dy <= visionTiles; dy++)
+        for (int dz = -visionTiles; dz <= visionTiles; dz++)
         {
-            for (int dx = -visionTiles; dx <= visionTiles; dx++)
+            for (int dy = -visionTiles; dy <= visionTiles; dy++)
             {
-                int tx = observer.X + dx;
-                int ty = observer.Y + dy;
-                
-                int distance = Math.Abs(dx) + Math.Abs(dy);
-                
-                if (distance <= visionTiles)
+                for (int dx = -visionTiles; dx <= visionTiles; dx++)
                 {
+                    int tx = observer.X + dx;
+                    int ty = observer.Y + dy;
+                    int tz = observer.Z + dz;
+                    
+                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    
+                    if (distance > visionTiles) continue; // Skip tiles outside range
+                    
                     bool blocked = false;
                     
                     foreach (var effect in _areaEffects)
@@ -179,13 +202,19 @@ public class VisionSystem
                         if (!effect.IsActive || !effect.BlocksVision) continue;
                         
                         // Blindsight can see through most vision-blocking effects (like Fog Cloud)
-                        int distToObserver = (Math.Abs(tx - observer.X) + Math.Abs(ty - observer.Y)) * 5;
+                        int distToObserver = (Math.Abs(tx - observer.X) + Math.Abs(ty - observer.Y) + Math.Abs(tz - observer.Z)) * 5;
                         if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
                         {
                             continue;
                         }
+                        
+                        // Truesight can see through magical effects
+                        if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
+                        {
+                            continue;
+                        }
 
-                        int distToEffect = Math.Abs(tx - effect.X) + Math.Abs(ty - effect.Y);
+                        int distToEffect = Math.Abs(tx - effect.X) + Math.Abs(ty - effect.Y) + Math.Abs(tz - effect.Z);
                         int effectTiles = effect.Radius / 5;
                         
                         if (distToEffect <= effectTiles)
@@ -197,8 +226,60 @@ public class VisionSystem
                     
                     if (!blocked)
                     {
-                        _visibleTiles.Add((tx, ty));
-                        _exploredTiles.Add((tx, ty));
+                        _visibleTiles.Add((tx, ty, tz));
+                        _exploredTiles.Add((tx, ty, tz));
+                    }
+                }
+            }
+        }
+    }
+    
+    private void AddBlindsightVision(Creature observer)
+    {
+        int visionTiles = Math.Min(observer.BlindSightRange / 5, 30); // Limit to reasonable range
+        
+        for (int dz = -visionTiles; dz <= visionTiles; dz++)
+        {
+            for (int dy = -visionTiles; dy <= visionTiles; dy++)
+            {
+                for (int dx = -visionTiles; dx <= visionTiles; dx++)
+                {
+                    int tx = observer.X + dx;
+                    int ty = observer.Y + dy;
+                    int tz = observer.Z + dz;
+                    
+                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    
+                    if (distance <= visionTiles)
+                    {
+                        _visibleTiles.Add((tx, ty, tz));
+                        _exploredTiles.Add((tx, ty, tz));
+                    }
+                }
+            }
+        }
+    }
+    
+    private void AddTremorsenseVision(Creature observer)
+    {
+        int visionTiles = Math.Min(observer.TremorsenseRange / 5, 30); // Limit to reasonable range
+        
+        for (int dz = -visionTiles; dz <= visionTiles; dz++)
+        {
+            for (int dy = -visionTiles; dy <= visionTiles; dy++)
+            {
+                for (int dx = -visionTiles; dx <= visionTiles; dx++)
+                {
+                    int tx = observer.X + dx;
+                    int ty = observer.Y + dy;
+                    int tz = observer.Z + dz;
+                    
+                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    
+                    if (distance <= visionTiles)
+                    {
+                        _visibleTiles.Add((tx, ty, tz));
+                        _exploredTiles.Add((tx, ty, tz));
                     }
                 }
             }
@@ -207,47 +288,86 @@ public class VisionSystem
     
     private int CalculateVisionRange(Creature creature)
     {
-        var lightLevel = GetLightLevel(creature.X, creature.Y);
+        var lightLevel = GetLightLevel(creature.X, creature.Y, creature.Z);
         
-        if (creature.HasBlindSight)
-        {
-            return creature.BlindSightRange;
-        }
-        
+        // Truesight sees everything within range, regardless of lighting or magical darkness
         if (creature.HasTrueSight)
         {
             return creature.TrueSightRange;
         }
         
+        // Blindsight perceives surroundings without relying on sight
+        if (creature.HasBlindSight)
+        {
+            return creature.BlindSightRange;
+        }
+        
+        // Tremorsense detects vibrations
+        if (creature.HasTremorsense)
+        {
+            return creature.TremorsenseRange;
+        }
+        
+        // Darkvision: treat darkness as dim light, dim light as bright light
+        if (creature.DarkvisionRange > 0)
+        {
+            if (lightLevel == LightType.Darkness)
+            {
+                // In darkness, darkvision allows seeing as if in dim light
+                return creature.DarkvisionRange;
+            }
+            else if (lightLevel == LightType.Dim)
+            {
+                // In dim light, darkvision allows seeing as if in bright light
+                return 1000; // Extended range
+            }
+            else // Bright light
+            {
+                return 1000; // Normal extended vision
+            }
+        }
+        
+        // Normal vision
         if (lightLevel == LightType.Bright)
         {
-            return 1000;
+            return 1000; // Can see far in bright light
         }
         else if (lightLevel == LightType.Dim)
         {
-            return creature.DarkvisionRange > 0 ? Math.Max(creature.DarkvisionRange, 60) : 60;
+            return 60; // Reduced range in dim light
         }
-        else
+        else // Darkness
         {
-            return creature.DarkvisionRange;
+            return 0; // Cannot see in darkness without darkvision
         }
     }
     
-    public bool IsVisible(int x, int y)
+    public bool IsVisible(int x, int y, int z = 0)
     {
-        return _visibleTiles.Contains((x, y));
+        return _visibleTiles.Contains((x, y, z));
     }
     
-    public bool IsExplored(int x, int y)
+    public bool IsExplored(int x, int y, int z = 0)
     {
-        return _exploredTiles.Contains((x, y));
+        return _exploredTiles.Contains((x, y, z));
     }
     
-    public Color GetFogOfWarTint(int x, int y, bool isCurrentlyVisible)
+    public Color GetFogOfWarTint(int x, int y, int z, bool isCurrentlyVisible, Creature observer)
     {
         if (isCurrentlyVisible)
         {
-            var lightLevel = GetLightLevel(x, y);
+            var lightLevel = GetLightLevel(x, y, z);
+            
+            // Darkvision sees in shades of gray in darkness
+            if (lightLevel == LightType.Darkness && observer.DarkvisionRange > 0)
+            {
+                int distance = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y) + Math.Abs(z - observer.Z)) * 5;
+                if (distance <= observer.DarkvisionRange)
+                {
+                    // Gray tint for darkvision - "can't discern color in darkness, only shades of gray"
+                    return new Color(96, 96, 96);
+                }
+            }
             
             return lightLevel switch
             {
@@ -257,7 +377,7 @@ public class VisionSystem
                 _ => Color.White
             };
         }
-        else if (IsExplored(x, y))
+        else if (IsExplored(x, y, z))
         {
             return new Color(32, 32, 32);
         }
@@ -267,14 +387,33 @@ public class VisionSystem
         }
     }
     
-    public bool CanSee(Creature observer, int targetX, int targetY)
+    public bool CanSee(Creature observer, int targetX, int targetY, int targetZ = 0)
     {
+        int distance = (Math.Abs(targetX - observer.X) + Math.Abs(targetY - observer.Y) + Math.Abs(targetZ - observer.Z)) * 5;
+        
+        // Truesight can see through everything within range
+        if (observer.HasTrueSight && distance <= observer.TrueSightRange)
+        {
+            return true;
+        }
+        
+        // Tremorsense can detect anything touching the ground within range
+        if (observer.HasTremorsense && distance <= observer.TremorsenseRange)
+        {
+            return true;
+        }
+        
         if (observer.IsBlinded())
         {
+            // Blindsight works even when blinded
+            if (observer.HasBlindSight && distance <= observer.BlindSightRange)
+            {
+                return true;
+            }
+            
             return false;
         }
         
-        int distance = (Math.Abs(targetX - observer.X) + Math.Abs(targetY - observer.Y)) * 5;
         int visionRange = CalculateVisionRange(observer);
         
         if (distance > visionRange)
@@ -288,6 +427,12 @@ public class VisionSystem
             
             // Blindsight can see through most vision-blocking effects
             if (observer.HasBlindSight && distance <= observer.BlindSightRange)
+            {
+                continue;
+            }
+            
+            // Truesight can see through magical effects
+            if (observer.HasTrueSight && distance <= observer.TrueSightRange)
             {
                 continue;
             }
@@ -306,20 +451,31 @@ public class VisionSystem
     
     public bool CanSee(Creature observer, Creature target)
     {
+        int distance = (Math.Abs(target.X - observer.X) + Math.Abs(target.Y - observer.Y)) * 5;
+        
+        // Truesight can see invisible creatures and objects within range
+        if (observer.HasTrueSight && distance <= observer.TrueSightRange)
+        {
+            return true;
+        }
+        
+        // Tremorsense can detect creatures touching the ground (not flying/burrowing)
+        if (observer.HasTremorsense && distance <= observer.TremorsenseRange)
+        {
+            // Tremorsense can't detect flying or incorporeal creatures
+            // For now, assume all creatures are touching the ground
+            return true;
+        }
+        
+        // Blindsight can detect invisible creatures
         if (target.Conditions.HasCondition(Condition.Invisible))
         {
-            if (observer.HasTrueSight)
+            if (observer.HasBlindSight && distance <= observer.BlindSightRange)
             {
-                int distance = (Math.Abs(target.X - observer.X) + Math.Abs(target.Y - observer.Y)) * 5;
-                return distance <= observer.TrueSightRange;
+                return true;
             }
             
-            if (observer.HasBlindSight)
-            {
-                int distance = (Math.Abs(target.X - observer.X) + Math.Abs(target.Y - observer.Y)) * 5;
-                return distance <= observer.BlindSightRange;
-            }
-            
+            // Invisible creatures can't be seen by normal vision or darkvision
             return false;
         }
         
@@ -358,6 +514,18 @@ public class VisionSystem
     {
         int distToObserver = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y)) * 5;
 
+        // Truesight sees in normal and magical darkness
+        if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
+        {
+            return false;
+        }
+        
+        // Tremorsense detects through vibrations, not affected by obscurement
+        if (observer.HasTremorsense && distToObserver <= observer.TremorsenseRange)
+        {
+            return false;
+        }
+
         // Blindsight ignores heavy obscuration within its range
         if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
         {
@@ -376,7 +544,7 @@ public class VisionSystem
         var lightLevel = GetLightLevel(x, y);
         if (lightLevel == LightType.Darkness)
         {
-            if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange) return false;
+            // Darkvision treats darkness as dim light, not heavily obscured
             if (observer.DarkvisionRange > 0 && distToObserver <= observer.DarkvisionRange) return false;
             return true;
         }

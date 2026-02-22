@@ -26,6 +26,23 @@ namespace _4DND
             if (sides <= 0) throw new ArgumentOutOfRangeException(nameof(sides));
             return _rng.Next(1, sides + 1);
         }
+        
+        /// <summary>
+        /// Roll a d100 (percentile dice) using two d10s.
+        /// One die gives the tens digit (0-9), the other gives the ones digit (0-9).
+        /// Result ranges from 1 to 100. (0,0) = 100.
+        /// </summary>
+        public static int RollD100()
+        {
+            int tensDigit = _rng.Next(0, 10); // 0-9
+            int onesDigit = _rng.Next(0, 10); // 0-9
+            
+            // Two 0s represent 100
+            if (tensDigit == 0 && onesDigit == 0)
+                return 100;
+            
+            return tensDigit * 10 + onesDigit;
+        }
 
         public static int[] RollMany(int count, int sides)
         {
@@ -35,7 +52,7 @@ namespace _4DND
             return outArr;
         }
 
-        // Parse and evaluate an expression like: "3d6+2", "d20", "2d6+1d4-1"
+        // Parse and evaluate an expression like: "3d6+2", "d20", "2d6+1d4-1", "d100"
         public static RollResult RollNotation(string notation)
         {
             if (notation == null) throw new ArgumentNullException(nameof(notation));
@@ -81,7 +98,16 @@ namespace _4DND
                     int sum = 0;
                     for (int i = 0; i < count; i++)
                     {
-                        int roll = Roll(sides);
+                        int roll;
+                        // Special handling for d100 (percentile dice)
+                        if (sides == 100)
+                        {
+                            roll = RollD100();
+                        }
+                        else
+                        {
+                            roll = Roll(sides);
+                        }
                         sum += roll;
                         // store signed roll so caller can see positive/negative contributions
                         res.Rolls.Add(sign * roll);

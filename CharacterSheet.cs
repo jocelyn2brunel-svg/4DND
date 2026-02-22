@@ -187,7 +187,55 @@ public class CharacterSheet
         
         currentY += 50;
         int remainingHeight = y + height - currentY - 10;
-        DrawTextBox(spriteBatch, "OTHER PROFICIENCIES & LANGUAGES", "", x, currentY, width, remainingHeight);
+        DrawProficienciesBox(spriteBatch, c, x, currentY, width, remainingHeight);
+    }
+    
+    private void DrawProficienciesBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
+    {
+        var rect = new Rectangle(x, y, width, height);
+        spriteBatch.Draw(_pixel, rect, Color.White);
+        DrawBorder(spriteBatch, rect, Color.Black, 2);
+        
+        spriteBatch.DrawString(_font, "PROFICIENCIES & LANGUAGES", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        
+        int contentY = y + 25;
+        
+        // Armor proficiencies
+        if (c.ArmorProficiencies != null && c.ArmorProficiencies.Count > 0)
+        {
+            spriteBatch.DrawString(_font, "Armor:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            contentY += 15;
+            
+            foreach (var armor in c.ArmorProficiencies)
+            {
+                spriteBatch.DrawString(_font, $"? {armor}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                contentY += 14;
+            }
+            contentY += 5;
+        }
+        
+        // Weapon proficiencies
+        if (c.WeaponProficiencies != null && c.WeaponProficiencies.Count > 0)
+        {
+            spriteBatch.DrawString(_font, "Weapons:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            contentY += 15;
+            
+            foreach (var weapon in c.WeaponProficiencies)
+            {
+                spriteBatch.DrawString(_font, $"? {weapon}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                contentY += 14;
+            }
+            contentY += 5;
+        }
+        
+        // Class info
+        var classData = ClassData.GetClass(c.Class);
+        spriteBatch.DrawString(_font, "Class Info:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        contentY += 15;
+        spriteBatch.DrawString(_font, $"? Hit Die: d{c.HitDiceType}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        contentY += 14;
+        spriteBatch.DrawString(_font, $"? Primary Ability: {classData.PrimaryAbility}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        contentY += 14;
     }
 
     private void DrawAbilityBox(SpriteBatch spriteBatch, Character c, string name, int score, bool saveProficiency, int x, int y, int width, int height)
@@ -444,7 +492,7 @@ public class CharacterSheet
         DrawBorder(spriteBatch, rect, Color.Black, 2);
         
         spriteBatch.DrawString(_font, "Total", new Vector2(x + 5, y + 5), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-        spriteBatch.DrawString(_font, $"d{GetHitDieSize(c.Class)}", new Vector2(x + 40, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, $"d{c.HitDiceType}", new Vector2(x + 40, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         
         var diceRect = new Rectangle(x + 5, y + 25, width - 10, 30);
         spriteBatch.Draw(_pixel, diceRect, new Color(220, 220, 220));
@@ -613,28 +661,6 @@ public class CharacterSheet
     private string FormatModifier(int value)
     {
         return value >= 0 ? $"+{value}" : $"{value}";
-    }
-
-    private int GetHitDieSize(string className)
-    {
-        return className switch
-        {
-            "Barbarian" => 12,
-            "Bard" => 8,
-            "Cleric" => 8,
-            "Druid" => 8,
-            "Fighter" => 10,
-            "Monk" => 8,
-            "Paladin" => 10,
-            "Ranger" => 10,
-            "Rogue" => 8,
-            "Sorcerer" => 6,
-            "Warlock" => 8,
-            "Wizard" => 6,
-            "Warrior" => 10,
-            "Mage" => 6,
-            _ => 8
-        };
     }
     
     private string GetWeaponDamage(string weapon)

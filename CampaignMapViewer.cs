@@ -1,0 +1,269 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System;
+
+namespace _4DND
+{
+    /// <summary>
+    /// Displays the campaign world map showing discovered locations.
+    /// Players can see their home base and explore outward.
+    /// </summary>
+    public class CampaignMapViewer
+    {
+        private SpriteFont _font;
+        private Texture2D _pixel;
+        
+        private Vector2 _cameraOffset = Vector2.Zero;
+        private float _zoom = 1.0f;
+        private int _tileSize = 30;
+        
+        private Location _selectedLocation = null;
+        private MouseState _prevMouse;
+        private int _prevScrollValue = 0;
+        
+        public CampaignMapViewer(SpriteFont font, Texture2D pixel)
+        {
+            _font = font;
+            _pixel = pixel;
+        }
+        
+        public void Update(Campaign campaign, MouseState mouse, KeyboardState kb, KeyboardState prevKb)
+        {
+            if (campaign == null) return;
+            
+            // Pan camera with WASD
+            float panSpeed = 5f;
+            if (kb.IsKeyDown(Keys.W)) _cameraOffset.Y += panSpeed;
+            if (kb.IsKeyDown(Keys.S)) _cameraOffset.Y -= panSpeed;
+            if (kb.IsKeyDown(Keys.A)) _cameraOffset.X += panSpeed;
+            if (kb.IsKeyDown(Keys.D)) _cameraOffset.X -= panSpeed;
+            
+            // Zoom with +/-
+            if (kb.IsKeyDown(Keys.OemPlus) && !prevKb.IsKeyDown(Keys.OemPlus))
+                _zoom = Math.Min(2.0f, _zoom + 0.1f);
+            if (kb.IsKeyDown(Keys.OemMinus) && !prevKb.IsKeyDown(Keys.OemMinus))
+                _zoom = Math.Max(0.5f, _zoom - 0.1f);
+            
+            // Zoom with mouse wheel
+            int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
+            if (scrollDelta != 0)
+            {
+                _zoom += scrollDelta * 0.001f;
+                _zoom = MathHelper.Clamp(_zoom, 0.3f, 3.0f);
+                _prevScrollValue = mouse.ScrollWheelValue;
+            }
+            
+            // Click to select location
+            if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+            {
+                // Convert mouse to world coordinates
+                // (This is simplified - in real game would need proper screen-to-world transform)
+                _selectedLocation = null;
+            }
+            
+            _prevMouse = mouse;
+        }
+        
+        public void Draw(SpriteBatch sb, GraphicsDevice device, Campaign campaign)
+        {
+            if (campaign == null || _font == null) return;
+            
+            var vp = device.Viewport;
+            var center = new Vector2(vp.Width / 2f, vp.Height / 2f);
+            
+            // Background
+            sb.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.9f);
+            
+            // Draw grid
+            DrawGrid(sb, center);
+            
+            // Draw regions
+            foreach (var region in campaign.Regions)
+            {
+                DrawRegion(sb, center, region);
+            }
+            
+            // Draw locations
+            foreach (var location in campaign.AllLocations)
+            {
+                if (location.IsDiscovered)
+                {
+                    DrawLocation(sb, center, location);
+                }
+            }
+            
+            // Draw info panel
+            DrawInfoPanel(sb, vp, campaign);
+            
+            // Instructions
+            if (_font != null)
+            {
+                sb.DrawString(_font, "WASD: Pan | Mouse Wheel/+/-: Zoom | M: Close Map", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            }
+        }
+        
+        private void DrawGrid(SpriteBatch sb, Vector2 center)
+        {
+            // Simple hex grid visualization
+            int gridRange = 20;
+            
+            float hexWidth = _tileSize * _zoom * (float)Math.Sqrt(3);
+            float hexHeight = _tileSize * _zoom * 2;
+            
+            for (int x = -gridRange; x <= gridRange; x++)
+            {
+                for (int y = -gridRange; y <= gridRange; y++)
+                {
+                    var pos = HexToScreen(x, y, center);
+                    
+                    // Draw hex outline with proper size
+                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.DarkGray * 0.3f);
+                }
+            }
+        }
+        
+        private void DrawRegion(SpriteBatch sb, Vector2 center, Region region)
+        {
+            var pos = HexToScreen(region.CenterX, region.CenterY, center);
+            
+            // Draw region circle
+            int radius = (int)(region.Radius * _tileSize * _zoom);
+            
+            for (int angle = 0; angle < 360; angle += 10)
+            {
+                float rad1 = MathHelper.ToRadians(angle);
+                float rad2 = MathHelper.ToRadians(angle + 10);
+                
+                var p1 = pos + new Vector2((float)Math.Cos(rad1) * radius, (float)Math.Sin(rad1) * radius);
+                var p2 = pos + new Vector2((float)Math.Cos(rad2) * radius, (float)Math.Sin(rad2) * radius);
+                
+                DrawLine(sb, p1, p2, Color.Yellow * 0.4f, 2f);
+            }
+            
+            // Region name
+            if (_font != null)
+            {
+                var nameSize = _font.MeasureString(region.Name);
+                sb.DrawString(_font, region.Name, pos - nameSize * 0.5f, Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            }
+        }
+        
+        private void DrawLocation(SpriteBatch sb, Vector2 center, Location location)
+        {
+            var pos = HexToScreen(location.X, location.Y, center);
+            
+            // Location color based on type
+            Color locationColor = location.Type switch
+            {
+                SettlementType.Village => Color.LightGreen,
+                SettlementType.Town => Color.Green,
+                SettlementType.City => Color.DarkGreen,
+                SettlementType.Metropolis => Color.Gold,
+                SettlementType.Fort => Color.Red,
+                SettlementType.Castle => Color.DarkRed,
+                SettlementType.Dungeon => Color.Purple,
+                SettlementType.Monastery => Color.LightBlue,
+                _ => Color.White
+            };
+            
+            // Home base gets special marker
+            if (location.IsHomeBase)
+            {
+                DrawStar(sb, pos, _tileSize * _zoom * 0.6f, Color.Gold);
+            }
+            else
+            {
+                // Regular location marker
+                int size = (int)(_tileSize * _zoom * 0.4f);
+                sb.Draw(_pixel, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), locationColor);
+            }
+            
+            // Location name
+            if (_font != null && _zoom > 0.7f)
+            {
+                var nameSize = _font.MeasureString(location.Name);
+                sb.DrawString(_font, location.Name, pos + new Vector2(-nameSize.X * 0.25f, _tileSize * _zoom * 0.5f), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            }
+        }
+        
+        private void DrawInfoPanel(SpriteBatch sb, Viewport vp, Campaign campaign)
+        {
+            var panelRect = new Rectangle(10, 10, 300, 150);
+            sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
+            
+            if (_font == null) return;
+            
+            int y = panelRect.Y + 10;
+            
+            sb.DrawString(_font, campaign.Name, new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            y += 25;
+            
+            sb.DrawString(_font, $"Home Base: {campaign.HomeBase.Name}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            
+            sb.DrawString(_font, $"Locations: {campaign.AllLocations.Count}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            
+            sb.DrawString(_font, $"Session: {campaign.SessionCount}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            
+            if (!string.IsNullOrEmpty(campaign.CurrentObjective))
+            {
+                sb.DrawString(_font, "Objective:", new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                y += 18;
+                sb.DrawString(_font, campaign.CurrentObjective, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            }
+        }
+        
+        private Vector2 HexToScreen(int x, int y, Vector2 center)
+        {
+            // Convert hex coordinates to screen position (pointy-top hexagons)
+            // For pointy-top hexagons in offset coordinates:
+            float hexWidth = _tileSize * _zoom * (float)Math.Sqrt(3);
+            float hexHeight = _tileSize * _zoom * 1.5f;
+            
+            float screenX = x * hexWidth;
+            float screenY = y * hexHeight + (x % 2) * hexHeight * 0.5f;
+            
+            return center + _cameraOffset + new Vector2(screenX, screenY);
+        }
+        
+        private void DrawHexagon(SpriteBatch sb, Vector2 center, float size, Color color)
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                float angle1 = MathHelper.ToRadians(60 * i - 30);
+                float angle2 = MathHelper.ToRadians(60 * (i + 1) - 30);
+                
+                var p1 = center + new Vector2((float)Math.Cos(angle1) * size, (float)Math.Sin(angle1) * size);
+                var p2 = center + new Vector2((float)Math.Cos(angle2) * size, (float)Math.Sin(angle2) * size);
+                
+                DrawLine(sb, p1, p2, color, 1f);
+            }
+        }
+        
+        private void DrawStar(SpriteBatch sb, Vector2 center, float size, Color color)
+        {
+            // 5-pointed star for home base
+            for (int i = 0; i < 5; i++)
+            {
+                float angle1 = MathHelper.ToRadians(72 * i - 90);
+                float angle2 = MathHelper.ToRadians(72 * (i + 2) - 90);
+                
+                var p1 = center + new Vector2((float)Math.Cos(angle1) * size, (float)Math.Sin(angle1) * size);
+                var p2 = center + new Vector2((float)Math.Cos(angle2) * size, (float)Math.Sin(angle2) * size);
+                
+                DrawLine(sb, p1, p2, color, 3f);
+            }
+        }
+        
+        private void DrawLine(SpriteBatch sb, Vector2 start, Vector2 end, Color color, float thickness)
+        {
+            float distance = Vector2.Distance(start, end);
+            float angle = (float)Math.Atan2(end.Y - start.Y, end.X - start.X);
+            
+            sb.Draw(_pixel, start, null, color, angle, Vector2.Zero, new Vector2(distance, thickness), SpriteEffects.None, 0f);
+        }
+    }
+}

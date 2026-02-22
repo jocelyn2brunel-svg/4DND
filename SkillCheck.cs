@@ -9,6 +9,10 @@ public enum SkillCheckType
     Disadvantage
 }
 
+/// <summary>
+/// Legacy SkillCheck class for backward compatibility.
+/// New code should use D20Check and D20CheckFactory instead.
+/// </summary>
 public class SkillCheck
 {
     public string SkillName { get; set; } = "";
@@ -22,30 +26,49 @@ public class SkillCheck
     
     public static SkillCheck MakeCheck(Character character, string skill, int dc, SkillCheckType checkType = SkillCheckType.Standard)
     {
-        var random = new Random();
-        int roll1 = random.Next(1, 21);
-        int roll2 = checkType != SkillCheckType.Standard ? random.Next(1, 21) : roll1;
+        // Convert to new D20Check system
+        bool hasAdvantage = checkType == SkillCheckType.Advantage;
+        bool hasDisadvantage = checkType == SkillCheckType.Disadvantage;
         
-        int finalRoll = checkType switch
-        {
-            SkillCheckType.Advantage => Math.Max(roll1, roll2),
-            SkillCheckType.Disadvantage => Math.Min(roll1, roll2),
-            _ => roll1
-        };
+        var d20Check = character.MakeSkillCheck(skill, dc, hasAdvantage, hasDisadvantage);
         
-        int bonus = character.GetSkillBonus(skill, out string ability);
-        int total = finalRoll + bonus;
-        
+        // Convert back to legacy format
         return new SkillCheck
         {
             SkillName = skill,
             DC = dc,
-            Roll = finalRoll,
-            Bonus = bonus,
-            Total = total,
-            Success = total >= dc,
+            Roll = d20Check.DieRoll,
+            Bonus = d20Check.BaseModifier,
+            Total = d20Check.Total,
+            Success = d20Check.Success,
             CheckType = checkType,
-            Ability = ability
+            Ability = GetSkillAbility(skill)
+        };
+    }
+    
+    private static string GetSkillAbility(string skill)
+    {
+        return skill switch
+        {
+            "Acrobatics" => "DEX",
+            "Animal Handling" => "WIS",
+            "Arcana" => "INT",
+            "Athletics" => "STR",
+            "Deception" => "CHA",
+            "History" => "INT",
+            "Insight" => "WIS",
+            "Intimidation" => "CHA",
+            "Investigation" => "INT",
+            "Medicine" => "WIS",
+            "Nature" => "INT",
+            "Perception" => "WIS",
+            "Performance" => "CHA",
+            "Persuasion" => "CHA",
+            "Religion" => "INT",
+            "Sleight of Hand" => "DEX",
+            "Stealth" => "DEX",
+            "Survival" => "WIS",
+            _ => ""
         };
     }
     
@@ -65,33 +88,36 @@ public class SkillCheck
 
 public static class VisionSkillChecks
 {
-    public static SkillCheck MakePerceptionCheck(Character character, VisionSystem visionSystem, int x, int y, int dc)
+    public static D20Check MakePerceptionCheck(Character character, VisionSystem visionSystem, int x, int y, int z, int dc)
     {
-        var checkType = SkillCheckType.Standard;
+        var playerCreature = Creature.FromCharacter(character, x, y, z);
+        
+        bool hasAdvantage = false;
+        bool hasDisadvantage = false;
         
         // Disadvantage if in dim light or lightly obscured
-        if (visionSystem.IsLightlyObscured(x, y))
+        if (visionSystem.IsLightlyObscured(x, y, playerCreature))
         {
-            checkType = SkillCheckType.Disadvantage;
+            hasDisadvantage = true;
         }
         
-        // Auto-fail if heavily obscured
-        var playerCreature = Creature.FromCharacter(character, x, y);
+        // Auto-fail if heavily obscured (no need to roll)
         if (visionSystem.IsHeavilyObscured(x, y, playerCreature))
         {
-            return new SkillCheck
+            return new D20Check
             {
-                SkillName = "Perception",
-                DC = dc,
-                Roll = 0,
-                Bonus = 0,
-                Total = 0,
-                Success = false,
-                CheckType = checkType,
-                Ability = "WIS"
+                CheckType = D20CheckType.AbilityCheck,
+                Description = "Perception",
+                DieRoll = 1,
+                BaseModifier = character.GetSkillBonus("Perception", out _),
+                CircumstantialBonus = 0,
+                HasAdvantage = false,
+                HasDisadvantage = false,
+                SecondRoll = 0,
+                TargetNumber = dc
             };
         }
         
-        return SkillCheck.MakeCheck(character, "Perception", dc, checkType);
+        return character.MakeSkillCheck("Perception", dc, hasAdvantage, hasDisadvantage);
     }
 }

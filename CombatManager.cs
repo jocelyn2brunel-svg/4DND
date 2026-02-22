@@ -10,12 +10,14 @@ public class CombatManager
 {
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
+    private int _currentRound = 0;
     private bool _inCombat = false;
     private readonly Random _random = new();
     
     public bool InCombat => _inCombat;
     public List<Creature> Combatants => _combatants;
     public Creature? CurrentCombatant => _inCombat && _combatants.Count > 0 ? _combatants[_currentTurnIndex] : null;
+    public int CurrentRound => _currentRound;
     
     public void StartCombat(List<Creature> creatures)
     {
@@ -27,12 +29,19 @@ public class CombatManager
         {
             int dexMod = creature.GetAbilityModifier(creature.Dexterity);
             creature.Initiative = RollD20() + dexMod;
+            
+            // Reset turn resources
+            creature.HasAction = true;
+            creature.HasBonusAction = true;
+            creature.HasReaction = true;
+            creature.MovementRemaining = creature.Speed;
         }
         
         // Sort by initiative (descending)
         _combatants.Sort((a, b) => b.Initiative.CompareTo(a.Initiative));
         
         _currentTurnIndex = 0;
+        _currentRound = 1;
         _inCombat = true;
     }
     
@@ -41,6 +50,7 @@ public class CombatManager
         _inCombat = false;
         _combatants.Clear();
         _currentTurnIndex = 0;
+        _currentRound = 0;
     }
     
     public void NextTurn()
@@ -61,7 +71,75 @@ public class CombatManager
         }
         
         // Move to next turn
-        _currentTurnIndex = (_currentTurnIndex + 1) % _combatants.Count;
+        _currentTurnIndex++;
+        
+        // Check if we completed a round
+        if (_currentTurnIndex >= _combatants.Count)
+        {
+            _currentTurnIndex = 0;
+            _currentRound++;
+            
+            // Start of new round - refresh all combatants' actions
+            foreach (var creature in _combatants)
+            {
+                creature.HasAction = true;
+                creature.HasBonusAction = true;
+                creature.HasReaction = true;
+                creature.MovementRemaining = creature.Speed;
+                
+                // Process ongoing effects (poison, etc.)
+                ProcessStartOfTurnEffects(creature);
+            }
+        }
+        
+        // Refresh current combatant's actions (redundant for first turn of round but safe)
+        if (CurrentCombatant != null)
+        {
+            CurrentCombatant.HasAction = true;
+            CurrentCombatant.HasBonusAction = true;
+            CurrentCombatant.HasReaction = true;
+            CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
+        }
+    }
+    
+    private void ProcessStartOfTurnEffects(Creature creature)
+    {
+        // Process ongoing damage effects like poison, burning, etc.
+        // This can be extended later for duration-based conditions
+        
+        // Example: Poisoned creatures might take damage each turn
+        if (creature.Conditions.HasCondition(Condition.Poisoned))
+        {
+            // Future: implement ongoing poison damage
+        }
+    }
+    
+    public bool CanMove(Creature creature, int targetX, int targetY, int targetZ)
+    {
+        if (!creature.HasAction && creature.MovementRemaining <= 0)
+            return false;
+        
+        int distance = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+        int distanceInFeet = distance * 5; // Each tile is 5 feet
+        
+        return distanceInFeet <= creature.MovementRemaining;
+    }
+    
+    public void Move(Creature creature, int targetX, int targetY, int targetZ)
+    {
+        int distance = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+        int distanceInFeet = distance * 5;
+        
+        creature.X = targetX;
+        creature.Y = targetY;
+        creature.Z = targetZ;
+        creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - distanceInFeet);
+    }
+    
+    private int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        // Manhattan distance in 3D
+        return Math.Abs(x2 - x1) + Math.Abs(y2 - y1) + Math.Abs(z2 - z1);
     }
     
     public AttackResult MakeAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
@@ -72,60 +150,55 @@ public class CombatManager
             Target = target
         };
         
+        // Check if attacker has an action available
+        if (!attacker.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+        
+        // Consume the action
+        attacker.HasAction = false;
+        
         // Check if attacker can see target (requires VisionSystem)
         bool attackerCanSee = !attacker.IsBlinded();
         bool targetIsInvisible = target.Conditions.HasCondition(Condition.Invisible);
         
-        // Roll attack (with advantage/disadvantage)
-        int attackRoll = RollD20();
+        // Determine advantage/disadvantage
         bool hasAdvantage = targetIsInvisible || target.Conditions.HasCondition(Condition.Prone) || 
                            target.Conditions.HasCondition(Condition.Paralyzed) || 
                            target.Conditions.HasCondition(Condition.Unconscious);
         bool hasDisadvantage = attacker.IsBlinded() || target.Conditions.HasCondition(Condition.Invisible);
         
-        // Check for sunlight sensitivity
+        // Check for sunlight sensitivity (circumstantial disadvantage)
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
-            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y);
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
             if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
             {
                 hasDisadvantage = true;
             }
         }
         
-        // Apply advantage/disadvantage
-        if (hasAdvantage && !hasDisadvantage)
-        {
-            int roll2 = RollD20();
-            attackRoll = Math.Max(attackRoll, roll2);
-            result.HasAdvantage = true;
-        }
-        else if (hasDisadvantage && !hasAdvantage)
-        {
-            int roll2 = RollD20();
-            attackRoll = Math.Min(attackRoll, roll2);
-            result.HasDisadvantage = true;
-        }
+        // Make attack roll using D20Check system
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attacker.AttackBonus,
+            target.ArmorClass,
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0
+        );
         
-        result.AttackRoll = attackRoll;
-        result.TotalAttackBonus = attacker.AttackBonus;
-        result.TotalToHit = attackRoll + attacker.AttackBonus;
-        
-        // Check for critical hit or miss
-        if (attackRoll == 20)
-        {
-            result.IsCritical = true;
-            result.IsHit = true;
-        }
-        else if (attackRoll == 1)
-        {
-            result.IsCriticalMiss = true;
-            result.IsHit = false;
-        }
-        else
-        {
-            result.IsHit = result.TotalToHit >= target.ArmorClass;
-        }
+        // Store roll information in result
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
         
         // Roll damage if hit
         if (result.IsHit)
@@ -168,7 +241,7 @@ public class CombatManager
         return Math.Max(1, total); // Minimum 1 damage
     }
     
-    public (int x, int y)? FindNearestEnemy(Creature creature)
+    public (int x, int y, int z)? FindNearestEnemy(Creature creature)
     {
         Creature? nearest = null;
         int minDist = int.MaxValue;
@@ -177,7 +250,7 @@ public class CombatManager
         {
             if (other.IsPlayer == creature.IsPlayer || !other.IsAlive()) continue;
             
-            int dist = Math.Abs(other.X - creature.X) + Math.Abs(other.Y - creature.Y);
+            int dist = Math.Abs(other.X - creature.X) + Math.Abs(other.Y - creature.Y) + Math.Abs(other.Z - creature.Z);
             if (dist < minDist)
             {
                 minDist = dist;
@@ -185,19 +258,27 @@ public class CombatManager
             }
         }
         
-        return nearest != null ? (nearest.X, nearest.Y) : null;
+        return nearest != null ? (nearest.X, nearest.Y, nearest.Z) : null;
     }
     
     public bool IsInMeleeRange(Creature attacker, Creature target)
     {
         int dx = Math.Abs(attacker.X - target.X);
         int dy = Math.Abs(attacker.Y - target.Y);
-        return dx <= 1 && dy <= 1 && (dx + dy) > 0; // Adjacent but not same tile
+        int dz = Math.Abs(attacker.Z - target.Z);
+        
+        // Adjacent tiles on same level OR directly above/below (for flying)
+        if (dz <= 1)
+        {
+            return dx <= 1 && dy <= 1 && (dx + dy) > 0;
+        }
+        
+        return false;
     }
     
-    public Creature? GetCreatureAt(int x, int y)
+    public Creature? GetCreatureAt(int x, int y, int z = 0)
     {
-        return _combatants.FirstOrDefault(c => c.X == x && c.Y == y && c.IsAlive());
+        return _combatants.FirstOrDefault(c => c.X == x && c.Y == y && c.Z == z && c.IsAlive());
     }
 }
 

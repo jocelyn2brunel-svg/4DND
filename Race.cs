@@ -6,6 +6,7 @@ public class Race
 {
     public string Name { get; set; } = "";
     public string DisplayName { get; set; } = "";
+    public CreatureSize Size { get; set; } = CreatureSize.Medium;
     public int StrengthBonus { get; set; }
     public int DexterityBonus { get; set; }
     public int ConstitutionBonus { get; set; }
@@ -27,6 +28,7 @@ public class Race
         {
             Name = "Human",
             DisplayName = "Human",
+            Size = CreatureSize.Medium,
             StrengthBonus = 1,
             DexterityBonus = 1,
             ConstitutionBonus = 1,
@@ -43,6 +45,7 @@ public class Race
         {
             Name = "High Elf",
             DisplayName = "Elf (High)",
+            Size = CreatureSize.Medium,
             DexterityBonus = 2,
             IntelligenceBonus = 1,
             BaseSpeed = 30,
@@ -53,6 +56,7 @@ public class Race
         {
             Name = "Wood Elf",
             DisplayName = "Elf (Wood)",
+            Size = CreatureSize.Medium,
             DexterityBonus = 2,
             WisdomBonus = 1,
             BaseSpeed = 35,
@@ -64,6 +68,7 @@ public class Race
         {
             Name = "Drow",
             DisplayName = "Elf (Drow)",
+            Size = CreatureSize.Medium,
             DexterityBonus = 2,
             CharismaBonus = 1,
             BaseSpeed = 30,
@@ -78,6 +83,7 @@ public class Race
         {
             Name = "Hill Dwarf",
             DisplayName = "Dwarf (Hill)",
+            Size = CreatureSize.Medium,
             ConstitutionBonus = 2,
             WisdomBonus = 1,
             BaseSpeed = 25,
@@ -88,6 +94,7 @@ public class Race
         {
             Name = "Mountain Dwarf",
             DisplayName = "Dwarf (Mountain)",
+            Size = CreatureSize.Medium,
             StrengthBonus = 2,
             ConstitutionBonus = 2,
             BaseSpeed = 25,
@@ -100,6 +107,7 @@ public class Race
         {
             Name = "Lightfoot Halfling",
             DisplayName = "Halfling (Lightfoot)",
+            Size = CreatureSize.Small,
             DexterityBonus = 2,
             CharismaBonus = 1,
             BaseSpeed = 25,
@@ -110,6 +118,7 @@ public class Race
         {
             Name = "Stout Halfling",
             DisplayName = "Halfling (Stout)",
+            Size = CreatureSize.Small,
             DexterityBonus = 2,
             ConstitutionBonus = 1,
             BaseSpeed = 25,
@@ -121,6 +130,7 @@ public class Race
         {
             Name = "Half-Orc",
             DisplayName = "Half-Orc",
+            Size = CreatureSize.Medium,
             StrengthBonus = 2,
             ConstitutionBonus = 1,
             BaseSpeed = 30,
@@ -132,6 +142,7 @@ public class Race
         {
             Name = "Tiefling",
             DisplayName = "Tiefling",
+            Size = CreatureSize.Medium,
             CharismaBonus = 2,
             IntelligenceBonus = 1,
             BaseSpeed = 30,
@@ -143,6 +154,7 @@ public class Race
         {
             Name = "Dragonborn",
             DisplayName = "Dragonborn",
+            Size = CreatureSize.Medium,
             StrengthBonus = 2,
             CharismaBonus = 1,
             BaseSpeed = 30,
@@ -154,6 +166,7 @@ public class Race
         {
             Name = "Gnome",
             DisplayName = "Gnome",
+            Size = CreatureSize.Small,
             IntelligenceBonus = 2,
             BaseSpeed = 25,
             DarkvisionRange = 60,
@@ -164,6 +177,7 @@ public class Race
         {
             Name = "Half-Elf",
             DisplayName = "Half-Elf",
+            Size = CreatureSize.Medium,
             CharismaBonus = 2,
             BaseSpeed = 30,
             DarkvisionRange = 60,

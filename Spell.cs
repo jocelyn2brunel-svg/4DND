@@ -16,6 +16,7 @@ public class AreaEffect
 {
     public int X { get; set; }
     public int Y { get; set; }
+    public int Z { get; set; }
     public AreaShape Shape { get; set; }
     public int Radius { get; set; }  // In feet
     public int Duration { get; set; } = -1; // In rounds, -1 for infinite
@@ -23,12 +24,13 @@ public class AreaEffect
     public bool BlocksVision { get; set; } = false;
     public bool IsActive { get; set; } = true;
     
-    public static AreaEffect FogCloud(int x, int y, int radius = 20)
+    public static AreaEffect FogCloud(int x, int y, int z = 0, int radius = 20)
     {
         return new AreaEffect
         {
             X = x,
             Y = y,
+            Z = z,
             Shape = AreaShape.Sphere,
             Radius = radius,
             Duration = 10, // 1 minute = 10 rounds
@@ -38,12 +40,13 @@ public class AreaEffect
         };
     }
     
-    public static AreaEffect Darkness(int x, int y, int radius = 15)
+    public static AreaEffect Darkness(int x, int y, int z = 0, int radius = 15)
     {
         return new AreaEffect
         {
             X = x,
             Y = y,
+            Z = z,
             Shape = AreaShape.Sphere,
             Radius = radius,
             Duration = 10,

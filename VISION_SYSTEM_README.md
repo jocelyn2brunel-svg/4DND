@@ -19,9 +19,9 @@ This implementation adds D&D 5e-compliant vision and lighting mechanics to the g
 
 #### Darkvision
 - Range: typically 60 feet (12 tiles), some races have 120 feet
-- Treats darkness as dim light
-- Treats dim light as bright light
-- Sees in shades of gray in darkness
+- **In darkness**: Treats darkness as dim light (sees in shades of gray)
+- **In dim light**: Treats dim light as bright light
+- **Cannot discern color in darkness, only shades of gray**
 - Races with darkvision: Elves, Dwarves, Half-Orcs, Tieflings, Gnomes, Half-Elves, Drow
 
 #### Superior Darkvision
@@ -31,16 +31,26 @@ This implementation adds D&D 5e-compliant vision and lighting mechanics to the g
 
 #### Blindsight
 - Can perceive surroundings without relying on sight
-- Doesn't require line of sight
+- Works even when blinded
 - Can detect invisible creatures
+- Can see through vision-blocking effects like Fog Cloud
 - Range varies by creature (e.g., Wolf: 30 feet)
+- Does not require line of sight
+
+#### Tremorsense
+- Can detect and pinpoint the origin of vibrations within a specific radius
+- Provided the creature and source are in contact with the same ground or substance
+- **Cannot be used to detect flying or incorporeal creatures**
+- Works even when blinded
+- Many burrowing creatures have tremorsense (e.g., Umber Hulk: 60 feet)
 
 #### Truesight
 - Can see in normal and magical darkness
 - Can see invisible creatures and objects
-- Automatically detects visual illusions
+- Automatically detects visual illusions and succeeds on saving throws against them
+- Perceives the original form of shapechangers or creatures transformed by magic
 - Can see into the Ethereal Plane
-- Very rare, typically for powerful creatures
+- Very rare, typically for powerful creatures (e.g., Couatl: 120 feet)
 
 ## Light Sources
 
@@ -71,11 +81,13 @@ They automatically move with the creature.
 - Can't see, automatically fails ability checks requiring sight
 - Attack rolls have disadvantage
 - Attack rolls against the creature have advantage
+- **Blindsight and Tremorsense still work when blinded**
 
 ### Invisible
 - Creature is heavily obscured for purpose of hiding
 - Attack rolls have advantage
 - Attack rolls against the creature have disadvantage
+- **Can be detected by Blindsight, Tremorsense, and Truesight**
 
 ## Spells That Affect Vision
 
@@ -90,6 +102,8 @@ They automatically move with the creature.
 - **V**: Toggle vision overlay on/off
 - **L**: Toggle global daylight on/off
 - **B**: Toggle Blinded condition (for testing)
+- **F**: Cast Fog Cloud at player location (for testing)
+- **K**: Cast Darkness at player location (for testing)
 - **Tab**: Toggle combat UI
 
 ## Implementation Details

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace _4DND;
 
@@ -59,6 +60,7 @@ public class Character
     public string Alignment { get; set; } = "Neutral";
     public int HitDiceTotal { get; set; } = 1;
     public int HitDiceRemaining { get; set; } = 1;
+    public int HitDiceType { get; set; } = 8; // d6, d8, d10, or d12 based on class
     public int DeathSaveSuccesses { get; set; } = 0;
     public int DeathSaveFailures { get; set; } = 0;
     
@@ -72,10 +74,14 @@ public class Character
     // Wealth
     public int GoldPieces { get; set; } = 0;
     
-    // Derived properties
-    public int ProficiencyBonus => 2 + (Level - 1) / 4;
+    // Proficiencies (armor and weapons)
+    public List<string> ArmorProficiencies { get; set; } = new();
+    public List<string> WeaponProficiencies { get; set; } = new();
     
-    public int GetAbilityModifier(int score) => (score - 10) / 2;
+    // Derived properties
+    public int ProficiencyBonus => DndMath.GetProficiencyBonus(Level);
+    
+    public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
     
     public int GetSavingThrow(string ability)
     {
@@ -157,8 +163,9 @@ public class Character
     public void CalculateDerivedStats()
     {
         // Hit Points based on class and Constitution
-        MaxHP = 10 + GetAbilityModifier(Constitution);
-        CurrentHP = MaxHP;
+        var classData = ClassData.GetClass(Class);
+        MaxHP = classData.GetHitPointsAtLevel(Level, GetAbilityModifier(Constitution));
+        if (CurrentHP > MaxHP) CurrentHP = MaxHP;
         
         // Armor Class from inventory
         ArmorClass = InventoryData.CalculateArmorClass(GetAbilityModifier(Dexterity));
@@ -170,5 +177,52 @@ public class Character
         // Darkvision from race
         DarkvisionRange = raceData.DarkvisionRange;
         HasSunlightSensitivity = raceData.HasSunlightSensitivity;
+    }
+    
+    public int GetPrimaryAbilityModifier()
+    {
+        var classData = ClassData.GetClass(Class);
+        
+        return classData.PrimaryAbility switch
+        {
+            "Strength" => GetAbilityModifier(Strength),
+            "Dexterity" => GetAbilityModifier(Dexterity),
+            "Constitution" => GetAbilityModifier(Constitution),
+            "Intelligence" => GetAbilityModifier(Intelligence),
+            "Wisdom" => GetAbilityModifier(Wisdom),
+            "Charisma" => GetAbilityModifier(Charisma),
+            "Strength or Dexterity" => Math.Max(GetAbilityModifier(Strength), GetAbilityModifier(Dexterity)),
+            "Dexterity & Wisdom" => Math.Max(GetAbilityModifier(Dexterity), GetAbilityModifier(Wisdom)),
+            "Strength & Charisma" => Math.Max(GetAbilityModifier(Strength), GetAbilityModifier(Charisma)),
+            "Wisdom & Charisma" => Math.Max(GetAbilityModifier(Wisdom), GetAbilityModifier(Charisma)),
+            _ => 0
+        };
+    }
+    
+    public bool IsProficientWithArmor(string armorType)
+    {
+        if (ArmorProficiencies == null) return false;
+        
+        foreach (var prof in ArmorProficiencies)
+        {
+            if (prof.Equals(armorType, StringComparison.OrdinalIgnoreCase) || 
+                prof.Equals("All armor", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+    
+    public bool IsProficientWithWeapon(string weaponName)
+    {
+        if (WeaponProficiencies == null) return false;
+        
+        foreach (var prof in WeaponProficiencies)
+        {
+            if (prof.Equals(weaponName, StringComparison.OrdinalIgnoreCase) ||
+                prof.Equals("Simple weapons", StringComparison.OrdinalIgnoreCase) ||
+                prof.Equals("Martial weapons", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 }
