@@ -139,6 +139,7 @@ public class Game1 : Game
         Initialize3DRendering();
         _combatManager.Grid = _grid;
         _visionSystem.Grid = _grid;
+        _visionSystem.GlobalDaylight = true; // Morning/Daylight by default
 
         // Create a 3D test structure
         for (int x = -10; x <= 10; x++)
@@ -750,6 +751,7 @@ public class Game1 : Game
                         
                         // TODO: Go to multiplayer lobby
                         _state = AppState.Playing;
+                        UpdateVision();
                     }
                     else
                     {
@@ -833,6 +835,7 @@ public class Game1 : Game
                                     
                                     // TODO: Go to multiplayer lobby
                                     _state = AppState.Playing;
+                                    UpdateVision();
                                 }
                                 else
                                 {
@@ -884,6 +887,7 @@ public class Game1 : Game
                     }
                     // TODO: Go to multiplayer lobby
                     _state = AppState.Playing;
+                    UpdateVision();
                 }
                 else
                 {
@@ -950,6 +954,7 @@ public class Game1 : Game
                     }
                     
                     _state = AppState.Playing;
+                    UpdateVision();
                 }
                 else
                 {
@@ -1030,6 +1035,7 @@ public class Game1 : Game
                                 }
                                  
                                 _state = AppState.Playing;
+                                UpdateVision();
                             }
                             else
                             {
@@ -1076,6 +1082,7 @@ public class Game1 : Game
                 }
                 
                 _state = AppState.Playing;
+                UpdateVision();
             }
 
             _prevKb = kb;
@@ -1285,6 +1292,33 @@ public class Game1 : Game
                 _prevMouse = mouse;
                 base.Update(gameTime);
                 return;
+            }
+
+            // Exploration movement (outside combat)
+            if (!_combatManager.InCombat)
+            {
+                if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                {
+                    var hovered = GetHoveredTile();
+                    if (hovered.HasValue && _playerCreature != null)
+                    {
+                        int tx = hovered.Value.x;
+                        int ty = hovered.Value.y;
+                        int tz = _currentViewLevel;
+
+                        var tileType = _grid.Get(tx, ty, tz);
+                        if (tileType != TileType.Wall && tileType != TileType.Empty)
+                        {
+                            if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
+                            {
+                                _playerCreature.X = tx;
+                                _playerCreature.Y = ty;
+                                _playerCreature.Z = tz;
+                                UpdateVision();
+                            }
+                        }
+                    }
+                }
             }
             
             // Combat controls
@@ -1504,14 +1538,10 @@ public class Game1 : Game
         int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
         if (scrollDelta != 0) { _cameraDistance = MathHelper.Clamp(_cameraDistance - scrollDelta * 0.01f, 5f, 50f); _prevScrollValue = mouse.ScrollWheelValue; }
         
-        // Update vision if in combat
-        if (_combatManager.InCombat)
+        // Update vision
+        if (_visionNeedsUpdate)
         {
-            // Only recalculate if needed
-            if (_visionNeedsUpdate)
-            {
-                RecalculateVision();
-            }
+            RecalculateVision();
         }
 
         _prevKb = kb;
