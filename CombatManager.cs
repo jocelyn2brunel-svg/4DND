@@ -193,6 +193,19 @@ public class CombatManager
         creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
     }
 
+    /// <summary>
+    /// Gets a path for movement without applying movement cost/action rules.
+    /// Used by exploration mode to animate movement tile-by-tile.
+    /// </summary>
+    public List<(int x, int y, int z)>? GetPath(Creature creature, int targetX, int targetY, int targetZ)
+    {
+        var path = FindPath(creature, targetX, targetY, targetZ);
+        if (path == null)
+            return null;
+
+        return path.Select(n => (n.X, n.Y, n.Z)).ToList();
+    }
+
     public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)
     {
         List<GridNode>? bestPath = null;
