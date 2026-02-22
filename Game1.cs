@@ -21,7 +21,7 @@ public class Game1 : Game
     // 3D Camera system
     private Vector3 _cameraTarget = Vector3.Zero;
     private float _cameraYaw = MathHelper.ToRadians(45f);
-    private float _cameraPitch = MathHelper.ToRadians(-35f);
+    private float _cameraPitch = MathHelper.ToRadians(35f);  // Angle POSITIF maintenant
     private float _cameraDistance = 20f;
     private float _targetYaw = MathHelper.ToRadians(45f);
     private const float RotationSpeed = 5f; // Rad per second for transition
@@ -473,7 +473,8 @@ public class Game1 : Game
 
     private void Draw3DCube(float x, float y, float z, float scale, Color color)
     {
-        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z);
+        // Centre le cube verticalement sur z au lieu d'avoir sa base sur z
+        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z + 0.5f);
         _basicEffect.DiffuseColor = color.ToVector3();
         _basicEffect.Alpha = 1.0f;
         _basicEffect.LightingEnabled = true;
@@ -1435,8 +1436,8 @@ public class Game1 : Game
         Vector3 moveDir = Vector3.Zero;
         if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)) moveDir.Y -= 1;
         if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down)) moveDir.Y += 1;
-        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)) moveDir.X -= 1;
-        if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right)) moveDir.X += 1;
+        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)) moveDir.X += 1;
+        if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right)) moveDir.X -= 1;
         if (moveDir != Vector3.Zero) { moveDir.Normalize(); _cameraTarget += Vector3.Transform(moveDir, Matrix.CreateRotationZ(_cameraYaw)) * moveSpeed; }
 
         int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
@@ -1834,13 +1835,13 @@ public class Game1 : Game
                     var movementColor = currentCombatant.MovementRemaining > 0 ? Color.Cyan : Color.DarkGray;
                     
                     _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, actionIcon, new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(actionIcon), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Bonus:", new Vector2(130, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, bonusIcon, new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(bonusIcon), new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Reaction:", new Vector2(250, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, reactionIcon, new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(reactionIcon), new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Move:", new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, movementText, new Vector2(450, y), movementColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
