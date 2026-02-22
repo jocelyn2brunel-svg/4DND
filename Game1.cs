@@ -14,9 +14,8 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
-    private InfiniteGrid3D<bool> _grid = new();
+    private InfiniteGrid3D<TileType> _grid = new();
     private Texture2D _pixel = null!;
-    private int _cellSize = 24;
 
     // 3D Camera system
     private Vector3 _cameraTarget = Vector3.Zero;
@@ -138,24 +137,34 @@ public class Game1 : Game
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
         Initialize3DRendering();
+        _combatManager.Grid = _grid;
+        _visionSystem.Grid = _grid;
 
         // Create a 3D test structure
         for (int x = -10; x <= 10; x++)
-            _grid.Set(x, 0, 0, x % 2 == 0);
+            _grid.Set(x, 0, 0, x % 2 == 0 ? TileType.Floor : TileType.Empty);
 
         for (int y = -6; y <= 6; y++)
         {
-            _grid.Set(0, y, 0, true);
-            _grid.Set(1, y, 0, (y % 3) == 0);
+            _grid.Set(0, y, 0, TileType.Floor);
+            _grid.Set(1, y, 0, (y % 3) == 0 ? TileType.DifficultTerrain : TileType.Empty);
         }
         
+        // Add some walls
+        for (int i = -5; i <= 5; i++)
+        {
+            if (i == 0) continue; // Doorway
+            _grid.Set(i, 3, 0, TileType.Wall);
+            _grid.Set(i, 3, 1, TileType.Wall);
+        }
+
         // Add some platforms at different heights
         for (int z = 1; z <= 3; z++)
         {
             for (int i = -3; i <= 3; i++)
             {
-                _grid.Set(i, i, z, true);
-                _grid.Set(-i, i, z, true);
+                _grid.Set(i, i, z, TileType.Floor);
+                _grid.Set(-i, i, z, TileType.Floor);
             }
         }
         
@@ -425,8 +434,16 @@ public class Game1 : Game
         foreach (var cell in _grid.EnumerateNonEmpty())
         {
             int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
-            if (cz > zLevel || !cell.Value) continue;
-            Color baseColor = Color.SlateGray;
+            if (cz > zLevel || cell.Value == TileType.Empty) continue;
+
+            Color baseColor = cell.Value switch
+            {
+                TileType.Floor => Color.SlateGray,
+                TileType.DifficultTerrain => Color.Sienna,
+                TileType.Wall => Color.DarkSlateGray,
+                _ => Color.SlateGray
+            };
+
             if (cz < zLevel) baseColor *= 0.3f;
             if (_showVisionOverlay && _playerCreature != null)
             {
@@ -435,7 +452,21 @@ public class Game1 : Game
                 if (tint == Color.Black) continue;
                 baseColor = new Color((byte)(baseColor.R * tint.R / 255), (byte)(baseColor.G * tint.G / 255), (byte)(baseColor.B * tint.B / 255), (byte)(baseColor.A * tint.A / 255));
             }
-            Draw3DTile(cx, cy, cz, baseColor);
+
+            if (cell.Value == TileType.Wall)
+            {
+                Draw3DCube(cx, cy, cz, 1.0f, baseColor);
+            }
+            else
+            {
+                Draw3DTile(cx, cy, cz, baseColor);
+                if (cell.Value == TileType.DifficultTerrain)
+                {
+                    // Draw a small "X" on difficult terrain
+                    Draw3DLine(new Vector3(cx - 0.2f, cy - 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy + 0.2f, cz + 0.01f), Color.Black * 0.5f);
+                    Draw3DLine(new Vector3(cx - 0.2f, cy + 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy - 0.2f, cz + 0.01f), Color.Black * 0.5f);
+                }
+            }
         }
     }
 
@@ -1314,9 +1345,15 @@ public class Game1 : Game
                                 {
                                     if (_combatManager.CanMove(currentCombatant, tx, ty, _currentViewLevel))
                                     {
-                                        int distanceMoved = (Math.Abs(tx - currentCombatant.X) + Math.Abs(ty - currentCombatant.Y) + Math.Abs(_currentViewLevel - currentCombatant.Z)) * 5;
+                                        int prevX = currentCombatant.X;
+                                        int prevY = currentCombatant.Y;
+                                        int prevZ = currentCombatant.Z;
+                                        int prevMove = currentCombatant.MovementRemaining;
+
                                         _combatManager.Move(currentCombatant, tx, ty, _currentViewLevel);
-                                        AddToCombatLog($"{currentCombatant.Name} moved to ({tx}, {ty}, {_currentViewLevel}) [{distanceMoved}ft, {currentCombatant.MovementRemaining}ft remaining]");
+
+                                        int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
+                                        AddToCombatLog($"{currentCombatant.Name} moved to ({tx}, {ty}, {_currentViewLevel}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
                                         _selectedAction = CombatAction.None;
                                         
                                         // Update vision after movement
@@ -1923,6 +1960,16 @@ public class Game1 : Game
                     // Complete darkness
                     _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.Black);
                     _spriteBatch.DrawString(_font, "Darkness (Heavily Obscured)", new Vector2(legendX + 25, legendY), Color.DarkGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    legendY += 25;
+
+                    // Difficult terrain
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.Sienna);
+                    _spriteBatch.DrawString(_font, "Difficult Terrain (2x Cost)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    legendY += 25;
+
+                    // Wall
+                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.DarkSlateGray);
+                    _spriteBatch.DrawString(_font, "Wall (Blocks Move/Vision)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     legendY += 35;
                     
                     // Creature indicators (top of cube)
@@ -1986,12 +2033,13 @@ public class Game1 : Game
             int ty = hoveredY.Value;
             int tz = _currentViewLevel;
             
+            var tileType = _grid.Get(tx, ty, tz);
             var lightLevel = _visionSystem.GetLightLevel(tx, ty, tz);
             var isVisible = _visionSystem.IsVisible(tx, ty, tz);
             
             var creature = _combatManager.GetCreatureAt(tx, ty, tz);
             
-            var tooltip = $"Tile ({tx}, {ty}, Z{tz}) | Light: {lightLevel} | Visible: {isVisible}";
+            var tooltip = $"Tile ({tx}, {ty}, Z{tz}) [{tileType}] | Light: {lightLevel} | Visible: {isVisible}";
             if (creature != null && isVisible)
             {
                 var sizeDesc = SizeHelper.GetSpaceDescription(creature.Size);

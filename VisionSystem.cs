@@ -9,6 +9,7 @@ namespace _4DND;
 
 public class VisionSystem
 {
+    public InfiniteGrid3D<TileType>? Grid { get; set; }
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
     
@@ -74,8 +75,8 @@ public class VisionSystem
                         int ty = source.Y + dy;
                         int tz = source.Z + dz;
                         
-                        // 3D Manhattan distance
-                        int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                        // 3D Chebyshev distance (5e grid rules)
+                        int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
                         
                         if (distance <= brightTiles)
                         {
@@ -109,7 +110,7 @@ public class VisionSystem
                         int ty = effect.Y + dy;
                         int tz = effect.Z + dz;
                         
-                        int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                        int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
                         
                         if (distance <= effectTiles)
                         {
@@ -142,7 +143,7 @@ public class VisionSystem
                 if (!effect.IsActive) continue;
                 if (effect.EffectType != LightType.Darkness) continue;
                 
-                int distance = Math.Abs(x - effect.X) + Math.Abs(y - effect.Y) + Math.Abs(z - effect.Z);
+                int distance = Math.Max(Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y)), Math.Abs(z - effect.Z));
                 int effectTiles = effect.Radius / 5;
                 
                 if (distance <= effectTiles)
@@ -191,36 +192,45 @@ public class VisionSystem
                     int ty = observer.Y + dy;
                     int tz = observer.Z + dz;
                     
-                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
                     
                     if (distance > visionTiles) continue; // Skip tiles outside range
                     
                     bool blocked = false;
-                    
-                    foreach (var effect in _areaEffects)
-                    {
-                        if (!effect.IsActive || !effect.BlocksVision) continue;
-                        
-                        // Blindsight can see through most vision-blocking effects (like Fog Cloud)
-                        int distToObserver = (Math.Abs(tx - observer.X) + Math.Abs(ty - observer.Y) + Math.Abs(tz - observer.Z)) * 5;
-                        if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
-                        {
-                            continue;
-                        }
-                        
-                        // Truesight can see through magical effects
-                        if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
-                        {
-                            continue;
-                        }
 
-                        int distToEffect = Math.Abs(tx - effect.X) + Math.Abs(ty - effect.Y) + Math.Abs(tz - effect.Z);
-                        int effectTiles = effect.Radius / 5;
-                        
-                        if (distToEffect <= effectTiles)
+                    // Walls block vision
+                    if (!HasLineOfSight(observer.X, observer.Y, observer.Z, tx, ty, tz))
+                    {
+                        blocked = true;
+                    }
+
+                    if (!blocked)
+                    {
+                        foreach (var effect in _areaEffects)
                         {
-                            blocked = true;
-                            break;
+                            if (!effect.IsActive || !effect.BlocksVision) continue;
+
+                            // Blindsight can see through most vision-blocking effects (like Fog Cloud)
+                            int distToObserver = Math.Max(Math.Max(Math.Abs(tx - observer.X), Math.Abs(ty - observer.Y)), Math.Abs(tz - observer.Z)) * 5;
+                            if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
+                            {
+                                continue;
+                            }
+
+                            // Truesight can see through magical effects
+                            if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
+                            {
+                                continue;
+                            }
+
+                            int distToEffect = Math.Max(Math.Max(Math.Abs(tx - effect.X), Math.Abs(ty - effect.Y)), Math.Abs(tz - effect.Z));
+                            int effectTiles = effect.Radius / 5;
+
+                            if (distToEffect <= effectTiles)
+                            {
+                                blocked = true;
+                                break;
+                            }
                         }
                     }
                     
@@ -248,7 +258,7 @@ public class VisionSystem
                     int ty = observer.Y + dy;
                     int tz = observer.Z + dz;
                     
-                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
                     
                     if (distance <= visionTiles)
                     {
@@ -274,7 +284,7 @@ public class VisionSystem
                     int ty = observer.Y + dy;
                     int tz = observer.Z + dz;
                     
-                    int distance = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                    int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
                     
                     if (distance <= visionTiles)
                     {
@@ -361,7 +371,7 @@ public class VisionSystem
             // Darkvision sees in shades of gray in darkness
             if (lightLevel == LightType.Darkness && observer.DarkvisionRange > 0)
             {
-                int distance = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y) + Math.Abs(z - observer.Z)) * 5;
+                int distance = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
                 if (distance <= observer.DarkvisionRange)
                 {
                     // Gray tint for darkvision - "can't discern color in darkness, only shades of gray"
@@ -389,7 +399,7 @@ public class VisionSystem
     
     public bool CanSee(Creature observer, int targetX, int targetY, int targetZ = 0)
     {
-        int distance = (Math.Abs(targetX - observer.X) + Math.Abs(targetY - observer.Y) + Math.Abs(targetZ - observer.Z)) * 5;
+        int distance = Math.Max(Math.Max(Math.Abs(targetX - observer.X), Math.Abs(targetY - observer.Y)), Math.Abs(targetZ - observer.Z)) * 5;
         
         // Truesight can see through everything within range
         if (observer.HasTrueSight && distance <= observer.TrueSightRange)
@@ -437,7 +447,7 @@ public class VisionSystem
                 continue;
             }
 
-            int distToEffect = Math.Abs(targetX - effect.X) + Math.Abs(targetY - effect.Y);
+            int distToEffect = Math.Max(Math.Abs(targetX - effect.X), Math.Abs(targetY - effect.Y));
             int effectTiles = effect.Radius / 5;
             
             if (distToEffect <= effectTiles)
@@ -451,7 +461,7 @@ public class VisionSystem
     
     public bool CanSee(Creature observer, Creature target)
     {
-        int distance = (Math.Abs(target.X - observer.X) + Math.Abs(target.Y - observer.Y)) * 5;
+        int distance = Math.Max(Math.Max(Math.Abs(target.X - observer.X), Math.Abs(target.Y - observer.Y)), Math.Abs(target.Z - observer.Z)) * 5;
         
         // Truesight can see invisible creatures and objects within range
         if (observer.HasTrueSight && distance <= observer.TrueSightRange)
@@ -479,9 +489,35 @@ public class VisionSystem
             return false;
         }
         
-        return CanSee(observer, target.X, target.Y);
+        return CanSee(observer, target.X, target.Y, target.Z);
     }
     
+    public bool HasLineOfSight(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        if (Grid == null) return true;
+
+        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
+        if (dist <= 1) return true;
+
+        for (int i = 1; i < dist; i++)
+        {
+            float t = (float)i / dist;
+            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
+            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
+            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
+
+            if (Grid.Get(cx, cy, cz) == TileType.Wall)
+                return false;
+        }
+
+        return true;
+    }
+
+    private int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        return Math.Max(Math.Max(Math.Abs(x2 - x1), Math.Abs(y2 - y1)), Math.Abs(z2 - z1));
+    }
+
     public void UpdateAreaEffects()
     {
         _areaEffects.RemoveAll(effect =>
@@ -502,7 +538,7 @@ public class VisionSystem
 
         if (lightLevel == LightType.Darkness)
         {
-            int dist = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y)) * 5;
+            int dist = Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)) * 5;
             // Darkness is dim light for creatures with Darkvision
             if (observer.DarkvisionRange > 0 && dist <= observer.DarkvisionRange) return true;
         }
@@ -512,7 +548,7 @@ public class VisionSystem
 
     public bool IsHeavilyObscured(int x, int y, Creature observer)
     {
-        int distToObserver = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y)) * 5;
+        int distToObserver = Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)) * 5;
 
         // Truesight sees in normal and magical darkness
         if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange)
@@ -536,7 +572,7 @@ public class VisionSystem
         {
             if (effect.IsActive && effect.BlocksVision)
             {
-                int distance = Math.Abs(x - effect.X) + Math.Abs(y - effect.Y);
+                int distance = Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y));
                 if (distance <= effect.Radius / 5) return true;
             }
         }
