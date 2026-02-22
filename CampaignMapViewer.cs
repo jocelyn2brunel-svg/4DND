@@ -424,14 +424,12 @@ namespace _4DND
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             }
 
-            // Convert axial hex coordinates to screen position (pointy-top hexagons).
-            // This keeps neighbors uniformly spaced in a true honeycomb layout.
-            float size = _tileSize * _zoom;
-            float screenX = size * (float)Math.Sqrt(3) * (x + y * 0.5f);
-            float screenY = size * 1.5f * y;
+            if (_selectedLocation != null)
+            {
                 y += 18;
                 sb.DrawString(_font, $"Description: {_selectedLocation.Description}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
-           
+            }
+
         }
         
         private Vector2 HexToScreen(int x, int y, Vector2 center)
