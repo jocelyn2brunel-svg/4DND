@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static System.Math;
 
 #nullable enable
 
@@ -115,12 +116,46 @@ public class CombatManager
         }
     }
     
+    /// <summary>
+    /// Check if a creature of given size can occupy the space starting at (x, y, z)
+    /// Large+ creatures need multiple tiles to be available
+    /// </summary>
+    private bool CanOccupySpace(CreatureSize size, int x, int y, int z)
+    {
+        if (Grid == null) return true;
+        
+        var (width, height) = SizeHelper.GetSpaceInSquares(size);
+        
+        // Check all tiles the creature would occupy
+        for (int dx = 0; dx < width; dx++)
+        {
+            for (int dy = 0; dy < height; dy++)
+            {
+                int checkX = x + dx;
+                int checkY = y + dy;
+                
+                // Check if tile is blocked
+                var tileType = Grid.Get(checkX, checkY, z);
+                if (tileType == TileType.Wall || tileType == TileType.Empty)
+                    return false;
+                
+                // Check if another creature is there (unless checking current position)
+                var creatureAtTile = GetCreatureAt(checkX, checkY, z);
+                if (creatureAtTile != null)
+                    return false;
+            }
+        }
+        
+        return true;
+    }
+    
     public bool CanMove(Creature creature, int targetX, int targetY, int targetZ)
     {
         if (!creature.HasAction && creature.MovementRemaining <= 0)
             return false;
 
-        if (Grid != null && Grid.Get(targetX, targetY, targetZ) == TileType.Wall)
+        // Check if the target space can accommodate the creature's size
+        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ))
             return false;
         
         if (IsPathBlocked(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ))
@@ -200,24 +235,24 @@ public class CombatManager
         int dz = z2 - z1;
 
         // 2D diagonals check
-        if (Math.Abs(dx) == 1 && Math.Abs(dy) == 1 && dz == 0)
+        if (Abs(dx) == 1 && Abs(dy) == 1 && dz == 0)
         {
             if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1 + dy, z1) == TileType.Wall)
                 return false;
         }
-        if (Math.Abs(dx) == 1 && Math.Abs(dz) == 1 && dy == 0)
+        if (Abs(dx) == 1 && Abs(dz) == 1 && dy == 0)
         {
             if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
                 return false;
         }
-        if (Math.Abs(dy) == 1 && Math.Abs(dz) == 1 && dx == 0)
+        if (Abs(dy) == 1 && Abs(dz) == 1 && dx == 0)
         {
             if (Grid.Get(x1, y1 + dy, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
                 return false;
         }
 
         // 3D diagonal check (all 3 axes change)
-        if (Math.Abs(dx) == 1 && Math.Abs(dy) == 1 && Math.Abs(dz) == 1)
+        if (Abs(dx) == 1 && Abs(dy) == 1 && Abs(dz) == 1)
         {
             // If any adjacent square that shares a face with the path is a wall, block it
             if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall ||
@@ -232,7 +267,7 @@ public class CombatManager
     public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
     {
         // Chebyshev distance (5e Grid Rules: diagonals cost same as straight)
-        return Math.Max(Math.Max(Math.Abs(x2 - x1), Math.Abs(y2 - y1)), Math.Abs(z2 - z1));
+        return Max(Max(Abs(x2 - x1), Abs(y2 - y1)), Abs(z2 - z1));
     }
     
     public AttackResult MakeAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
@@ -327,18 +362,88 @@ public class CombatManager
         }
         
         var parts = damageDice.Split('d');
-        if (parts.Length == 2 && int.TryParse(parts[0], out int numDice) && int.TryParse(parts[1], out int diceSize))
+        if (parts.Length != 2) return total;
+        
+        if (int.TryParse(parts[0], out int numDice) && int.TryParse(parts[1], out int diceType))
         {
-            for (int r = 0; r < rolls; r++)
+            // Roll the dice
+            for (int i = 0; i < numDice * rolls; i++)
             {
-                for (int i = 0; i < numDice; i++)
+                total += RollD(diceType);
+            }
+        }
+        
+        return total;
+    }
+    
+    private int RollD(int sides)
+    {
+        if (sides <= 0) return 0;
+        
+        return _random.Next(1, sides + 1);
+    }
+
+    public Creature? GetCreatureAt(int x, int y, int z = 0)
+    {
+        foreach (var creature in _combatants)
+        {
+            if (!creature.IsAlive()) continue;
+            
+            var (width, height) = SizeHelper.GetSpaceInSquares(creature.Size);
+            
+            // Check if (x, y) is within the creature's occupied space
+            for (int dx = 0; dx < width; dx++)
+            {
+                for (int dy = 0; dy < height; dy++)
                 {
-                    total += _random.Next(1, diceSize + 1);
+                    if (creature.X + dx == x && creature.Y + dy == y && creature.Z == z)
+                    {
+                        return creature;
+                    }
                 }
             }
         }
         
-        return Math.Max(1, total); // Minimum 1 damage
+        return null;
+    }
+    
+    public bool IsInMeleeRange(Creature attacker, Creature target)
+    {
+        // Get the size of both creatures in squares
+        var (attackerWidth, attackerHeight) = SizeHelper.GetSpaceInSquares(attacker.Size);
+        var (targetWidth, targetHeight) = SizeHelper.GetSpaceInSquares(target.Size);
+        
+        // Check if any square occupied by the attacker is adjacent to any square occupied by the target
+        for (int ax = 0; ax < attackerWidth; ax++)
+        {
+            for (int ay = 0; ay < attackerHeight; ay++)
+            {
+                int attackerTileX = attacker.X + ax;
+                int attackerTileY = attacker.Y + ay;
+                
+                for (int tx = 0; tx < targetWidth; tx++)
+                {
+                    for (int ty = 0; ty < targetHeight; ty++)
+                    {
+                        int targetTileX = target.X + tx;
+                        int targetTileY = target.Y + ty;
+                        
+                        // Check if these tiles are adjacent (including diagonally)
+                        int dx = Math.Abs(attackerTileX - targetTileX);
+                        int dy = Math.Abs(attackerTileY - targetTileY);
+                        int dz = Math.Abs(attacker.Z - target.Z);
+                        
+                        // Adjacent if within 1 square on each axis (includes diagonals)
+                        if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
     
     public (int x, int y, int z)? FindNearestEnemy(Creature creature)
@@ -359,17 +464,6 @@ public class CombatManager
         }
         
         return nearest != null ? (nearest.X, nearest.Y, nearest.Z) : null;
-    }
-    
-    public bool IsInMeleeRange(Creature attacker, Creature target)
-    {
-        int dist = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z);
-        return dist == 1;
-    }
-    
-    public Creature? GetCreatureAt(int x, int y, int z = 0)
-    {
-        return _combatants.FirstOrDefault(c => c.X == x && c.Y == y && c.Z == z && c.IsAlive());
     }
 }
 
@@ -398,7 +492,8 @@ public class AttackResult
         if (IsCritical)
             return $"{Attacker.Name} critically hit {Target.Name} for {Damage} damage!{advantageText}";
         if (IsHit)
-            return $"{Attacker.Name} hit {Target.Name} for {Damage} damage!{advantageText}";
-        return $"{Attacker.Name} missed {Target.Name} ({TotalToHit} vs AC {Target.ArmorClass}){advantageText}";
+            return $"{Attacker.Name} hit {Target.Name} for {Damage} damage! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
+        
+        return $"{Attacker.Name} missed {Target.Name}! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
     }
 }

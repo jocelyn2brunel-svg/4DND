@@ -102,20 +102,39 @@ public static class SizeHelper
     {
         return size switch
         {
-            CreatureSize.Tiny => (2.5f, 2.5f),
-            CreatureSize.Small => (5f, 5f),
-            CreatureSize.Medium => (5f, 5f),
-            CreatureSize.Large => (10f, 10f),
-            CreatureSize.Huge => (15f, 15f),
-            CreatureSize.Gargantuan => (20f, 20f),
+            CreatureSize.Tiny => (2.5f, 2.5f),        // 2½ by 2½ ft.
+            CreatureSize.Small => (5f, 5f),           // 5 by 5 ft.
+            CreatureSize.Medium => (5f, 5f),          // 5 by 5 ft.
+            CreatureSize.Large => (10f, 10f),         // 10 by 10 ft.
+            CreatureSize.Huge => (15f, 15f),          // 15 by 15 ft.
+            CreatureSize.Gargantuan => (20f, 20f),    // 20 by 20 ft. or larger
             _ => (5f, 5f)
+        };
+    }
+    
+    /// <summary>
+    /// Returns the number of 5-foot squares a creature occupies on each axis
+    /// </summary>
+    public static (int Width, int Height) GetSpaceInSquares(CreatureSize size)
+    {
+        return size switch
+        {
+            CreatureSize.Tiny => (1, 1),           // Occupies less than 1 square, but treated as 1 for simplicity
+            CreatureSize.Small => (1, 1),          // 1x1 square
+            CreatureSize.Medium => (1, 1),         // 1x1 square
+            CreatureSize.Large => (2, 2),          // 2x2 squares
+            CreatureSize.Huge => (3, 3),           // 3x3 squares
+            CreatureSize.Gargantuan => (4, 4),     // 4x4 squares (or more)
+            _ => (1, 1)
         };
     }
     
     public static string GetSpaceDescription(CreatureSize size)
     {
         var (width, height) = GetSpaceInFeet(size);
-        return $"{width} by {height} ft.";
+        if (size == CreatureSize.Tiny)
+            return $"{width:0.#} by {height:0.#} ft.";
+        return $"{(int)width} by {(int)height} ft.";
     }
     
     public static string GetExamples(CreatureSize size)
@@ -129,6 +148,23 @@ public static class SizeHelper
             CreatureSize.Huge => "Fire giant, treant",
             CreatureSize.Gargantuan => "Kraken, purple worm",
             _ => ""
+        };
+    }
+    
+    /// <summary>
+    /// Returns the maximum number of Medium creatures that can surround this creature
+    /// </summary>
+    public static int GetMaxSurroundingCreatures(CreatureSize size)
+    {
+        return size switch
+        {
+            CreatureSize.Tiny => 8,         // Same as Medium (Tiny can share space with other creatures)
+            CreatureSize.Small => 8,        // 8 squares around a 1x1
+            CreatureSize.Medium => 8,       // 8 squares around a 1x1
+            CreatureSize.Large => 12,       // 12 squares around a 2x2
+            CreatureSize.Huge => 16,        // 16 squares around a 3x3
+            CreatureSize.Gargantuan => 20,  // 20 squares around a 4x4
+            _ => 8
         };
     }
 }
