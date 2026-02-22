@@ -1480,6 +1480,14 @@ public class Game1 : Game
         if (_showCampaignMap && _state == AppState.Playing)
         {
             _campaignMapViewer.Update(_currentCampaign, mouse, kb, _prevKb);
+
+            var closeMapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
+            if (mouse.LeftButton == ButtonState.Pressed &&
+                _prevMouse.LeftButton == ButtonState.Released &&
+                closeMapButtonRect.Contains(mouse.Position))
+            {
+                _showCampaignMap = false;
+            }
             
             // Close map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
@@ -1580,6 +1588,15 @@ public class Game1 : Game
             {
                 _showCharacterSheet = true;
                 _characterSheet.ResetScroll();
+            }
+
+            var mapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
+            if (!_showCharacterSheet &&
+                mouse.LeftButton == ButtonState.Pressed &&
+                _prevMouse.LeftButton == ButtonState.Released &&
+                mapButtonRect.Contains(mouse.Position))
+            {
+                _showCampaignMap = true;
             }
             
             // Toggle campaign map with M
@@ -1983,6 +2000,15 @@ public class Game1 : Game
         return new Rectangle(viewport.Width - buttonWidth - margin, margin, buttonWidth, buttonHeight);
     }
 
+    private Rectangle GetMapButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 170;
+        const int buttonHeight = 40;
+        const int margin = 12;
+        const int topOffset = 52;
+        return new Rectangle(viewport.Width - buttonWidth - margin, margin + topOffset, buttonWidth, buttonHeight);
+    }
+
     private void DrawInventoryButton(Viewport viewport)
     {
         var buttonRect = GetInventoryButtonRect(viewport);
@@ -1995,6 +2021,29 @@ public class Game1 : Game
         if (_font != null)
         {
             string label = "Inventaire [C]";
+            var labelSize = _font.MeasureString(label);
+            var labelPos = new Vector2(
+                buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
+                buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.75f) / 2);
+            _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private void DrawMapButton(Viewport viewport, bool isCloseButton)
+    {
+        var buttonRect = GetMapButtonRect(viewport);
+        var mouse = Mouse.GetState();
+        bool isHovered = buttonRect.Contains(mouse.Position);
+
+        Color buttonColor = isCloseButton
+            ? (isHovered ? new Color(165, 80, 80) : new Color(130, 60, 60))
+            : (isHovered ? new Color(90, 130, 85) : new Color(65, 105, 60));
+
+        _spriteBatch.Draw(_pixel, buttonRect, buttonColor * 0.95f);
+
+        if (_font != null)
+        {
+            string label = isCloseButton ? "Fermer map [M]" : "Ouvrir map [M]";
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -2046,6 +2095,7 @@ public class Game1 : Game
             else if (_playerCreature != null) { Draw3DCreatureUI(_playerCreature); foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive())) Draw3DCreatureUI(creature); }
 
             DrawInventoryButton(vp);
+            DrawMapButton(vp, false);
 
             if (_combatManager.InCombat && _showVisionOverlay)
             {
@@ -2081,6 +2131,7 @@ public class Game1 : Game
         if (_showCampaignMap && _state == AppState.Playing && _currentCampaign != null)
         {
             _campaignMapViewer.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
+            DrawMapButton(GraphicsDevice.Viewport, true);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
