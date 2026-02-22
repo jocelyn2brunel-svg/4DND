@@ -184,50 +184,66 @@ public class Game1 : Game
     {
         // Spawn some initial enemies for exploration mode
         var rand = new Random();
-        var enemies = new List<Creature>();
         
-        // Create 3-5 enemies scattered around at various heights
+        // Create 3-5 enemies scattered around
         int numEnemies = rand.Next(3, 6);
         
         for (int i = 0; i < numEnemies; i++)
         {
-            int enemyX = rand.Next(-8, 9);
-            int enemyY = rand.Next(-8, 9);
-            int enemyZ = rand.Next(0, 4); // Random height from 0 to 3
-            
-            // Don't spawn at origin (player spawn)
-            if (enemyX == 0 && enemyY == 0 && enemyZ == 0)
-            {
-                enemyX = 5;
-                enemyY = 5;
-                enemyZ = 1;
-            }
-            
+            int enemyX, enemyY, enemyZ;
             int enemyType = rand.Next(0, 7);
-            Creature enemy = enemyType switch
+            bool isValidPosition = false;
+            int attempts = 0;
+            Creature enemy = null;
+
+            while (!isValidPosition && attempts < 100)
             {
-                0 => Creature.CreateGoblin(enemyX, enemyY, enemyZ),
-                1 => Creature.CreateOrc(enemyX, enemyY, enemyZ),
-                2 => Creature.CreateSkeleton(enemyX, enemyY, enemyZ),
-                3 => Creature.CreateWolf(enemyX, enemyY, enemyZ),
-                4 => Creature.CreateKobold(enemyX, enemyY, enemyZ),
-                5 => Creature.CreateUmberHulk(enemyX, enemyY, enemyZ),
-                _ => Creature.CreateCouatl(enemyX, enemyY, enemyZ)
-            };
-            
-            // Flying creatures start flying at elevated positions
-            if (enemy.CanFly && enemyZ > 0)
-            {
-                enemy.IsFlying = true;
+                attempts++;
+                enemyX = rand.Next(-10, 11);
+                enemyY = rand.Next(-10, 11);
+                enemyZ = rand.Next(0, 4); // Random height from 0 to 3
+
+                // Don't spawn at origin (player spawn)
+                if (enemyX == 0 && enemyY == 0 && enemyZ == 0) continue;
+
+                // Don't spawn inside a wall
+                if (_grid.Get(enemyX, enemyY, enemyZ) == TileType.Wall) continue;
+
+                // Don't spawn where another creature is
+                if (_combatManager.GetCreatureAt(enemyX, enemyY, enemyZ) != null) continue;
+
+                enemy = enemyType switch
+                {
+                    0 => Creature.CreateGoblin(enemyX, enemyY, enemyZ),
+                    1 => Creature.CreateOrc(enemyX, enemyY, enemyZ),
+                    2 => Creature.CreateSkeleton(enemyX, enemyY, enemyZ),
+                    3 => Creature.CreateWolf(enemyX, enemyY, enemyZ),
+                    4 => Creature.CreateKobold(enemyX, enemyY, enemyZ),
+                    5 => Creature.CreateUmberHulk(enemyX, enemyY, enemyZ),
+                    _ => Creature.CreateCouatl(enemyX, enemyY, enemyZ)
+                };
+
+                // Check if position is valid for this creature
+                if (enemy.CanFly)
+                {
+                    isValidPosition = true;
+                    if (enemyZ > 0) enemy.IsFlying = true;
+                }
+                else
+                {
+                    // Non-flying creatures must be on a floor
+                    var tile = _grid.Get(enemyX, enemyY, enemyZ);
+                    if (tile == TileType.Floor || tile == TileType.DifficultTerrain)
+                    {
+                        isValidPosition = true;
+                    }
+                }
             }
-            
-            enemies.Add(enemy);
-        }
-        
-        // Add enemies to combat manager for tracking (but don't start combat yet)
-        foreach (var enemy in enemies)
-        {
-            _combatManager.Combatants.Add(enemy);
+
+            if (enemy != null && isValidPosition)
+            {
+                _combatManager.Combatants.Add(enemy);
+            }
         }
     }
     
@@ -504,8 +520,8 @@ public class Game1 : Game
 
     private void Draw3DCube(float x, float y, float z, float scale, Color color)
     {
-        // Centre le cube verticalement sur z au lieu d'avoir sa base sur z
-        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z + 0.5f);
+        // Place la base du cube sur z
+        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z);
         _basicEffect.DiffuseColor = color.ToVector3();
         _basicEffect.Alpha = 1.0f;
         _basicEffect.LightingEnabled = true;
