@@ -146,7 +146,7 @@ public class Game1 : Game
 
         for (int y = -6; y <= 6; y++)
         {
-            _grid.Set(0, y, 0, TileType.Floor);
+            _grid.Set(0, y, 0, (y % 2) == 0 ? TileType.Grass : TileType.Floor);
             _grid.Set(-1, y, 0, (y % 2) == 0 ? TileType.Water : TileType.Empty);
             _grid.Set(1, y, 0, (y % 3) == 0 ? TileType.DifficultTerrain : TileType.Empty);
         }
@@ -236,7 +236,7 @@ public class Game1 : Game
                     if (enemyZ == 0)
                     {
                         var tile = _grid.Get(enemyX, enemyY, 0);
-                        if (tile == TileType.Floor || tile == TileType.DifficultTerrain)
+                        if (tile == TileType.Floor || tile == TileType.Grass || tile == TileType.DifficultTerrain)
                         {
                             isValidPosition = true;
                         }
@@ -459,6 +459,7 @@ public class Game1 : Game
             Color baseColor = cell.Value switch
             {
                 TileType.Floor => Color.ForestGreen,
+                TileType.Grass => new Color(80, 180, 80),
                 TileType.DifficultTerrain => new Color(139, 69, 19),
                 TileType.Wall => Color.Gray,
                 TileType.Water => Color.CornflowerBlue,
