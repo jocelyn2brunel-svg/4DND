@@ -1598,6 +1598,16 @@ public class Game1 : Game
             {
                 _showCampaignMap = true;
             }
+
+            var rotateLeftButtonRect = GetRotateLeftButtonRect(GraphicsDevice.Viewport);
+            var rotateRightButtonRect = GetRotateRightButtonRect(GraphicsDevice.Viewport);
+            if (!_showCharacterSheet &&
+                mouse.LeftButton == ButtonState.Pressed &&
+                _prevMouse.LeftButton == ButtonState.Released)
+            {
+                if (rotateLeftButtonRect.Contains(mouse.Position)) _targetYaw -= MathHelper.ToRadians(45f);
+                else if (rotateRightButtonRect.Contains(mouse.Position)) _targetYaw += MathHelper.ToRadians(45f);
+            }
             
             // Toggle campaign map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
@@ -2009,6 +2019,23 @@ public class Game1 : Game
         return new Rectangle(viewport.Width - buttonWidth - margin, margin + topOffset, buttonWidth, buttonHeight);
     }
 
+    private Rectangle GetRotateLeftButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 80;
+        const int buttonHeight = 40;
+        const int margin = 12;
+        const int spacing = 8;
+        return new Rectangle(viewport.Width - buttonWidth * 2 - margin - spacing, viewport.Height - buttonHeight - margin, buttonWidth, buttonHeight);
+    }
+
+    private Rectangle GetRotateRightButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 80;
+        const int buttonHeight = 40;
+        const int margin = 12;
+        return new Rectangle(viewport.Width - buttonWidth - margin, viewport.Height - buttonHeight - margin, buttonWidth, buttonHeight);
+    }
+
     private void DrawInventoryButton(Viewport viewport)
     {
         var buttonRect = GetInventoryButtonRect(viewport);
@@ -2050,6 +2077,29 @@ public class Game1 : Game
                 buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.75f) / 2);
             _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
         }
+    }
+
+    private void DrawRotationButtons(Viewport viewport)
+    {
+        DrawRotationButton(GetRotateLeftButtonRect(viewport), "Q");
+        DrawRotationButton(GetRotateRightButtonRect(viewport), "E");
+    }
+
+    private void DrawRotationButton(Rectangle buttonRect, string label)
+    {
+        var mouse = Mouse.GetState();
+        bool isHovered = buttonRect.Contains(mouse.Position);
+        Color buttonColor = isHovered ? new Color(130, 130, 160) : new Color(95, 95, 120);
+        _spriteBatch.Draw(_pixel, buttonRect, buttonColor * 0.95f);
+
+        if (_font == null)
+            return;
+
+        var labelSize = _font.MeasureString(label);
+        var labelPos = new Vector2(
+            buttonRect.X + (buttonRect.Width - labelSize.X * 0.8f) / 2,
+            buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.8f) / 2);
+        _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
     }
     
 
@@ -2096,6 +2146,7 @@ public class Game1 : Game
 
             DrawInventoryButton(vp);
             DrawMapButton(vp, false);
+            DrawRotationButtons(vp);
 
             if (_combatManager.InCombat && _showVisionOverlay)
             {
