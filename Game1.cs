@@ -1580,33 +1580,43 @@ public class Game1 : Game
             }
 
             var inventoryButtonRect = GetInventoryButtonRect(GraphicsDevice.Viewport);
+            bool mouseClickedThisFrame = mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released;
+            bool clickedOnGameplayUiButton = false;
+
             if (!wasCharacterSheetOpen &&
                 !_showCharacterSheet &&
-                mouse.LeftButton == ButtonState.Pressed &&
-                _prevMouse.LeftButton == ButtonState.Released &&
+                mouseClickedThisFrame &&
                 inventoryButtonRect.Contains(mouse.Position))
             {
                 _showCharacterSheet = true;
                 _characterSheet.ResetScroll();
+                clickedOnGameplayUiButton = true;
             }
 
             var mapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
             if (!_showCharacterSheet &&
-                mouse.LeftButton == ButtonState.Pressed &&
-                _prevMouse.LeftButton == ButtonState.Released &&
+                mouseClickedThisFrame &&
                 mapButtonRect.Contains(mouse.Position))
             {
                 _showCampaignMap = true;
+                clickedOnGameplayUiButton = true;
             }
 
             var rotateLeftButtonRect = GetRotateLeftButtonRect(GraphicsDevice.Viewport);
             var rotateRightButtonRect = GetRotateRightButtonRect(GraphicsDevice.Viewport);
             if (!_showCharacterSheet &&
-                mouse.LeftButton == ButtonState.Pressed &&
-                _prevMouse.LeftButton == ButtonState.Released)
+                mouseClickedThisFrame)
             {
-                if (rotateLeftButtonRect.Contains(mouse.Position)) _targetYaw -= MathHelper.ToRadians(45f);
-                else if (rotateRightButtonRect.Contains(mouse.Position)) _targetYaw += MathHelper.ToRadians(45f);
+                if (rotateLeftButtonRect.Contains(mouse.Position))
+                {
+                    _targetYaw -= MathHelper.ToRadians(45f);
+                    clickedOnGameplayUiButton = true;
+                }
+                else if (rotateRightButtonRect.Contains(mouse.Position))
+                {
+                    _targetYaw += MathHelper.ToRadians(45f);
+                    clickedOnGameplayUiButton = true;
+                }
             }
             
             // Toggle campaign map with M
@@ -1748,7 +1758,7 @@ public class Game1 : Game
             // Exploration movement (outside combat)
             if (!_combatManager.InCombat)
             {
-                if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
                     var hovered = GetHoveredTile();
                     if (hovered.HasValue && _playerCreature != null)
@@ -1810,7 +1820,7 @@ public class Game1 : Game
                     if (_selectedAction == CombatAction.Attack)
                     {
                         // Click on grid to attack
-                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                         {
                             var hovered = GetHoveredTile();
                             if (hovered.HasValue)
@@ -1848,7 +1858,7 @@ public class Game1 : Game
                     if (_selectedAction == CombatAction.Move)
                     {
                         // Simple: click to move
-                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                         {
                             var hovered = GetHoveredTile();
                             if (hovered.HasValue)
