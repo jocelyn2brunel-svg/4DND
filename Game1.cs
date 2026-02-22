@@ -521,9 +521,35 @@ public class Game1 : Game
         if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) return;
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
-        float scale = creature.Size switch { CreatureSize.Tiny => 0.4f, CreatureSize.Small => 0.7f, CreatureSize.Large => 1.5f, CreatureSize.Huge => 2.0f, CreatureSize.Gargantuan => 2.5f, _ => 0.9f };
-        Draw3DCube(creature.X, creature.Y, creature.Z, scale, color);
-        if (creature.Z > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.X, creature.Y, creature.Z), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f); }
+        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
+        float visualHeight = capsuleHeight + (2f * capsuleRadius);
+        Draw3DCube(creature.X, creature.Y, creature.Z, visualHeight, color);
+        if (creature.Z > 0)
+        {
+            Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f);
+            float lineStartZ = creature.Z + capsuleRadius;
+            Draw3DLine(new Vector3(creature.X, creature.Y, lineStartZ), new Vector3(creature.X, creature.Y, 0), Color.Gray * 0.3f);
+        }
+    }
+
+    private static (float Radius, float Height) GetCreatureCapsuleDimensions(CreatureSize size)
+    {
+        return size switch
+        {
+            CreatureSize.Tiny => (0.18f, 0.28f),
+            CreatureSize.Small => (0.28f, 0.44f),
+            CreatureSize.Medium => (0.35f, 0.55f),
+            CreatureSize.Large => (0.60f, 0.90f),
+            CreatureSize.Huge => (0.80f, 1.20f),
+            CreatureSize.Gargantuan => (1.00f, 1.50f),
+            _ => (0.35f, 0.55f)
+        };
+    }
+
+    private static float GetCreatureVisualTopZ(Creature creature)
+    {
+        var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
+        return creature.Z + capsuleHeight + (2f * capsuleRadius);
     }
 
     private void Draw3DCube(float x, float y, float z, float scale, Color color)
@@ -542,7 +568,9 @@ public class Game1 : Game
     {
         if (creature.Z > _currentViewLevel) return;
         if (_font == null || (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))) return;
-        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, creature.Z + 1.2f), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+        var (capsuleRadius, _) = GetCreatureCapsuleDimensions(creature.Size);
+        float uiAnchorZ = GetCreatureVisualTopZ(creature) + MathF.Max(0.15f, capsuleRadius * 0.4f);
+        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.X, creature.Y, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
