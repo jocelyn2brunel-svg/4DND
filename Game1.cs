@@ -2205,8 +2205,8 @@ public class Game1 : Game
                     _spriteBatch.DrawString(_font, "Wall (Blocks Move/Vision)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     legendY += 35;
                     
-                    // Creature indicators (top of cube)
-                    _spriteBatch.DrawString(_font, "Creature Indicators:", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                    // Creature indicators (top of unit)
+                    _spriteBatch.DrawString(_font, "Creature Indicators (top of unit):", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                     legendY += 20;
                     
                     _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Gold);
