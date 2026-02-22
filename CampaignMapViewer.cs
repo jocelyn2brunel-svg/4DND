@@ -423,6 +423,17 @@ namespace _4DND
                 string wrapped = WrapText(campaign.CurrentObjective, 330);
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             }
+
+            // Affichage des détails de la localisation sélectionnée
+            if (_selectedLocation != null)
+            {
+                y += 30;
+                sb.DrawString(_font, $"Selected: {_selectedLocation.Name}", new Vector2(panelRect.X + 10, y), Color.LightSkyBlue, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                y += 18;
+                sb.DrawString(_font, $"Type: {_selectedLocation.Type}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                y += 18;
+                sb.DrawString(_font, $"Description: {_selectedLocation.Description}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            }
         }
         
         private Vector2 HexToScreen(int x, int y, Vector2 center)
