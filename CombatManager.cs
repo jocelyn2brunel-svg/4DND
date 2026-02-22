@@ -7,6 +7,8 @@ using static System.Math;
 
 namespace _4DND;
 
+public enum CombatAction { None, Move, Attack, EndTurn }
+
 public class CombatManager
 {
     private readonly record struct GridNode(int X, int Y, int Z);
