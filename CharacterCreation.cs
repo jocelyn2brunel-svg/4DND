@@ -39,6 +39,17 @@ public class CharacterCreation
     // Hover tooltip
     private string _tooltipText = "";
     private Vector2 _tooltipPosition;
+    private static readonly string[] _namePrefixes =
+    {
+        "Ara", "Bel", "Cor", "Dra", "Ela", "Fen", "Gal", "Ira", "Kae", "Lun",
+        "Myr", "Nym", "Or", "Phae", "Quin", "Riv", "Syl", "Ther", "Val", "Zan"
+    };
+    private static readonly string[] _nameSuffixes =
+    {
+        "dor", "wyn", "ric", "thas", "lia", "rin", "mond", "dris", "vash", "riel",
+        "thorn", "dell", "gorn", "mere", "nox", "dain", "stra", "len", "mir", "vek"
+    };
+    private readonly Random _random = new();
 
     public CharacterCreation(SpriteFont font, Texture2D pixel)
     {
@@ -150,11 +161,20 @@ public class CharacterCreation
         if (_createStep == 0)
         {
             var nameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, menuWidthC - paddingC * 2, 50);
+            var randomNameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 100, 240, 40);
             
             // Click to focus
             if (IsMouseClicked(mouse, _prevMouse, nameRect))
             {
                 // Already focused on this step
+            }
+
+            if (randomNameRect.Contains(mouse.Position))
+                _tooltipText = "Generate a random fantasy name";
+
+            if (IsMouseClicked(mouse, _prevMouse, randomNameRect))
+            {
+                _createName = GenerateRandomName();
             }
             
             foreach (var k in kb.GetPressedKeys())
@@ -410,13 +430,22 @@ public class CharacterCreation
         var nameColor = nameRect.Contains(mouse.Position) ? Color.White : Color.LightGray;
         spriteBatch.Draw(_pixel, nameRect, nameColor);
         DrawBorder(spriteBatch, nameRect, 2, Color.Gold * 0.4f);
+
+        var randomNameRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 100, 240, 40);
+        var randomNameColor = randomNameRect.Contains(mouse.Position) ? Color.MediumPurple : Color.DarkSlateBlue;
+        spriteBatch.Draw(_pixel, randomNameRect, randomNameColor);
+        DrawBorder(spriteBatch, randomNameRect, 1, Color.White * 0.7f);
+
+        var randomNameText = "[D6] Nom aleatoire";
+        var randomNameTextSize = _font.MeasureString(randomNameText);
+        spriteBatch.DrawString(_font, randomNameText, new Vector2(randomNameRect.X + (randomNameRect.Width - randomNameTextSize.X * 0.65f) / 2, randomNameRect.Y + (randomNameRect.Height - randomNameTextSize.Y * 0.65f) / 2), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
         
         var displayName = string.IsNullOrEmpty(_createName) ? "Type your character's name..." : _createName + (((int)(gameTime.TotalGameTime.TotalSeconds * 2) % 2) == 0 ? "|" : "");
         spriteBatch.DrawString(_font, displayName, new Vector2(nameRect.X + 12, nameRect.Y + 12), string.IsNullOrEmpty(_createName) ? Color.Gray : Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         
         // Tips
         var tipText = "?? Tips: Choose a name that fits your character's background and personality.";
-        spriteBatch.DrawString(_font, tipText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 110), Color.LightBlue, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, tipText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 150), Color.LightBlue, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
     }
 
     private void DrawRaceStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
@@ -488,7 +517,7 @@ public class CharacterCreation
         
         foreach (var bonus in bonuses)
         {
-            spriteBatch.DrawString(_font, "  • " + bonus, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "  Â• " + bonus, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
         
@@ -498,19 +527,19 @@ public class CharacterCreation
         spriteBatch.DrawString(_font, "Traits:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         yOffset += 25;
         
-        spriteBatch.DrawString(_font, $"  • Speed: {selectedRace.BaseSpeed} feet", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, $"  Â• Speed: {selectedRace.BaseSpeed} feet", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
         yOffset += 22;
         
         if (selectedRace.DarkvisionRange > 0)
         {
-            var darkvisionText = selectedRace.HasSuperiorDarkvision ? $"  • Superior Darkvision: {selectedRace.DarkvisionRange} feet" : $"  • Darkvision: {selectedRace.DarkvisionRange} feet";
+            var darkvisionText = selectedRace.HasSuperiorDarkvision ? $"  Â• Superior Darkvision: {selectedRace.DarkvisionRange} feet" : $"  Â• Darkvision: {selectedRace.DarkvisionRange} feet";
             spriteBatch.DrawString(_font, darkvisionText, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
         
         if (selectedRace.HasSunlightSensitivity)
         {
-            spriteBatch.DrawString(_font, "  • Sunlight Sensitivity", new Vector2(detailsRect.X + 12, yOffset), Color.Orange, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "  Â• Sunlight Sensitivity", new Vector2(detailsRect.X + 12, yOffset), Color.Orange, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
     }
@@ -584,7 +613,7 @@ public class CharacterCreation
         yOffset += 22;
         foreach (var save in selectedClass.SavingThrowProficiencies)
         {
-            spriteBatch.DrawString(_font, $"  • {save}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  Â• {save}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 20;
         }
         
@@ -738,7 +767,7 @@ public class CharacterCreation
         yOffset += 22;
         foreach (var save in selectedClass.SavingThrowProficiencies)
         {
-            spriteBatch.DrawString(_font, $"  • {save}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  Â• {save}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 20;
         }
         
@@ -765,14 +794,14 @@ public class CharacterCreation
         foreach (var item in startingEquipment.EquippedItems)
         {
             if (equipCount >= 3) break;
-            spriteBatch.DrawString(_font, $"  • {item} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  Â• {item} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
         foreach (var item in startingEquipment.Items)
         {
             if (equipCount >= 6) break;
-            spriteBatch.DrawString(_font, $"  • {item}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  Â• {item}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
@@ -993,6 +1022,13 @@ public class CharacterCreation
         c.CalculateDerivedStats();
         
         return c;
+    }
+
+    private string GenerateRandomName()
+    {
+        var prefix = _namePrefixes[_random.Next(_namePrefixes.Length)];
+        var suffix = _nameSuffixes[_random.Next(_nameSuffixes.Length)];
+        return prefix + suffix;
     }
 
     private Character CreateCharacterFromData()
