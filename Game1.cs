@@ -1858,6 +1858,8 @@ public class Game1 : Game
 
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
+        var vp = GraphicsDevice.Viewport;
+
         if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
         {
             if (_combatManager.InCombat) { foreach (var creature in _combatManager.Combatants) if (creature.IsAlive()) Draw3DCreatureUI(creature); }
@@ -1885,8 +1887,6 @@ public class Game1 : Game
                 }
             }
         }
-
-        var vp = GraphicsDevice.Viewport;
 
         // CHARACTER SHEET
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
