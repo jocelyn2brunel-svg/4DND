@@ -206,7 +206,7 @@ namespace _4DND
                     _ => "Unknown"
                 };
                 
-                sb.DrawString(_font, $" {typeName}", new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, $"- {typeName}", new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
                 y += 16;
             }
         }
