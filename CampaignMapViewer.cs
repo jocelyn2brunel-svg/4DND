@@ -431,7 +431,7 @@ namespace _4DND
             float screenY = size * 1.5f * y;
                 y += 18;
                 sb.DrawString(_font, $"Description: {_selectedLocation.Description}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
-            }
+           
         }
         
         private Vector2 HexToScreen(int x, int y, Vector2 center)
