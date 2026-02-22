@@ -517,7 +517,7 @@ public class CharacterCreation
         
         foreach (var bonus in bonuses)
         {
-            spriteBatch.DrawString(_font, "   " + bonus, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "  - " + bonus, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
         
@@ -527,19 +527,19 @@ public class CharacterCreation
         spriteBatch.DrawString(_font, "Traits:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         yOffset += 25;
         
-        spriteBatch.DrawString(_font, $"   Speed: {selectedRace.BaseSpeed} feet", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, $"  - Speed: {selectedRace.BaseSpeed} feet", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
         yOffset += 22;
         
         if (selectedRace.DarkvisionRange > 0)
         {
-            var darkvisionText = selectedRace.HasSuperiorDarkvision ? $"   Superior Darkvision: {selectedRace.DarkvisionRange} feet" : $"   Darkvision: {selectedRace.DarkvisionRange} feet";
+            var darkvisionText = selectedRace.HasSuperiorDarkvision ? $"  - Superior Darkvision: {selectedRace.DarkvisionRange} feet" : $"  - Darkvision: {selectedRace.DarkvisionRange} feet";
             spriteBatch.DrawString(_font, darkvisionText, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
         
         if (selectedRace.HasSunlightSensitivity)
         {
-            spriteBatch.DrawString(_font, "   Sunlight Sensitivity", new Vector2(detailsRect.X + 12, yOffset), Color.Orange, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "  - Sunlight Sensitivity", new Vector2(detailsRect.X + 12, yOffset), Color.Orange, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
     }
@@ -613,7 +613,7 @@ public class CharacterCreation
         yOffset += 22;
         foreach (var save in selectedClass.SavingThrowProficiencies)
         {
-            spriteBatch.DrawString(_font, $"   {save}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {save}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 20;
         }
         
@@ -767,7 +767,7 @@ public class CharacterCreation
         yOffset += 22;
         foreach (var save in selectedClass.SavingThrowProficiencies)
         {
-            spriteBatch.DrawString(_font, $"   {save}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {save}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 20;
         }
         
@@ -794,14 +794,14 @@ public class CharacterCreation
         foreach (var item in startingEquipment.EquippedItems)
         {
             if (equipCount >= 3) break;
-            spriteBatch.DrawString(_font, $"   {item} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {item} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
         foreach (var item in startingEquipment.Items)
         {
             if (equipCount >= 6) break;
-            spriteBatch.DrawString(_font, $"   {item}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {item}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
