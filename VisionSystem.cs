@@ -3,44 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 
-namespace _4DND;
+#nullable enable
 
-public class AreaEffect
-{
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int Radius { get; set; }
-    public LightType EffectType { get; set; }
-    public bool BlocksVision { get; set; } = false;
-    public bool IsActive { get; set; } = true;
-    public int Duration { get; set; } = -1;
-    
-    public static AreaEffect FogCloud(int x, int y, int radius = 20)
-    {
-        return new AreaEffect
-        {
-            X = x,
-            Y = y,
-            Radius = radius,
-            EffectType = LightType.Darkness,
-            BlocksVision = true,
-            Duration = 10
-        };
-    }
-    
-    public static AreaEffect Darkness(int x, int y, int radius = 15)
-    {
-        return new AreaEffect
-        {
-            X = x,
-            Y = y,
-            Radius = radius,
-            EffectType = LightType.Darkness,
-            BlocksVision = false,
-            Duration = 10
-        };
-    }
-}
+namespace _4DND;
 
 public class VisionSystem
 {
@@ -213,6 +178,13 @@ public class VisionSystem
                     {
                         if (!effect.IsActive || !effect.BlocksVision) continue;
                         
+                        // Blindsight can see through most vision-blocking effects (like Fog Cloud)
+                        int distToObserver = (Math.Abs(tx - observer.X) + Math.Abs(ty - observer.Y)) * 5;
+                        if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
+                        {
+                            continue;
+                        }
+
                         int distToEffect = Math.Abs(tx - effect.X) + Math.Abs(ty - effect.Y);
                         int effectTiles = effect.Radius / 5;
                         
@@ -314,6 +286,12 @@ public class VisionSystem
         {
             if (!effect.IsActive || !effect.BlocksVision) continue;
             
+            // Blindsight can see through most vision-blocking effects
+            if (observer.HasBlindSight && distance <= observer.BlindSightRange)
+            {
+                continue;
+            }
+
             int distToEffect = Math.Abs(targetX - effect.X) + Math.Abs(targetY - effect.Y);
             int effectTiles = effect.Radius / 5;
             
@@ -359,5 +337,50 @@ public class VisionSystem
             }
             return false;
         });
+    }
+
+    public bool IsLightlyObscured(int x, int y, Creature observer)
+    {
+        var lightLevel = GetLightLevel(x, y);
+        if (lightLevel == LightType.Dim) return true;
+
+        if (lightLevel == LightType.Darkness)
+        {
+            int dist = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y)) * 5;
+            // Darkness is dim light for creatures with Darkvision
+            if (observer.DarkvisionRange > 0 && dist <= observer.DarkvisionRange) return true;
+        }
+
+        return false;
+    }
+
+    public bool IsHeavilyObscured(int x, int y, Creature observer)
+    {
+        int distToObserver = (Math.Abs(x - observer.X) + Math.Abs(y - observer.Y)) * 5;
+
+        // Blindsight ignores heavy obscuration within its range
+        if (observer.HasBlindSight && distToObserver <= observer.BlindSightRange)
+        {
+            return false;
+        }
+
+        foreach (var effect in _areaEffects)
+        {
+            if (effect.IsActive && effect.BlocksVision)
+            {
+                int distance = Math.Abs(x - effect.X) + Math.Abs(y - effect.Y);
+                if (distance <= effect.Radius / 5) return true;
+            }
+        }
+
+        var lightLevel = GetLightLevel(x, y);
+        if (lightLevel == LightType.Darkness)
+        {
+            if (observer.HasTrueSight && distToObserver <= observer.TrueSightRange) return false;
+            if (observer.DarkvisionRange > 0 && distToObserver <= observer.DarkvisionRange) return false;
+            return true;
+        }
+
+        return false;
     }
 }

@@ -18,9 +18,10 @@ public class AreaEffect
     public int Y { get; set; }
     public AreaShape Shape { get; set; }
     public int Radius { get; set; }  // In feet
-    public int Duration { get; set; } // In rounds
+    public int Duration { get; set; } = -1; // In rounds, -1 for infinite
     public LightType EffectType { get; set; }
     public bool BlocksVision { get; set; } = false;
+    public bool IsActive { get; set; } = true;
     
     public static AreaEffect FogCloud(int x, int y, int radius = 20)
     {
@@ -32,7 +33,8 @@ public class AreaEffect
             Radius = radius,
             Duration = 10, // 1 minute = 10 rounds
             EffectType = LightType.Darkness,
-            BlocksVision = true
+            BlocksVision = true,
+            IsActive = true
         };
     }
     
@@ -46,7 +48,8 @@ public class AreaEffect
             Radius = radius,
             Duration = 10,
             EffectType = LightType.Darkness,
-            BlocksVision = false
+            BlocksVision = false,
+            IsActive = true
         };
     }
 }
