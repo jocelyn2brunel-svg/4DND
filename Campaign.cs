@@ -202,7 +202,9 @@ namespace _4DND
         /// </summary>
         public List<Location> GetLocationsAtScale(MapScale scale)
         {
-            return AllLocations.FindAll(l => l.IsDiscovered && (int)l.MinimumScale <= (int)scale);
+            // Important locations (higher MinimumScale) should be visible at all scales.
+            // Small locations (lower MinimumScale) should only be visible at detailed scales.
+            return AllLocations.FindAll(l => l.IsDiscovered && (int)l.MinimumScale >= (int)scale);
         }
 
         /// <summary>
@@ -274,12 +276,45 @@ namespace _4DND
         /// <summary>
         /// Computes distance between two axial hex coordinates.
         /// </summary>
-        private static int GetHexDistance(int x1, int y1, int x2, int y2)
+        public static int GetHexDistance(int q1, int r1, int q2, int r2)
         {
-            int dx = x1 - x2;
-            int dy = y1 - y2;
-            int dz = -(x1 + y1) + (x2 + y2);
-            return (Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz)) / 2;
+            int dq = q1 - q2;
+            int dr = r1 - r2;
+            int ds = -(q1 + r1) + (q2 + r2);
+            return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(ds)) / 2;
+        }
+
+        /// <summary>
+        /// Rounds fractional axial coordinates to the nearest integer axial hex.
+        /// </summary>
+        public static (int q, int r) RoundToHex(float q, float r)
+        {
+            float s = -q - r;
+            int iq = (int)Math.Round(q);
+            int ir = (int)Math.Round(r);
+            int is_ = (int)Math.Round(s);
+
+            float dq = Math.Abs(iq - q);
+            float dr = Math.Abs(ir - r);
+            float ds = Math.Abs(is_ - s);
+
+            if (dq > dr && dq > ds)
+                iq = -ir - is_;
+            else if (dr > ds)
+                ir = -iq - is_;
+
+            return (iq, ir);
+        }
+
+        /// <summary>
+        /// Converts Cartesian coordinates to axial hex coordinates (pointy-top).
+        /// Assumes 1 hex unit = distance between centers.
+        /// </summary>
+        public static (int q, int r) CartesianToAxial(float x, float y)
+        {
+            float r_float = y * 2f / (float)Math.Sqrt(3);
+            float q_float = x - r_float / 2f;
+            return RoundToHex(q_float, r_float);
         }
         
         /// <summary>

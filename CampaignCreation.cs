@@ -561,15 +561,17 @@ namespace _4DND
                 float angleRad = MathHelper.ToRadians(currentAngle + (float)rand.NextDouble() * (angleStep * 0.4f) - (angleStep * 0.2f));
                 float distance = (float)rand.NextDouble() * 15f + 10f; // Between 10 and 25 miles
 
-                int x = (int)(Math.Cos(angleRad) * distance);
-                int y = (int)(Math.Sin(angleRad) * distance);
+                float x_cart = (float)(Math.Cos(angleRad) * distance);
+                float y_cart = (float)(Math.Sin(angleRad) * distance);
+
+                var (q, r) = Campaign.CartesianToAxial(x_cart, y_cart);
 
                 campaign.AddLocation(new Location
                 {
                     Name = locData.Name,
                     Type = locData.Type,
-                    X = x,
-                    Y = y,
+                    X = q,
+                    Y = r,
                     Description = locData.Type == SettlementType.Dungeon ? "A mysterious location awaits exploration." : "A notable settlement in the region.",
                     IsDiscovered = true
                 });

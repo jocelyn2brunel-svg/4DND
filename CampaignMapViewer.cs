@@ -107,14 +107,14 @@ namespace _4DND
             var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
             foreach (var region in regionsAtScale)
             {
-                DrawRegion(sb, center, region);
+                DrawRegion(sb, center, region, campaign.CurrentScale);
             }
             
             // Draw locations at current scale
             var locationsAtScale = campaign.GetLocationsAtScale(campaign.CurrentScale);
             foreach (var location in locationsAtScale)
             {
-                DrawLocation(sb, center, location);
+                DrawLocation(sb, center, location, campaign.CurrentScale);
             }
             
             // Draw info panel
@@ -248,31 +248,34 @@ namespace _4DND
         private void DrawGrid(SpriteBatch sb, Vector2 center)
         {
             // Simple hex grid visualization
-            int gridRange = 20;
+            int gridRange = 25;
             
-            float hexWidth = _tileSize * _zoom * (float)Math.Sqrt(3);
-            float hexHeight = _tileSize * _zoom * 2;
-            
-            for (int x = -gridRange; x <= gridRange; x++)
+            for (int q = -gridRange; q <= gridRange; q++)
             {
-                for (int y = -gridRange; y <= gridRange; y++)
+                int r1 = Math.Max(-gridRange, -q - gridRange);
+                int r2 = Math.Min(gridRange, -q + gridRange);
+
+                for (int r = r1; r <= r2; r++)
                 {
-                    var pos = HexToScreen(x, y, center);
+                    var pos = HexToScreen(q, r, center);
                     
                     // Fill center + outline so tiles remain visible on dark backgrounds
                     int centerSize = Math.Max(2, (int)(_tileSize * _zoom * 0.18f));
-                    sb.Draw(_pixel, new Rectangle((int)pos.X - centerSize / 2, (int)pos.Y - centerSize / 2, centerSize, centerSize), Color.SlateGray * 0.45f);
-                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.LightSlateGray * 0.75f);
+                    sb.Draw(_pixel, new Rectangle((int)pos.X - centerSize / 2, (int)pos.Y - centerSize / 2, centerSize, centerSize), Color.SlateGray * 0.35f);
+                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.LightSlateGray * 0.5f);
                 }
             }
         }
         
-        private void DrawRegion(SpriteBatch sb, Vector2 center, Region region)
+        private void DrawRegion(SpriteBatch sb, Vector2 center, Region region, MapScale currentScale)
         {
-            var pos = HexToScreen(region.CenterX, region.CenterY, center);
+            float scaleDivisor = Campaign.GetHexSize(currentScale);
+            var pos = HexToScreen((float)region.CenterX / scaleDivisor, (float)region.CenterY / scaleDivisor, center);
             
             // Draw region circle
-            int radius = (int)(region.Radius * _tileSize * _zoom);
+            // Radius in pixels: region.Radius (miles) / scaleDivisor * (distance between hex centers)
+            float hexDistance = (float)Math.Sqrt(3) * _tileSize * _zoom;
+            int radius = (int)((float)region.Radius * hexDistance / scaleDivisor);
             
             for (int angle = 0; angle < 360; angle += 10)
             {
@@ -293,9 +296,10 @@ namespace _4DND
             }
         }
         
-        private void DrawLocation(SpriteBatch sb, Vector2 center, Location location)
+        private void DrawLocation(SpriteBatch sb, Vector2 center, Location location, MapScale currentScale)
         {
-            var pos = HexToScreen(location.X, location.Y, center);
+            float scaleDivisor = Campaign.GetHexSize(currentScale);
+            var pos = HexToScreen((float)location.X / scaleDivisor, (float)location.Y / scaleDivisor, center);
             
             // Location color based on type
             Color locationColor = location.Type switch
@@ -432,15 +436,13 @@ namespace _4DND
 
         }
         
-        private Vector2 HexToScreen(int x, int y, Vector2 center)
+        private Vector2 HexToScreen(float q, float r, Vector2 center)
         {
-            // Convert hex coordinates to screen position (pointy-top hexagons)
-            // For pointy-top hexagons in offset coordinates:
-            float hexWidth = _tileSize * _zoom * (float)Math.Sqrt(3);
-            float hexHeight = _tileSize * _zoom * 1.5f;
+            // Convert axial hex coordinates (q, r) to screen position (pointy-top hexagons)
+            float size = _tileSize * _zoom;
             
-            float screenX = x * hexWidth;
-            float screenY = y * hexHeight + (x % 2) * hexHeight * 0.5f;
+            float screenX = size * ((float)Math.Sqrt(3) * q + (float)Math.Sqrt(3) / 2f * r);
+            float screenY = size * (1.5f * r);
             
             return center + _cameraOffset + new Vector2(screenX, screenY);
         }
