@@ -96,13 +96,13 @@ public static class VisionSkillChecks
         bool hasDisadvantage = false;
         
         // Disadvantage if in dim light or lightly obscured
-        if (visionSystem.IsLightlyObscured(x, y, playerCreature))
+        if (visionSystem.IsLightlyObscured(x, y, z, playerCreature))
         {
             hasDisadvantage = true;
         }
         
         // Auto-fail if heavily obscured (no need to roll)
-        if (visionSystem.IsHeavilyObscured(x, y, playerCreature))
+        if (visionSystem.IsHeavilyObscured(x, y, z, playerCreature))
         {
             return new D20Check
             {
