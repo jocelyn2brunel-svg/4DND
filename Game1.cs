@@ -67,6 +67,7 @@ public class Game1 : Game
 
     private KeyboardState _prevKb;
     private SpriteFont _font = null!;
+    private HashSet<char> _supportedChars = new();
 
     private bool _showCharacterSheet = false;
 
@@ -122,10 +123,12 @@ public class Game1 : Game
         try
         {
             _font = Content.Load<SpriteFont>("DefaultFont");
+            _supportedChars = new HashSet<char>(_font.Characters);
         }
         catch (Microsoft.Xna.Framework.Content.ContentLoadException)
         {
             _font = null!;
+            _supportedChars = new HashSet<char>();
             System.Console.WriteLine("Warning: DefaultFont not found. Build the Content/Content.mgcb with the MonoGame Pipeline Tool to generate DefaultFont.xnb. Menu text will be hidden.");
         }
 
@@ -487,7 +490,7 @@ public class Game1 : Game
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, (int)(60 * (float)creature.CurrentHP / creature.MaxHP), 6), Color.Green);
-        string name = $"{creature.Name} [Z{creature.Z}]" + (creature.IsFlying ? " ✈" : "");
+        string name = $"{creature.Name} [Z{creature.Z}]" + (creature.IsFlying ? " [Vol]" : "");
         Vector2 size = _font.MeasureString(name) * 0.6f;
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - (int)size.X / 2 - 4, (int)pos.Y - 40, (int)size.X + 8, (int)size.Y + 4), Color.Black * 0.6f);
         _spriteBatch.DrawString(_font, name, new Vector2(pos.X - size.X / 2, pos.Y - 38), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -1465,22 +1468,15 @@ public class Game1 : Game
     
     private string SafeString(string text)
     {
-        if (_font == null) return text;
+        if (_font == null || text == null) return text ?? "";
         
-        var result = "";
-        foreach (char c in text)
+        char[] chars = text.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
         {
-            try
-            {
-                _font.MeasureString(c.ToString());
-                result += c;
-            }
-            catch
-            {
-                result += '?';
-            }
+            if (!_supportedChars.Contains(chars[i]))
+                chars[i] = '?';
         }
-        return result;
+        return new string(chars);
     }
     
 
