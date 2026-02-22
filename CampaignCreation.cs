@@ -77,6 +77,21 @@ namespace _4DND
             "Custom ending"
         };
 
+        private readonly string[] _extraSettlementNames = new[]
+        {
+            "Oakhaven", "Willow Creek", "Ironforge", "Stonehill", "Meadowere",
+            "Riverrun", "Shadowglen", "Greenhill", "Stonebridge", "Raven's Watch",
+            "Silverwood", "Goldmeadow", "Crossroad Inn", "Winterhaven", "Thistle-wick"
+        };
+
+        private readonly string[] _extraDungeonNames = new[]
+        {
+            "Shadow Crypt", "Ancient Mines", "Cursed Grotto", "Dragon's Lair",
+            "Whispering Caverns", "Lost Sanctum", "The Obsidian Vault", "Gloom-rot Cave",
+            "Silent Tombs", "Serpent's Burrow", "Frozen Outpost", "Bandit's Hideout",
+            "Ruined Temple of the Sun"
+        };
+
         private int _selectedHookIndex = 0;
         private int _selectedMiddleIndex = 0;
         private int _selectedEndingIndex = 0;
@@ -490,17 +505,77 @@ namespace _4DND
             campaign.AdventureEnding = _adventureEnding;
             campaign.CurrentObjective = _adventureHook; // Set initial objective to the hook
 
-            // Add a starting dungeon location near home base
-            var dungeon = new Location
+            var rand = new Random();
+
+            // Add 1-3 extra settlements and 2-4 dungeons (DMG guidance: Start Small)
+            int extraSettlementsCount = rand.Next(1, 4);
+            int dungeonsCount = rand.Next(2, 5);
+            int totalExtra = extraSettlementsCount + dungeonsCount;
+
+            // Homogeneous distribution around home base
+            float angleStep = 360f / totalExtra;
+            float currentAngle = (float)rand.NextDouble() * 360f;
+
+            var extraLocations = new List<(string Name, SettlementType Type)>();
+
+            // Settlements
+            var availSettlementNames = new List<string>(_extraSettlementNames);
+            for (int i = 0; i < extraSettlementsCount; i++)
             {
-                Name = "Nearby Dungeon",
-                Type = SettlementType.Dungeon,
-                X = 5,
-                Y = 5,
-                Description = "A mysterious dungeon awaits exploration.",
-                IsDiscovered = false
-            };
-            campaign.AddLocation(dungeon);
+                int idx = rand.Next(availSettlementNames.Count);
+                string name = availSettlementNames[idx];
+                availSettlementNames.RemoveAt(idx);
+
+                SettlementType type = rand.Next(10) switch
+                {
+                    0 => SettlementType.Town,
+                    1 or 2 => SettlementType.Hamlet,
+                    _ => SettlementType.Village
+                };
+                extraLocations.Add((name, type));
+            }
+
+            // Dungeons
+            var availDungeonNames = new List<string>(_extraDungeonNames);
+            for (int i = 0; i < dungeonsCount; i++)
+            {
+                int idx = rand.Next(availDungeonNames.Count);
+                string name = availDungeonNames[idx];
+                availDungeonNames.RemoveAt(idx);
+                extraLocations.Add((name, SettlementType.Dungeon));
+            }
+
+            // Shuffle
+            for (int i = extraLocations.Count - 1; i > 0; i--)
+            {
+                int j = rand.Next(i + 1);
+                var temp = extraLocations[i];
+                extraLocations[i] = extraLocations[j];
+                extraLocations[j] = temp;
+            }
+
+            // Place them
+            for (int i = 0; i < extraLocations.Count; i++)
+            {
+                var locData = extraLocations[i];
+                float angleRad = MathHelper.ToRadians(currentAngle + (float)rand.NextDouble() * (angleStep * 0.4f) - (angleStep * 0.2f));
+                float distance = (float)rand.NextDouble() * 15f + 10f; // Between 10 and 25 miles
+
+                int x = (int)(Math.Cos(angleRad) * distance);
+                int y = (int)(Math.Sin(angleRad) * distance);
+
+                campaign.AddLocation(new Location
+                {
+                    Name = locData.Name,
+                    Type = locData.Type,
+                    X = x,
+                    Y = y,
+                    Description = locData.Type == SettlementType.Dungeon ? "A mysterious location awaits exploration." : "A notable settlement in the region.",
+                    IsDiscovered = true
+                });
+
+                currentAngle += angleStep;
+            }
 
             return campaign;
         }
@@ -529,14 +604,6 @@ namespace _4DND
             
             // Create campaign
             campaign = CreateFinalCampaign();
-            
-            // Override dungeon position for randomness
-            var dungeon = campaign.AllLocations.FirstOrDefault(l => l.Type == SettlementType.Dungeon);
-            if (dungeon != null)
-            {
-                dungeon.X = rand.Next(3, 8);
-                dungeon.Y = rand.Next(3, 8);
-            }
         }
         
         private void HandleTyping(KeyboardState kb, KeyboardState prevKb)

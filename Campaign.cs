@@ -120,14 +120,14 @@ namespace _4DND
                 Population = GetTypicalPopulation(homeBaseType)
             };
             
-            // Create local region (1 mile radius = about 10 hexes)
+            // Create local region (1 hex = 1 mile, radius 30 hexes)
             campaign.LocalRegion = new Region
             {
                 Name = $"{homeBaseName} Region",
                 Description = "The area surrounding your home base.",
                 CenterX = 0,
                 CenterY = 0,
-                Radius = 10,
+                Radius = 30,
                 Terrain = "Mixed"
             };
             
