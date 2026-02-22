@@ -1,0 +1,1974 @@
+using System.Collections.Generic;
+using System.Linq;
+
+namespace _4DND;
+
+public static class ItemDatabase
+{
+    public static readonly Dictionary<string, Item> Items = new()
+    {
+        // Simple Melee Weapons
+        ["Club"] = new Item
+        {
+            Name = "Club",
+            Description = "A simple wooden club",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Bludgeoning",
+            Weight = 2,
+            Value = 1,
+            IsEquippable = true
+        },
+        ["Dagger"] = new Item
+        {
+            Name = "Dagger",
+            Description = "A small blade",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Piercing",
+            IsFinesse = true,
+            Weight = 1,
+            Value = 2,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 20
+        },
+        ["Greatclub"] = new Item
+        {
+            Name = "Greatclub",
+            Description = "A large, heavy club",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d8",
+            DamageType = "Bludgeoning",
+            Weight = 10,
+            Value = 2,
+            IsEquippable = true
+        },
+        ["Handaxe"] = new Item
+        {
+            Name = "Handaxe",
+            Description = "A small throwing axe",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            DamageType = "Slashing",
+            Weight = 2,
+            Value = 5,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 20
+        },
+        ["Javelin"] = new Item
+        {
+            Name = "Javelin",
+            Description = "A light throwing spear",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            DamageType = "Piercing",
+            Weight = 2,
+            Value = 5,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 30
+        },
+        ["Light Hammer"] = new Item
+        {
+            Name = "Light Hammer",
+            Description = "A small hammer",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Bludgeoning",
+            Weight = 2,
+            Value = 2,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 20
+        },
+        ["Mace"] = new Item
+        {
+            Name = "Mace",
+            Description = "A metal-headed club",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            DamageType = "Bludgeoning",
+            Weight = 4,
+            Value = 5,
+            IsEquippable = true
+        },
+        ["Quarterstaff"] = new Item
+        {
+            Name = "Quarterstaff",
+            Description = "A versatile wooden staff",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            VersatileDamageDice = "1d8",
+            DamageType = "Bludgeoning",
+            IsVersatile = true,
+            Weight = 4,
+            Value = 2,
+            IsEquippable = true
+        },
+        ["Sickle"] = new Item
+        {
+            Name = "Sickle",
+            Description = "A curved farming tool",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Slashing",
+            Weight = 2,
+            Value = 1,
+            IsEquippable = true
+        },
+        ["Spear"] = new Item
+        {
+            Name = "Spear",
+            Description = "A versatile spear",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            VersatileDamageDice = "1d8",
+            DamageType = "Piercing",
+            IsVersatile = true,
+            Weight = 3,
+            Value = 1,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 20
+        },
+        ["Unarmed Strike"] = new Item
+        {
+            Name = "Unarmed Strike",
+            Description = "A punch or kick",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1",
+            DamageType = "Bludgeoning",
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        
+        // Simple Ranged Weapons
+        ["Crossbow, Light"] = new Item
+        {
+            Name = "Crossbow, Light",
+            Description = "A light crossbow",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d8",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 80,
+            Weight = 5,
+            Value = 25,
+            IsEquippable = true
+        },
+        ["Dart"] = new Item
+        {
+            Name = "Dart",
+            Description = "A small throwing dart",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 20,
+            IsFinesse = true,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = true
+        },
+        ["Shortbow"] = new Item
+        {
+            Name = "Shortbow",
+            Description = "A simple ranged weapon",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d6",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 80,
+            Weight = 2,
+            Value = 25,
+            IsEquippable = true
+        },
+        ["Sling"] = new Item
+        {
+            Name = "Sling",
+            Description = "A leather strap for hurling stones",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = "Bludgeoning",
+            IsRanged = true,
+            Range = 30,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = true
+        },
+        
+        // Martial Melee Weapons
+        ["Battleaxe"] = new Item
+        {
+            Name = "Battleaxe",
+            Description = "A versatile axe",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            VersatileDamageDice = "1d10",
+            DamageType = "Slashing",
+            IsVersatile = true,
+            Weight = 4,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Flail"] = new Item
+        {
+            Name = "Flail",
+            Description = "A spiked ball on a chain",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            DamageType = "Bludgeoning",
+            Weight = 2,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Glaive"] = new Item
+        {
+            Name = "Glaive",
+            Description = "A heavy polearm",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d10",
+            DamageType = "Slashing",
+            Weight = 6,
+            Value = 20,
+            IsEquippable = true
+        },
+        ["Greataxe"] = new Item
+        {
+            Name = "Greataxe",
+            Description = "A massive two-handed axe",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d12",
+            DamageType = "Slashing",
+            Weight = 7,
+            Value = 30,
+            IsEquippable = true
+        },
+        ["Greatsword"] = new Item
+        {
+            Name = "Greatsword",
+            Description = "A massive two-handed sword",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "2d6",
+            DamageType = "Slashing",
+            Weight = 6,
+            Value = 50,
+            IsEquippable = true
+        },
+        ["Halberd"] = new Item
+        {
+            Name = "Halberd",
+            Description = "A heavy polearm with an axe blade",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d10",
+            DamageType = "Slashing",
+            Weight = 6,
+            Value = 20,
+            IsEquippable = true
+        },
+        ["Lance"] = new Item
+        {
+            Name = "Lance",
+            Description = "A long cavalry weapon",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d12",
+            DamageType = "Piercing",
+            Weight = 6,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Longsword"] = new Item
+        {
+            Name = "Longsword",
+            Description = "A versatile blade",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            VersatileDamageDice = "1d10",
+            DamageType = "Slashing",
+            IsVersatile = true,
+            Weight = 3,
+            Value = 15,
+            IsEquippable = true
+        },
+        ["Maul"] = new Item
+        {
+            Name = "Maul",
+            Description = "A heavy two-handed hammer",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "2d6",
+            DamageType = "Bludgeoning",
+            Weight = 10,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Morningstar"] = new Item
+        {
+            Name = "Morningstar",
+            Description = "A spiked club",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            DamageType = "Piercing",
+            Weight = 4,
+            Value = 15,
+            IsEquippable = true
+        },
+        ["Pike"] = new Item
+        {
+            Name = "Pike",
+            Description = "A very long spear",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d10",
+            DamageType = "Piercing",
+            Weight = 18,
+            Value = 5,
+            IsEquippable = true
+        },
+        ["Rapier"] = new Item
+        {
+            Name = "Rapier",
+            Description = "A slender, finesse blade",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            DamageType = "Piercing",
+            IsFinesse = true,
+            Weight = 2,
+            Value = 25,
+            IsEquippable = true
+        },
+        ["Scimitar"] = new Item
+        {
+            Name = "Scimitar",
+            Description = "A curved, finesse sword",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d6",
+            DamageType = "Slashing",
+            IsFinesse = true,
+            Weight = 3,
+            Value = 25,
+            IsEquippable = true
+        },
+        ["Shortsword"] = new Item
+        {
+            Name = "Shortsword",
+            Description = "A short, finesse blade",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d6",
+            DamageType = "Piercing",
+            IsFinesse = true,
+            Weight = 2,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Trident"] = new Item
+        {
+            Name = "Trident",
+            Description = "A three-pronged spear",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d6",
+            VersatileDamageDice = "1d8",
+            DamageType = "Piercing",
+            IsVersatile = true,
+            Weight = 4,
+            Value = 5,
+            IsEquippable = true,
+            IsRanged = true,
+            Range = 20
+        },
+        ["War Pick"] = new Item
+        {
+            Name = "War Pick",
+            Description = "A war pick",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            DamageType = "Piercing",
+            Weight = 2,
+            Value = 5,
+            IsEquippable = true
+        },
+        ["Warhammer"] = new Item
+        {
+            Name = "Warhammer",
+            Description = "A versatile war hammer",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            VersatileDamageDice = "1d10",
+            DamageType = "Bludgeoning",
+            IsVersatile = true,
+            Weight = 2,
+            Value = 15,
+            IsEquippable = true
+        },
+        ["Whip"] = new Item
+        {
+            Name = "Whip",
+            Description = "A flexible finesse weapon",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d4",
+            DamageType = "Slashing",
+            IsFinesse = true,
+            Weight = 3,
+            Value = 2,
+            IsEquippable = true
+        },
+        
+        // Martial Ranged Weapons
+        ["Blowgun"] = new Item
+        {
+            Name = "Blowgun",
+            Description = "A tube for shooting darts",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 25,
+            Weight = 1,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Crossbow, Hand"] = new Item
+        {
+            Name = "Crossbow, Hand",
+            Description = "A small hand crossbow",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d6",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 30,
+            Weight = 3,
+            Value = 75,
+            IsEquippable = true
+        },
+        ["Crossbow, Heavy"] = new Item
+        {
+            Name = "Crossbow, Heavy",
+            Description = "A heavy crossbow",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d10",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 100,
+            Weight = 18,
+            Value = 50,
+            IsEquippable = true
+        },
+        ["Longbow"] = new Item
+        {
+            Name = "Longbow",
+            Description = "A powerful longbow",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "1d8",
+            DamageType = "Piercing",
+            IsRanged = true,
+            Range = 150,
+            Weight = 2,
+            Value = 50,
+            IsEquippable = true
+        },
+        
+        // Armor - Light
+        ["Padded"] = new Item
+        {
+            Name = "Padded",
+            Description = "Padded armor consists of quilted layers of cloth and batting",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Light,
+            ArmorClass = 11,
+            StealthDisadvantage = true,
+            Weight = 8,
+            Value = 5,
+            IsEquippable = true
+        },
+        ["Leather Armor"] = new Item
+        {
+            Name = "Leather Armor",
+            Description = "Soft leather protection",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Light,
+            ArmorClass = 11,
+            Weight = 10,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Studded Leather"] = new Item
+        {
+            Name = "Studded Leather",
+            Description = "Leather reinforced with studs",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Light,
+            ArmorClass = 12,
+            Weight = 13,
+            Value = 45,
+            IsEquippable = true
+        },
+        
+        // Armor - Medium
+        ["Hide Armor"] = new Item
+        {
+            Name = "Hide Armor",
+            Description = "Thick furs and pelts",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Medium,
+            ArmorClass = 12,
+            MaxDexBonus = 2,
+            Weight = 12,
+            Value = 10,
+            IsEquippable = true
+        },
+        ["Chain Shirt"] = new Item
+        {
+            Name = "Chain Shirt",
+            Description = "A shirt of interlocking rings",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Medium,
+            ArmorClass = 13,
+            MaxDexBonus = 2,
+            Weight = 20,
+            Value = 50,
+            IsEquippable = true
+        },
+        ["Scale Mail"] = new Item
+        {
+            Name = "Scale Mail",
+            Description = "Consists of a coat and leggings of leather covered with overlapping pieces of metal",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Medium,
+            ArmorClass = 14,
+            MaxDexBonus = 2,
+            StealthDisadvantage = true,
+            Weight = 45,
+            Value = 50,
+            IsEquippable = true
+        },
+        ["Breastplate"] = new Item
+        {
+            Name = "Breastplate",
+            Description = "A fitted metal chest piece worn with supple leather",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Medium,
+            ArmorClass = 14,
+            MaxDexBonus = 2,
+            Weight = 20,
+            Value = 400,
+            IsEquippable = true
+        },
+        ["Half Plate"] = new Item
+        {
+            Name = "Half Plate",
+            Description = "Consists of shaped metal plates that cover most of the wearer's body",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Medium,
+            ArmorClass = 15,
+            MaxDexBonus = 2,
+            StealthDisadvantage = true,
+            Weight = 40,
+            Value = 750,
+            IsEquippable = true
+        },
+        
+        // Armor - Heavy
+        ["Ring Mail"] = new Item
+        {
+            Name = "Ring Mail",
+            Description = "Leather with heavy rings",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Heavy,
+            ArmorClass = 14,
+            MaxDexBonus = 0,
+            StealthDisadvantage = true,
+            Weight = 40,
+            Value = 30,
+            IsEquippable = true
+        },
+        ["Chain Mail"] = new Item
+        {
+            Name = "Chain Mail",
+            Description = "Interlocking metal rings",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Heavy,
+            ArmorClass = 16,
+            MaxDexBonus = 0,
+            StealthDisadvantage = true,
+            Weight = 55,
+            Value = 75,
+            IsEquippable = true
+        },
+        ["Splint"] = new Item
+        {
+            Name = "Splint",
+            Description = "Made of narrow vertical strips of metal riveted to a backing of leather",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Heavy,
+            ArmorClass = 17,
+            MaxDexBonus = 0,
+            StealthDisadvantage = true,
+            Weight = 60,
+            Value = 200,
+            IsEquippable = true
+        },
+        ["Plate Armor"] = new Item
+        {
+            Name = "Plate Armor",
+            Description = "Full plate armor",
+            Type = ItemType.Armor,
+            ArmorCategory = ArmorType.Heavy,
+            ArmorClass = 18,
+            MaxDexBonus = 0,
+            StealthDisadvantage = true,
+            Weight = 65,
+            Value = 1500,
+            IsEquippable = true
+        },
+        
+        // Shields
+        ["Shield"] = new Item
+        {
+            Name = "Shield",
+            Description = "A wooden or metal shield",
+            Type = ItemType.Shield,
+            ArmorCategory = ArmorType.Shield,
+            ArmorClass = 2,
+            Weight = 6,
+            Value = 10,
+            IsEquippable = true
+        },
+        
+        // Consumables
+        ["Healing Potion"] = new Item
+        {
+            Name = "Potion of Healing",
+            Description = "Restores 2d4+2 hit points",
+            Type = ItemType.Consumable,
+            Weight = 0,
+            Value = 50,
+            IsEquippable = false
+        },
+        
+        // Adventuring Gear
+        ["Abacus"] = new Item
+        {
+            Name = "Abacus",
+            Description = "A counting device",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Acid (vial)"] = new Item
+        {
+            Name = "Acid (vial)",
+            Description = "Can be thrown as an improvised weapon",
+            Type = ItemType.Consumable,
+            Weight = 1,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Alchemist's Fire (flask)"] = new Item
+        {
+            Name = "Alchemist's Fire (flask)",
+            Description = "Sticky, adhesive fluid ignites when exposed to air",
+            Type = ItemType.Consumable,
+            Weight = 1,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Ammunition - Arrows (20)"] = new Item
+        {
+            Name = "Arrows (20)",
+            Description = "Arrows for bows",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Ammunition - Blowgun needles (50)"] = new Item
+        {
+            Name = "Blowgun needles (50)",
+            Description = "Needles for blowguns",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Ammunition - Crossbow bolts (20)"] = new Item
+        {
+            Name = "Crossbow bolts (20)",
+            Description = "Bolts for crossbows",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Ammunition - Sling bullets (20)"] = new Item
+        {
+            Name = "Sling bullets (20)",
+            Description = "Bullets for slings",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Antitoxin (vial)"] = new Item
+        {
+            Name = "Antitoxin (vial)",
+            Description = "Grants advantage on saving throws against poison for 1 hour",
+            Type = ItemType.Consumable,
+            Weight = 0,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Arcane Focus - Crystal"] = new Item
+        {
+            Name = "Crystal",
+            Description = "Arcane spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Arcane Focus - Orb"] = new Item
+        {
+            Name = "Orb",
+            Description = "Arcane spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 20,
+            IsEquippable = false
+        },
+        ["Arcane Focus - Rod"] = new Item
+        {
+            Name = "Rod",
+            Description = "Arcane spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Arcane Focus - Staff"] = new Item
+        {
+            Name = "Staff",
+            Description = "Arcane spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Arcane Focus - Wand"] = new Item
+        {
+            Name = "Wand",
+            Description = "Arcane spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Backpack"] = new Item
+        {
+            Name = "Backpack",
+            Description = "Can hold 1 cubic foot / 30 pounds of gear",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Ball bearings (bag of 1,000)"] = new Item
+        {
+            Name = "Ball bearings (bag of 1,000)",
+            Description = "Spreads ball bearings over a 10-foot square area",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Barrel"] = new Item
+        {
+            Name = "Barrel",
+            Description = "Holds 40 gallons of liquid or 4 cubic feet of solid",
+            Type = ItemType.Misc,
+            Weight = 70,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Basket"] = new Item
+        {
+            Name = "Basket",
+            Description = "Can hold 2 cubic feet / 40 pounds of gear",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Bedroll"] = new Item
+        {
+            Name = "Bedroll",
+            Description = "Provides warmth and comfort while sleeping",
+            Type = ItemType.Misc,
+            Weight = 7,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Bell"] = new Item
+        {
+            Name = "Bell",
+            Description = "A small bell",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Blanket"] = new Item
+        {
+            Name = "Blanket",
+            Description = "A warm blanket",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Block and tackle"] = new Item
+        {
+            Name = "Block and tackle",
+            Description = "A set of pulleys with a cable for lifting",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Book"] = new Item
+        {
+            Name = "Book",
+            Description = "A book with blank or written pages",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Bottle, glass"] = new Item
+        {
+            Name = "Bottle, glass",
+            Description = "Holds 1.5 pints of liquid",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Bucket"] = new Item
+        {
+            Name = "Bucket",
+            Description = "Holds 3 gallons of liquid or half a cubic foot of solid",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Caltrops (bag of 20)"] = new Item
+        {
+            Name = "Caltrops (bag of 20)",
+            Description = "Covers a 5-foot square area with spikes",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Candle"] = new Item
+        {
+            Name = "Candle",
+            Description = "Sheds bright light in a 5-foot radius for 1 hour",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Case, crossbow bolt"] = new Item
+        {
+            Name = "Case, crossbow bolt",
+            Description = "Holds up to 20 crossbow bolts",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Case, map or scroll"] = new Item
+        {
+            Name = "Case, map or scroll",
+            Description = "Holds up to 10 sheets of paper or 5 sheets of parchment",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Chain (10 feet)"] = new Item
+        {
+            Name = "Chain (10 feet)",
+            Description = "Has 10 hit points. Can be broken with a DC 20 Strength check",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Chalk (1 piece)"] = new Item
+        {
+            Name = "Chalk (1 piece)",
+            Description = "For drawing or writing",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Chest"] = new Item
+        {
+            Name = "Chest",
+            Description = "Can hold 12 cubic feet / 300 pounds of gear",
+            Type = ItemType.Misc,
+            Weight = 25,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Climber's kit"] = new Item
+        {
+            Name = "Climber's kit",
+            Description = "Includes pitons, boot tips, gloves, and harness",
+            Type = ItemType.Misc,
+            Weight = 12,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Clothes, common"] = new Item
+        {
+            Name = "Clothes, common",
+            Description = "Common clothing",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Clothes, costume"] = new Item
+        {
+            Name = "Clothes, costume",
+            Description = "Costume clothing",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Clothes, fine"] = new Item
+        {
+            Name = "Clothes, fine",
+            Description = "Fine clothing",
+            Type = ItemType.Misc,
+            Weight = 6,
+            Value = 15,
+            IsEquippable = false
+        },
+        ["Clothes, traveler's"] = new Item
+        {
+            Name = "Clothes, traveler's",
+            Description = "Traveling clothing",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Component pouch"] = new Item
+        {
+            Name = "Component pouch",
+            Description = "Contains material components for spellcasting",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Crowbar"] = new Item
+        {
+            Name = "Crowbar",
+            Description = "Grants advantage on Strength checks for prying",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Druidic Focus - Sprig of mistletoe"] = new Item
+        {
+            Name = "Sprig of mistletoe",
+            Description = "Druidic spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Druidic Focus - Totem"] = new Item
+        {
+            Name = "Totem",
+            Description = "Druidic spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Druidic Focus - Wooden staff"] = new Item
+        {
+            Name = "Wooden staff",
+            Description = "Druidic spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Druidic Focus - Yew wand"] = new Item
+        {
+            Name = "Yew wand",
+            Description = "Druidic spellcasting focus",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Fishing tackle"] = new Item
+        {
+            Name = "Fishing tackle",
+            Description = "Includes a wooden rod, silken line, corkwood bobbers, steel hooks, lead sinkers, and velvet lure",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Flask or tankard"] = new Item
+        {
+            Name = "Flask or tankard",
+            Description = "Holds 1 pint of liquid",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Grappling hook"] = new Item
+        {
+            Name = "Grappling hook",
+            Description = "Hooks onto ledges or edges",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Hammer"] = new Item
+        {
+            Name = "Hammer",
+            Description = "A basic tool hammer",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Hammer, sledge"] = new Item
+        {
+            Name = "Hammer, sledge",
+            Description = "A large heavy hammer",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Healer's kit"] = new Item
+        {
+            Name = "Healer's kit",
+            Description = "Has 10 uses. Can be used to stabilize dying creature",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Holy symbol - Amulet"] = new Item
+        {
+            Name = "Amulet",
+            Description = "Holy symbol for divine spellcasting",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Holy symbol - Emblem"] = new Item
+        {
+            Name = "Emblem",
+            Description = "Holy symbol for divine spellcasting",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Holy symbol - Reliquary"] = new Item
+        {
+            Name = "Reliquary",
+            Description = "Holy symbol for divine spellcasting",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Holy water (flask)"] = new Item
+        {
+            Name = "Holy water (flask)",
+            Description = "Deals 2d6 radiant damage to fiends and undead",
+            Type = ItemType.Consumable,
+            Weight = 1,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Hourglass"] = new Item
+        {
+            Name = "Hourglass",
+            Description = "Measures time in one-hour increments",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Hunting trap"] = new Item
+        {
+            Name = "Hunting trap",
+            Description = "Can be set to restrain a creature",
+            Type = ItemType.Misc,
+            Weight = 25,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Ink (1 ounce bottle)"] = new Item
+        {
+            Name = "Ink (1 ounce bottle)",
+            Description = "Ink for writing",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Ink pen"] = new Item
+        {
+            Name = "Ink pen",
+            Description = "A writing instrument",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Jug or pitcher"] = new Item
+        {
+            Name = "Jug or pitcher",
+            Description = "Holds 1 gallon of liquid",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Ladder (10-foot)"] = new Item
+        {
+            Name = "Ladder (10-foot)",
+            Description = "A wooden ladder",
+            Type = ItemType.Misc,
+            Weight = 25,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Lamp"] = new Item
+        {
+            Name = "Lamp",
+            Description = "Sheds bright light in a 15-foot radius for 6 hours on 1 pint of oil",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Lantern, bullseye"] = new Item
+        {
+            Name = "Lantern, bullseye",
+            Description = "Sheds bright light in a 60-foot cone for 6 hours on 1 pint of oil",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Lantern, hooded"] = new Item
+        {
+            Name = "Lantern, hooded",
+            Description = "Sheds bright light in a 30-foot radius for 6 hours on 1 pint of oil",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Lock"] = new Item
+        {
+            Name = "Lock",
+            Description = "Comes with a key. Can be picked with thieves' tools",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Magnifying glass"] = new Item
+        {
+            Name = "Magnifying glass",
+            Description = "Grants advantage on ability checks to appraise or inspect small items",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 100,
+            IsEquippable = false
+        },
+        ["Manacles"] = new Item
+        {
+            Name = "Manacles",
+            Description = "Binds a Small or Medium creature. DC 20 to escape",
+            Type = ItemType.Misc,
+            Weight = 6,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Mess kit"] = new Item
+        {
+            Name = "Mess kit",
+            Description = "Includes a tin box containing a cup and simple cutlery",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Mirror, steel"] = new Item
+        {
+            Name = "Mirror, steel",
+            Description = "A polished steel mirror",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Oil (flask)"] = new Item
+        {
+            Name = "Oil (flask)",
+            Description = "Can fuel lanterns or be thrown as improvised weapon",
+            Type = ItemType.Consumable,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Paper (one sheet)"] = new Item
+        {
+            Name = "Paper (one sheet)",
+            Description = "One sheet of paper",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Parchment (one sheet)"] = new Item
+        {
+            Name = "Parchment (one sheet)",
+            Description = "One sheet of parchment",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Perfume (vial)"] = new Item
+        {
+            Name = "Perfume (vial)",
+            Description = "A vial of perfume",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Pick, miner's"] = new Item
+        {
+            Name = "Pick, miner's",
+            Description = "Used for mining",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Piton"] = new Item
+        {
+            Name = "Piton",
+            Description = "A spike hammered into rock for climbing",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Poison, basic (vial)"] = new Item
+        {
+            Name = "Poison, basic (vial)",
+            Description = "Can be applied to weapons. DC 10 Con save or take 1d4 poison damage",
+            Type = ItemType.Consumable,
+            Weight = 0,
+            Value = 100,
+            IsEquippable = false
+        },
+        ["Pole (10-foot)"] = new Item
+        {
+            Name = "Pole (10-foot)",
+            Description = "A long wooden pole",
+            Type = ItemType.Misc,
+            Weight = 7,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Pot, iron"] = new Item
+        {
+            Name = "Pot, iron",
+            Description = "An iron cooking pot",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Potion of healing"] = new Item
+        {
+            Name = "Potion of healing",
+            Description = "Restores 2d4+2 hit points",
+            Type = ItemType.Consumable,
+            Weight = 0,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Pouch"] = new Item
+        {
+            Name = "Pouch",
+            Description = "Holds 1/5 cubic foot / 6 pounds of gear",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Quiver"] = new Item
+        {
+            Name = "Quiver",
+            Description = "Holds up to 20 arrows",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Ram, portable"] = new Item
+        {
+            Name = "Ram, portable",
+            Description = "Grants +4 bonus on Strength checks to break down doors",
+            Type = ItemType.Misc,
+            Weight = 35,
+            Value = 4,
+            IsEquippable = false
+        },
+        ["Rations (1 day)"] = new Item
+        {
+            Name = "Rations (1 day)",
+            Description = "Dry foods for long journeys",
+            Type = ItemType.Consumable,
+            Weight = 2,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Robes"] = new Item
+        {
+            Name = "Robes",
+            Description = "Simple robes",
+            Type = ItemType.Misc,
+            Weight = 4,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Rope, hempen (50 feet)"] = new Item
+        {
+            Name = "Rope, hempen (50 feet)",
+            Description = "Has 2 hit points. Can be burst with DC 17 Strength check",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Rope, silk (50 feet)"] = new Item
+        {
+            Name = "Rope, silk (50 feet)",
+            Description = "Has 2 hit points. Can be burst with DC 17 Strength check",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Sack"] = new Item
+        {
+            Name = "Sack",
+            Description = "Holds 1 cubic foot / 30 pounds of gear",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Scale, merchant's"] = new Item
+        {
+            Name = "Scale, merchant's",
+            Description = "Includes a small balance and pans",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Sealing wax"] = new Item
+        {
+            Name = "Sealing wax",
+            Description = "Used to seal letters and documents",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Shovel"] = new Item
+        {
+            Name = "Shovel",
+            Description = "Used for digging",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Signal whistle"] = new Item
+        {
+            Name = "Signal whistle",
+            Description = "Can be heard up to 300 feet away",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Signet ring"] = new Item
+        {
+            Name = "Signet ring",
+            Description = "Used to impress a design in sealing wax",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Soap"] = new Item
+        {
+            Name = "Soap",
+            Description = "For bathing and cleaning",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Spellbook"] = new Item
+        {
+            Name = "Spellbook",
+            Description = "Essential for wizards. Has 100 blank pages",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Spikes, iron (10)"] = new Item
+        {
+            Name = "Spikes, iron (10)",
+            Description = "Iron spikes",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Spyglass"] = new Item
+        {
+            Name = "Spyglass",
+            Description = "Objects viewed are magnified to twice their size",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 1000,
+            IsEquippable = false
+        },
+        ["Tent, two-person"] = new Item
+        {
+            Name = "Tent, two-person",
+            Description = "Simple shelter for two",
+            Type = ItemType.Misc,
+            Weight = 20,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Tinderbox"] = new Item
+        {
+            Name = "Tinderbox",
+            Description = "Used to start fires. Takes an action",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Torch"] = new Item
+        {
+            Name = "Torch",
+            Description = "Sheds bright light in a 20-foot radius for 1 hour",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Vial"] = new Item
+        {
+            Name = "Vial",
+            Description = "Holds 4 ounces of liquid",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Waterskin"] = new Item
+        {
+            Name = "Waterskin",
+            Description = "Holds 4 pints of liquid",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Whetstone"] = new Item
+        {
+            Name = "Whetstone",
+            Description = "Used to sharpen blades",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        },
+        
+        // ARTISAN'S TOOLS
+        ["Alchemist's supplies"] = new Item
+        {
+            Name = "Alchemist's supplies",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 8,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Brewer's supplies"] = new Item
+        {
+            Name = "Brewer's supplies",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 9,
+            Value = 20,
+            IsEquippable = false
+        },
+        ["Calligrapher's supplies"] = new Item
+        {
+            Name = "Calligrapher's supplies",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Carpenter's tools"] = new Item
+        {
+            Name = "Carpenter's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 6,
+            Value = 8,
+            IsEquippable = false
+        },
+        ["Cartographer's tools"] = new Item
+        {
+            Name = "Cartographer's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 6,
+            Value = 15,
+            IsEquippable = false
+        },
+        ["Cobbler's tools"] = new Item
+        {
+            Name = "Cobbler's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Cook's utensils"] = new Item
+        {
+            Name = "Cook's utensils",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 8,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Glassblower's tools"] = new Item
+        {
+            Name = "Glassblower's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 30,
+            IsEquippable = false
+        },
+        ["Jeweler's tools"] = new Item
+        {
+            Name = "Jeweler's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Leatherworker's tools"] = new Item
+        {
+            Name = "Leatherworker's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Mason's tools"] = new Item
+        {
+            Name = "Mason's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 8,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Painter's supplies"] = new Item
+        {
+            Name = "Painter's supplies",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Potter's tools"] = new Item
+        {
+            Name = "Potter's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 10,
+            IsEquippable = false
+        },
+        ["Smith's tools"] = new Item
+        {
+            Name = "Smith's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 8,
+            Value = 20,
+            IsEquippable = false
+        },
+        ["Tinker's tools"] = new Item
+        {
+            Name = "Tinker's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Weaver's tools"] = new Item
+        {
+            Name = "Weaver's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Woodcarver's tools"] = new Item
+        {
+            Name = "Woodcarver's tools",
+            Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 1,
+            IsEquippable = false
+        },
+        
+        // SPECIAL TOOLS
+        ["Disguise kit"] = new Item
+        {
+            Name = "Disguise kit",
+            Description = "This pouch of cosmetics, hair dye, and small props lets you create disguises. Proficiency with this kit lets you add your proficiency bonus to ability checks you make to create a visual disguise",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Forgery kit"] = new Item
+        {
+            Name = "Forgery kit",
+            Description = "This small box contains a variety of papers and parchments, pens and inks, seals and sealing wax, gold and silver leaf, and other supplies. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to create a physical forgery of a document",
+            Type = ItemType.Misc,
+            Weight = 5,
+            Value = 15,
+            IsEquippable = false
+        },
+        ["Herbalism kit"] = new Item
+        {
+            Name = "Herbalism kit",
+            Description = "This kit contains pouches to store herbs, clippers, mortar and pestle, and pouches. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to identify or apply herbs",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 5,
+            IsEquippable = false
+        },
+        ["Navigator's tools"] = new Item
+        {
+            Name = "Navigator's tools",
+            Description = "This set of instruments is used for navigation at sea. Proficiency with navigator's tools lets you chart a ship's course and follow navigation charts. In addition, these tools allow you to add your proficiency bonus to any ability checks you make to avoid getting lost at sea",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Poisoner's kit"] = new Item
+        {
+            Name = "Poisoner's kit",
+            Description = "A poisoner's kit includes the vials, chemicals, and other equipment necessary for the creation of poisons. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to craft or use poisons",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 50,
+            IsEquippable = false
+        },
+        ["Thieves' tools"] = new Item
+        {
+            Name = "Thieves' tools",
+            Description = "This set of tools includes a small file, a set of lock picks, a small mirror mounted on a metal handle, a set of narrow-bladed scissors, and a pair of pliers. Proficiency with these tools lets you add your proficiency bonus to any ability checks you make to disarm traps or open locks",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 25,
+            IsEquippable = false
+        },
+        
+        // GAMING SETS
+        ["Dice set"] = new Item
+        {
+            Name = "Dice set",
+            Description = "A set of dice for games of chance",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Dragonchess set"] = new Item
+        {
+            Name = "Dragonchess set",
+            Description = "A strategic board game",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        ["Playing card set"] = new Item
+        {
+            Name = "Playing card set",
+            Description = "A deck of cards",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Three-Dragon Ante set"] = new Item
+        {
+            Name = "Three-Dragon Ante set",
+            Description = "A popular card game",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 1,
+            IsEquippable = false
+        },
+        
+        // MUSICAL INSTRUMENTS
+        ["Bagpipes"] = new Item
+        {
+            Name = "Bagpipes",
+            Description = "A wind musical instrument. Several of the most common types of musical instruments are shown on the table. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 6,
+            Value = 30,
+            IsEquippable = false
+        },
+        ["Drum"] = new Item
+        {
+            Name = "Drum",
+            Description = "A percussion musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 3,
+            Value = 6,
+            IsEquippable = false
+        },
+        ["Dulcimer"] = new Item
+        {
+            Name = "Dulcimer",
+            Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 10,
+            Value = 25,
+            IsEquippable = false
+        },
+        ["Flute"] = new Item
+        {
+            Name = "Flute",
+            Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Lute"] = new Item
+        {
+            Name = "Lute",
+            Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 35,
+            IsEquippable = false
+        },
+        ["Lyre"] = new Item
+        {
+            Name = "Lyre",
+            Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 30,
+            IsEquippable = false
+        },
+        ["Horn"] = new Item
+        {
+            Name = "Horn",
+            Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 3,
+            IsEquippable = false
+        },
+        ["Pan flute"] = new Item
+        {
+            Name = "Pan flute",
+            Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 2,
+            Value = 12,
+            IsEquippable = false
+        },
+        ["Shawm"] = new Item
+        {
+            Name = "Shawm",
+            Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 2,
+            IsEquippable = false
+        },
+        ["Viol"] = new Item
+        {
+            Name = "Viol",
+            Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 30,
+            IsEquippable = false
+        },
+        
+        // RELIGIOUS ITEMS
+        ["Alms box"] = new Item
+        {
+            Name = "Alms box",
+            Description = "A small box for collecting charitable donations",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Incense"] = new Item
+        {
+            Name = "Incense",
+            Description = "Aromatic substance burned during religious ceremonies",
+            Type = ItemType.Misc,
+            Weight = 0,
+            Value = 0,
+            IsEquippable = false
+        },
+        ["Censer"] = new Item
+        {
+            Name = "Censer",
+            Description = "A vessel for burning incense",
+            Type = ItemType.Misc,
+            Weight = 1,
+            Value = 0,
+            IsEquippable = false
+        }
+    };
+    
+    public static Item GetItem(string name)
+    {
+        return Items.TryGetValue(name, out var item) ? item : new Item { Name = name };
+    }
+    
+    public static List<string> GetWeapons()
+    {
+        return Items.Where(i => i.Value.Type == ItemType.Weapon).Select(i => i.Key).ToList();
+    }
+    
+    public static List<string> GetArmor()
+    {
+        return Items.Where(i => i.Value.Type == ItemType.Armor).Select(i => i.Key).ToList();
+    }
+    
+    public static List<string> GetAdventuringGear()
+    {
+        return Items.Where(i => i.Value.Type == ItemType.Misc).Select(i => i.Key).ToList();
+    }
+    
+    public static List<string> GetConsumables()
+    {
+        return Items.Where(i => i.Value.Type == ItemType.Consumable).Select(i => i.Key).ToList();
+    }
+}
