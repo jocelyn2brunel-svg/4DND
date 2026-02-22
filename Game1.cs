@@ -617,7 +617,6 @@ public class Game1 : Game
             else
             {
                 Draw3DTile(cx, cy, cz, baseColor);
-                Draw3DTileOutline(cx, cy, cz, Color.Black);
                 if (cell.Value == TileType.DifficultTerrain)
                 {
                     // Draw a small "X" on difficult terrain
@@ -625,6 +624,28 @@ public class Game1 : Game
                     Draw3DLine(new Vector3(cx - 0.2f, cy + 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy - 0.2f, cz + 0.01f), Color.Black * 0.5f);
                 }
             }
+        }
+    }
+
+    private void Draw3DGridOutlines(int zLevel)
+    {
+        Color gridOutlineColor = new Color(28, 36, 40);
+        foreach (var cell in _grid.EnumerateNonEmpty())
+        {
+            int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
+            if (cz > zLevel || cell.Value == TileType.Empty || cell.Value == TileType.Wall) continue;
+
+            // Ground grass should stay on the base level only and not bleed into upper-floor views.
+            if (cell.Value == TileType.Grass && (cz != 0 || zLevel > 0)) continue;
+
+            if (_showVisionOverlay && _playerCreature != null)
+            {
+                bool isVisible = _visionSystem.IsVisible(cx, cy, cz);
+                Color tint = _visionSystem.GetFogOfWarTint(cx, cy, cz, isVisible, _playerCreature);
+                if (tint == Color.Black) continue;
+            }
+
+            Draw3DTileOutline(cx, cy, cz, gridOutlineColor);
         }
     }
 
@@ -689,7 +710,7 @@ public class Game1 : Game
     private void Draw3DTileOutline(int x, int y, int z, Color color)
     {
         const float halfTile = 0.5f;
-        const float elevation = 0.03f;
+        const float elevation = 0.07f;
         float zPos = z + elevation;
 
         Vector3 topLeft = new Vector3(x - halfTile, y - halfTile, zPos);
@@ -1859,7 +1880,10 @@ public class Game1 : Game
             GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DGrid(_currentViewLevel);
+            GraphicsDevice.DepthStencilState = DepthStencilState.None;
+            Draw3DGridOutlines(_currentViewLevel);
             DrawCreatureTileOutlines();
+            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DCreatures();
             var hovered = GetHoveredTile();
             if (hovered.HasValue)
