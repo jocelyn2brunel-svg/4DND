@@ -147,6 +147,7 @@ public class Game1 : Game
         for (int y = -6; y <= 6; y++)
         {
             _grid.Set(0, y, 0, TileType.Floor);
+            _grid.Set(-1, y, 0, (y % 2) == 0 ? TileType.Water : TileType.Empty);
             _grid.Set(1, y, 0, (y % 3) == 0 ? TileType.DifficultTerrain : TileType.Empty);
         }
         
@@ -457,10 +458,11 @@ public class Game1 : Game
 
             Color baseColor = cell.Value switch
             {
-                TileType.Floor => Color.SlateGray,
-                TileType.DifficultTerrain => Color.Sienna,
-                TileType.Wall => Color.DarkSlateGray,
-                _ => Color.SlateGray
+                TileType.Floor => Color.ForestGreen,
+                TileType.DifficultTerrain => new Color(139, 69, 19),
+                TileType.Wall => Color.Gray,
+                TileType.Water => Color.CornflowerBlue,
+                _ => Color.ForestGreen
             };
 
             if (cz < zLevel) baseColor *= 0.3f;
