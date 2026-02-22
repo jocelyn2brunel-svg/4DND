@@ -1376,6 +1376,8 @@ public class Game1 : Game
         
         if (_state == AppState.Playing)
         {
+            bool wasCharacterSheetOpen = _showCharacterSheet;
+
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (_playerCreature != null)
@@ -1411,7 +1413,8 @@ public class Game1 : Game
             }
 
             var inventoryButtonRect = GetInventoryButtonRect(GraphicsDevice.Viewport);
-            if (!_showCharacterSheet &&
+            if (!wasCharacterSheetOpen &&
+                !_showCharacterSheet &&
                 mouse.LeftButton == ButtonState.Pressed &&
                 _prevMouse.LeftButton == ButtonState.Released &&
                 inventoryButtonRect.Contains(mouse.Position))
