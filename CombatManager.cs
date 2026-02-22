@@ -8,6 +8,7 @@ namespace _4DND;
 
 public class CombatManager
 {
+    public InfiniteGrid3D<TileType>? Grid { get; set; }
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
     private int _currentRound = 0;
@@ -118,28 +119,89 @@ public class CombatManager
     {
         if (!creature.HasAction && creature.MovementRemaining <= 0)
             return false;
+
+        if (Grid != null && Grid.Get(targetX, targetY, targetZ) == TileType.Wall)
+            return false;
         
         int distance = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
-        int distanceInFeet = distance * 5; // Each tile is 5 feet
+        if (distance == 0) return true;
+
+        // Check corners for single-step diagonal movement
+        if (distance == 1 && !IsDiagonalMoveAllowed(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ))
+            return false;
+
+        int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
         
-        return distanceInFeet <= creature.MovementRemaining;
+        return totalCost <= creature.MovementRemaining;
     }
     
     public void Move(Creature creature, int targetX, int targetY, int targetZ)
     {
-        int distance = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
-        int distanceInFeet = distance * 5;
+        int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
         
         creature.X = targetX;
         creature.Y = targetY;
         creature.Z = targetZ;
-        creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - distanceInFeet);
+        creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - totalCost);
+    }
+
+    private int CalculateMovementCost(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        int distance = CalculateDistance(x1, y1, z1, x2, y2, z2);
+        if (distance == 0) return 0;
+
+        // Base cost: 5ft per square (Chebyshev)
+        int cost = distance * 5;
+
+        // If target square is difficult terrain, it costs 5ft extra
+        if (Grid != null && Grid.Get(x2, y2, z2) == TileType.DifficultTerrain)
+            cost += 5;
+
+        return cost;
+    }
+
+    private bool IsDiagonalMoveAllowed(int x1, int y1, int z1, int x2, int y2, int z2)
+    {
+        if (Grid == null) return true;
+
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+        int dz = z2 - z1;
+
+        // 2D diagonals check
+        if (Math.Abs(dx) == 1 && Math.Abs(dy) == 1 && dz == 0)
+        {
+            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1 + dy, z1) == TileType.Wall)
+                return false;
+        }
+        if (Math.Abs(dx) == 1 && Math.Abs(dz) == 1 && dy == 0)
+        {
+            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+                return false;
+        }
+        if (Math.Abs(dy) == 1 && Math.Abs(dz) == 1 && dx == 0)
+        {
+            if (Grid.Get(x1, y1 + dy, z1) == TileType.Wall || Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+                return false;
+        }
+
+        // 3D diagonal check (all 3 axes change)
+        if (Math.Abs(dx) == 1 && Math.Abs(dy) == 1 && Math.Abs(dz) == 1)
+        {
+            // If any adjacent square that shares a face with the path is a wall, block it
+            if (Grid.Get(x1 + dx, y1, z1) == TileType.Wall ||
+                Grid.Get(x1, y1 + dy, z1) == TileType.Wall ||
+                Grid.Get(x1, y1, z1 + dz) == TileType.Wall)
+                return false;
+        }
+
+        return true;
     }
     
-    private int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
+    public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        // Manhattan distance in 3D
-        return Math.Abs(x2 - x1) + Math.Abs(y2 - y1) + Math.Abs(z2 - z1);
+        // Chebyshev distance (5e Grid Rules: diagonals cost same as straight)
+        return Math.Max(Math.Max(Math.Abs(x2 - x1), Math.Abs(y2 - y1)), Math.Abs(z2 - z1));
     }
     
     public AttackResult MakeAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
@@ -250,7 +312,7 @@ public class CombatManager
         {
             if (other.IsPlayer == creature.IsPlayer || !other.IsAlive()) continue;
             
-            int dist = Math.Abs(other.X - creature.X) + Math.Abs(other.Y - creature.Y) + Math.Abs(other.Z - creature.Z);
+            int dist = CalculateDistance(creature.X, creature.Y, creature.Z, other.X, other.Y, other.Z);
             if (dist < minDist)
             {
                 minDist = dist;
@@ -263,17 +325,8 @@ public class CombatManager
     
     public bool IsInMeleeRange(Creature attacker, Creature target)
     {
-        int dx = Math.Abs(attacker.X - target.X);
-        int dy = Math.Abs(attacker.Y - target.Y);
-        int dz = Math.Abs(attacker.Z - target.Z);
-        
-        // Adjacent tiles on same level OR directly above/below (for flying)
-        if (dz <= 1)
-        {
-            return dx <= 1 && dy <= 1 && (dx + dy) > 0;
-        }
-        
-        return false;
+        int dist = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z);
+        return dist == 1;
     }
     
     public Creature? GetCreatureAt(int x, int y, int z = 0)
