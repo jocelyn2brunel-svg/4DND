@@ -9,6 +9,7 @@ namespace _4DND;
 
 public class CombatManager
 {
+    private readonly record struct GridNode(int X, int Y, int Z);
     public InfiniteGrid3D<TileType>? Grid { get; set; }
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
@@ -120,7 +121,7 @@ public class CombatManager
     /// Check if a creature of given size can occupy the space starting at (x, y, z)
     /// Large+ creatures need multiple tiles to be available
     /// </summary>
-    private bool CanOccupySpace(CreatureSize size, int x, int y, int z)
+    private bool CanOccupySpace(CreatureSize size, int x, int y, int z, Creature? movingCreature = null)
     {
         if (Grid == null) return true;
         
@@ -141,7 +142,7 @@ public class CombatManager
                 
                 // Check if another creature is there (unless checking current position)
                 var creatureAtTile = GetCreatureAt(checkX, checkY, z);
-                if (creatureAtTile != null)
+                if (creatureAtTile != null && creatureAtTile != movingCreature)
                     return false;
             }
         }
@@ -155,23 +156,165 @@ public class CombatManager
             return false;
 
         // Check if the target space can accommodate the creature's size
-        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ))
-            return false;
-        
-        if (IsPathBlocked(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ))
+        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ, creature))
             return false;
 
-        int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+        var path = FindPath(creature, targetX, targetY, targetZ);
+        if (path == null)
+            return false;
+
+        int totalCost = CalculatePathCost(path);
         
         return totalCost <= creature.MovementRemaining;
     }
     
     public void Move(Creature creature, int targetX, int targetY, int targetZ)
     {
-        int totalCost = CalculateMovementCost(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+        var path = FindPath(creature, targetX, targetY, targetZ);
+        if (path == null)
+            return;
+
+        int totalCost = CalculatePathCost(path);
         
         creature.MoveTo(targetX, targetY, targetZ);
         creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - totalCost);
+    }
+
+    public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)
+    {
+        List<GridNode>? bestPath = null;
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dz = (creature.CanFly ? -1 : 0); dz <= (creature.CanFly ? 1 : 0); dz++)
+                {
+                    if (dx == 0 && dy == 0 && dz == 0)
+                        continue;
+
+                    int tx = target.X + dx;
+                    int ty = target.Y + dy;
+                    int tz = target.Z + dz;
+
+                    if (!CanOccupySpace(creature.Size, tx, ty, tz, creature))
+                        continue;
+
+                    var path = FindPath(creature, tx, ty, tz);
+                    if (path == null || path.Count < 2)
+                        continue;
+
+                    if (bestPath == null || CalculatePathCost(path) < CalculatePathCost(bestPath))
+                        bestPath = path;
+                }
+            }
+        }
+
+        if (bestPath == null)
+            return null;
+
+        var step = bestPath[1];
+        return (step.X, step.Y, step.Z);
+    }
+
+    private List<GridNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
+    {
+        var start = new GridNode(creature.X, creature.Y, creature.Z);
+        var goal = new GridNode(targetX, targetY, targetZ);
+
+        if (start == goal)
+            return new List<GridNode> { start };
+
+        var openSet = new List<GridNode> { start };
+        var cameFrom = new Dictionary<GridNode, GridNode>();
+        var gScore = new Dictionary<GridNode, int> { [start] = 0 };
+        var fScore = new Dictionary<GridNode, int> { [start] = Heuristic(start, goal) };
+
+        while (openSet.Count > 0)
+        {
+            var current = openSet.OrderBy(n => fScore.GetValueOrDefault(n, int.MaxValue)).First();
+            if (current == goal)
+                return ReconstructPath(cameFrom, current);
+
+            openSet.Remove(current);
+
+            foreach (var neighbor in GetNeighbors(creature, current))
+            {
+                int tentativeG = gScore[current] + GetMoveCost(neighbor);
+                if (tentativeG >= gScore.GetValueOrDefault(neighbor, int.MaxValue))
+                    continue;
+
+                cameFrom[neighbor] = current;
+                gScore[neighbor] = tentativeG;
+                fScore[neighbor] = tentativeG + Heuristic(neighbor, goal);
+
+                if (!openSet.Contains(neighbor))
+                    openSet.Add(neighbor);
+            }
+        }
+
+        return null;
+    }
+
+    private IEnumerable<GridNode> GetNeighbors(Creature creature, GridNode node)
+    {
+        int minDz = creature.CanFly ? -1 : 0;
+        int maxDz = creature.CanFly ? 1 : 0;
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dz = minDz; dz <= maxDz; dz++)
+                {
+                    if (dx == 0 && dy == 0 && dz == 0)
+                        continue;
+
+                    int nx = node.X + dx;
+                    int ny = node.Y + dy;
+                    int nz = node.Z + dz;
+
+                    if (!CanOccupySpace(creature.Size, nx, ny, nz, creature))
+                        continue;
+                    if (!IsDiagonalMoveAllowed(node.X, node.Y, node.Z, nx, ny, nz))
+                        continue;
+
+                    yield return new GridNode(nx, ny, nz);
+                }
+            }
+        }
+    }
+
+    private static int Heuristic(GridNode a, GridNode b)
+    {
+        return Max(Max(Abs(b.X - a.X), Abs(b.Y - a.Y)), Abs(b.Z - a.Z)) * 5;
+    }
+
+    private int GetMoveCost(GridNode node)
+    {
+        return Grid != null && Grid.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
+    }
+
+    private static List<GridNode> ReconstructPath(Dictionary<GridNode, GridNode> cameFrom, GridNode current)
+    {
+        var path = new List<GridNode> { current };
+        while (cameFrom.TryGetValue(current, out var prev))
+        {
+            current = prev;
+            path.Add(current);
+        }
+
+        path.Reverse();
+        return path;
+    }
+
+    private int CalculatePathCost(List<GridNode> path)
+    {
+        int cost = 0;
+        for (int i = 1; i < path.Count; i++)
+            cost += GetMoveCost(path[i]);
+
+        return cost;
     }
 
     public bool IsPathBlocked(int x1, int y1, int z1, int x2, int y2, int z2)

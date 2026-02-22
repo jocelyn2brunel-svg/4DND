@@ -1689,30 +1689,10 @@ public class Game1 : Game
                             }
                             else if (currentCombatant.MovementRemaining > 0)
                             {
-                                // Move towards player (3D pathfinding)
-                                int dx = Math.Sign(playerCreature.X - currentCombatant.X);
-                                int dy = Math.Sign(playerCreature.Y - currentCombatant.Y);
-                                int dz = Math.Sign(playerCreature.Z - currentCombatant.Z);
-                                
-                                // Prioritize horizontal movement, then vertical if can fly
-                                int newX = currentCombatant.X;
-                                int newY = currentCombatant.Y;
-                                int newZ = currentCombatant.Z;
-                                
-                                if (dx != 0 || dy != 0)
+                                var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
+                                if (nextStep.HasValue && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
                                 {
-                                    newX = currentCombatant.X + dx;
-                                    newY = currentCombatant.Y + dy;
-                                }
-                                else if (dz != 0 && currentCombatant.CanFly)
-                                {
-                                    newZ = currentCombatant.Z + dz;
-                                    currentCombatant.IsFlying = true;
-                                }
-                                
-                                if (_combatManager.GetCreatureAt(newX, newY, newZ) == null && _combatManager.CanMove(currentCombatant, newX, newY, newZ))
-                                {
-                                    _combatManager.Move(currentCombatant, newX, newY, newZ);
+                                    _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z);
                                     AddToCombatLog($"{currentCombatant.Name} moved");
                                     UpdateVision();
                                 }
