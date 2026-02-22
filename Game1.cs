@@ -656,6 +656,59 @@ public class Game1 : Game
         else if (_playerCreature != null) { Draw3DCreature(_playerCreature); foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive())) Draw3DCreature(creature); }
     }
 
+    private void DrawCreatureTileOutlines()
+    {
+        IEnumerable<Creature> creatures = _combatManager.InCombat
+            ? _combatManager.Combatants.Where(c => c.IsAlive())
+            : (_playerCreature == null
+                ? Enumerable.Empty<Creature>()
+                : new[] { _playerCreature }.Concat(_combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive())));
+
+        foreach (var creature in creatures)
+        {
+            if (creature.Z > _currentViewLevel) continue;
+            if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) continue;
+
+            Color outlineColor = GetCreatureFactionOutlineColor(creature);
+            if (_showVisionOverlay && _playerCreature != null)
+            {
+                Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature);
+                outlineColor = new Color(
+                    (byte)(outlineColor.R * tint.R / 255),
+                    (byte)(outlineColor.G * tint.G / 255),
+                    (byte)(outlineColor.B * tint.B / 255));
+            }
+
+            Draw3DTileOutline(creature.X, creature.Y, creature.Z, outlineColor);
+        }
+    }
+
+    private static Color GetCreatureFactionOutlineColor(Creature creature)
+    {
+        if (creature.IsPlayer)
+            return Color.LimeGreen;
+
+        bool isEnemy = creature.Alignment is Alignment.LawfulEvil or Alignment.NeutralEvil or Alignment.ChaoticEvil;
+        return isEnemy ? Color.Red : Color.DeepSkyBlue;
+    }
+
+    private void Draw3DTileOutline(int x, int y, int z, Color color)
+    {
+        const float halfTile = 0.5f;
+        const float elevation = 0.03f;
+        float zPos = z + elevation;
+
+        Vector3 topLeft = new Vector3(x - halfTile, y - halfTile, zPos);
+        Vector3 topRight = new Vector3(x + halfTile, y - halfTile, zPos);
+        Vector3 bottomRight = new Vector3(x + halfTile, y + halfTile, zPos);
+        Vector3 bottomLeft = new Vector3(x - halfTile, y + halfTile, zPos);
+
+        Draw3DLine(topLeft, topRight, color);
+        Draw3DLine(topRight, bottomRight, color);
+        Draw3DLine(bottomRight, bottomLeft, color);
+        Draw3DLine(bottomLeft, topLeft, color);
+    }
+
     private void Draw3DCreature(Creature creature)
     {
         if (creature.Z > _currentViewLevel) return;
@@ -1772,6 +1825,7 @@ public class Game1 : Game
             GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             Draw3DGrid(_currentViewLevel);
+            DrawCreatureTileOutlines();
             Draw3DCreatures();
             var hovered = GetHoveredTile();
             if (hovered.HasValue)
