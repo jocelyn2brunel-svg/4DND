@@ -180,7 +180,8 @@ public class VisionSystem
         }
         
         int visionRange = CalculateVisionRange(observer);
-        int visionTiles = Math.Min(visionRange / 5, 30); // Limit to reasonable range
+        // Limit to 40 tiles (200ft) for performance while allowing wide exploration
+        int visionTiles = Math.Min(visionRange / 5, 40);
         
         for (int dz = -visionTiles; dz <= visionTiles; dz++)
         {
