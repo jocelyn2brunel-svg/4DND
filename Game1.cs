@@ -617,6 +617,7 @@ public class Game1 : Game
             else
             {
                 Draw3DTile(cx, cy, cz, baseColor);
+                Draw3DTileOutline(cx, cy, cz, Color.Black);
                 if (cell.Value == TileType.DifficultTerrain)
                 {
                     // Draw a small "X" on difficult terrain
