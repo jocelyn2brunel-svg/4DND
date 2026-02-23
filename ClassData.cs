@@ -16,7 +16,7 @@ public class ClassData
     public List<string> WeaponProficiencies { get; set; } = new();
     public List<ClassLevelData> LevelProgression { get; set; } = new();
 
-    public ClassLevelData? GetLevelData(int level)
+    public ClassLevelData GetLevelData(int level)
     {
         foreach (var entry in LevelProgression)
             if (entry.Level == level) return entry;
