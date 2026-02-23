@@ -2461,7 +2461,8 @@ public class Game1 : Game
         const int buttonWidth = 130;
         const int buttonHeight = 34;
         const int startX = 10;
-        const int y = 95;
+        // Keep action buttons below turn/initiative text in the combat top panel.
+        const int y = 130;
         return new Rectangle(startX, y, buttonWidth, buttonHeight);
     }
 
