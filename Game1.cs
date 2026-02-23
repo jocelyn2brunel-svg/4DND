@@ -2713,7 +2713,7 @@ public class Game1 : Game
                     y += 18;
                 }
 
-                _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, vp);
+                _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, new Rectangle(0, 0, vp.Width, vp.Height));
                 
                 // Vision legend (right side)
                 if (_showVisionOverlay)
