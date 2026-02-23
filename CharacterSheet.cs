@@ -11,7 +11,8 @@ public class CharacterSheet
     private Texture2D _pixel;
     private float _scrollOffset = 0f;
     private int _prevScrollValue = 0;
-    private const int CONTENT_HEIGHT = 1600;
+    private const int MainColumnsHeight = 760;
+    private const int JournalHeight = 400;
     private const int Margin = 20;
     private const int ScrollbarWidth = 20;
     private const int CloseButtonWidth = 120;
@@ -63,7 +64,13 @@ public class CharacterSheet
             int sheetX = margin;
             int sheetY = margin;
             
-            int maxScroll = System.Math.Max(0, CONTENT_HEIGHT - sheetHeight);
+            int totalContentHeight = 80 + MainColumnsHeight + 20;
+            if (campaign != null)
+            {
+                totalContentHeight += JournalHeight + 20;
+            }
+
+            int maxScroll = System.Math.Max(0, totalContentHeight - sheetHeight);
             _scrollOffset = MathHelper.Clamp(_scrollOffset, 0, maxScroll);
             
             var scissorRect = new Rectangle(sheetX, sheetY, sheetWidth, sheetHeight);
@@ -81,7 +88,6 @@ public class CharacterSheet
             DrawHeader(spriteBatch, c, sheetX, scrollY, sheetWidth);
             
             int contentY = scrollY + 80;
-            int contentHeight = CONTENT_HEIGHT - 80;
             
             int col1Width = (int)(sheetWidth * 0.25f);
             int col2Width = (int)(sheetWidth * 0.35f);
@@ -91,13 +97,13 @@ public class CharacterSheet
             int col2X = col1X + col1Width + padding;
             int col3X = col2X + col2Width + padding;
             
-            DrawLeftColumn(spriteBatch, c, col1X, contentY, col1Width, contentHeight);
-            DrawMiddleColumn(spriteBatch, c, col2X, contentY, col2Width, contentHeight);
-            DrawRightColumn(spriteBatch, c, col3X, contentY, col3Width, contentHeight);
+            DrawLeftColumn(spriteBatch, c, col1X, contentY, col1Width, MainColumnsHeight);
+            DrawMiddleColumn(spriteBatch, c, col2X, contentY, col2Width, MainColumnsHeight);
+            DrawRightColumn(spriteBatch, c, col3X, contentY, col3Width, MainColumnsHeight);
             
             if (campaign != null)
             {
-                int journalY = contentY + 1100; // Position below the main columns
+                int journalY = contentY + MainColumnsHeight + 20;
                 DrawAdventureJournal(spriteBatch, campaign, sheetX + padding, journalY, sheetWidth - padding * 2);
             }
 
@@ -105,9 +111,9 @@ public class CharacterSheet
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             graphics.ScissorRectangle = previousScissor;
             
-            if (CONTENT_HEIGHT > sheetHeight)
+            if (totalContentHeight > sheetHeight)
             {
-                DrawScrollbar(spriteBatch, sheetX + sheetWidth + 5, sheetY, scrollbarWidth, sheetHeight, maxScroll);
+                DrawScrollbar(spriteBatch, sheetX + sheetWidth + 5, sheetY, scrollbarWidth, sheetHeight, maxScroll, totalContentHeight);
             }
             
             var hint = "Press C to close | Mouse wheel to scroll";
@@ -141,13 +147,13 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, text, textPos, Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
-    private void DrawScrollbar(SpriteBatch spriteBatch, int x, int y, int width, int height, int maxScroll)
+    private void DrawScrollbar(SpriteBatch spriteBatch, int x, int y, int width, int height, int maxScroll, int contentHeight)
     {
         var trackRect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, trackRect, new Color(60, 60, 60));
         DrawBorder(spriteBatch, trackRect, Color.Black, 1);
         
-        float contentRatio = (float)height / CONTENT_HEIGHT;
+        float contentRatio = (float)height / contentHeight;
         int thumbHeight = (int)(height * contentRatio);
         thumbHeight = System.Math.Max(thumbHeight, 30);
         
@@ -347,7 +353,7 @@ public class CharacterSheet
         currentY += skillsHeight + 10;
         
         // Personality Traits
-        int traitHeight = (height - skillsHeight - 40) / 4;
+        int traitHeight = (height - skillsHeight - 30) / 4;
         DrawTextBox(spriteBatch, "PERSONALITY TRAITS", "", x, currentY, width, traitHeight);
         currentY += traitHeight + 10;
         
