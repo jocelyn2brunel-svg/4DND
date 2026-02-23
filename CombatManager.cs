@@ -498,6 +498,11 @@ public class CombatManager
         var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
         var goal = new TacticalMapNode(targetX, targetY, targetZ);
 
+        // Guard against unreachable goals in the infinite grid (e.g., hovering/clicking a wall).
+        // Without this check, the search may expand indefinitely trying to reach an unoccupiable tile.
+        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ, creature))
+            return null;
+
         if (start == goal)
             return new List<TacticalMapNode> { start };
 
