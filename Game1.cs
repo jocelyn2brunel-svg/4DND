@@ -89,6 +89,7 @@ public class Game1 : Game
     private bool _showCombatUI = false;
     private MouseState _prevMouse;
     private DiceRoll3DAnimation _diceRollAnimation = new();
+    private readonly Random _random = new();
 
     public Game1()
     {
@@ -199,9 +200,6 @@ public class Game1 : Game
             }
         }
         
-        // Spawn some test enemies
-        SpawnTestEnemies();
-
         try
         {
             Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir));
@@ -209,76 +207,6 @@ public class Game1 : Game
         catch { }
 
         LoadCharacters();
-    }
-    
-    private void SpawnTestEnemies()
-    {
-        // Spawn some initial enemies for exploration mode
-        var rand = new Random();
-        
-        // Create 3-5 enemies scattered around
-        int numEnemies = rand.Next(3, 6);
-        
-        for (int i = 0; i < numEnemies; i++)
-        {
-            int enemyX, enemyY, enemyZ;
-            int enemyType = rand.Next(0, 7);
-            bool isValidPosition = false;
-            int attempts = 0;
-            Creature enemy = null;
-
-            while (!isValidPosition && attempts < 100)
-            {
-                attempts++;
-                enemyX = rand.Next(-10, 11);
-                enemyY = rand.Next(-10, 11);
-                enemyZ = rand.Next(0, 4); // Random height from 0 to 3
-
-                // Don't spawn at origin (player spawn)
-                if (enemyX == 0 && enemyY == 0 && enemyZ == 0) continue;
-
-                // Don't spawn inside a wall
-                if (_tacticalMap.Get(enemyX, enemyY, enemyZ) == TileType.Wall) continue;
-
-                // Don't spawn where another creature is
-                if (_combatManager.GetCreatureAt(enemyX, enemyY, enemyZ) != null) continue;
-
-                enemy = enemyType switch
-                {
-                    0 => Creature.CreateGoblin(enemyX, enemyY, enemyZ),
-                    1 => Creature.CreateOrc(enemyX, enemyY, enemyZ),
-                    2 => Creature.CreateSkeleton(enemyX, enemyY, enemyZ),
-                    3 => Creature.CreateWolf(enemyX, enemyY, enemyZ),
-                    4 => Creature.CreateKobold(enemyX, enemyY, enemyZ),
-                    5 => Creature.CreateUmberHulk(enemyX, enemyY, enemyZ),
-                    _ => Creature.CreateCouatl(enemyX, enemyY, enemyZ)
-                };
-
-                // Check if position is valid for this creature
-                if (enemy.CanFly)
-                {
-                    isValidPosition = true;
-                    if (enemyZ > 0) enemy.IsFlying = true;
-                }
-                else
-                {
-                    // Non-flying creatures must be at ground level (Z=0) and on a floor
-                    if (enemyZ == 0)
-                    {
-                        var tile = _tacticalMap.Get(enemyX, enemyY, 0);
-                        if (tile == TileType.Floor || tile == TileType.Grass || tile == TileType.DifficultTerrain)
-                        {
-                            isValidPosition = true;
-                        }
-                    }
-                }
-            }
-
-            if (enemy != null && isValidPosition)
-            {
-                _combatManager.Combatants.Add(enemy);
-            }
-        }
     }
     
     private void StartCombatWithNearbyEnemies()
@@ -325,6 +253,55 @@ public class Game1 : Game
         return true;
     }
     
+    private bool TrySpawnRandomCreatureNearPlayer(int targetDistance = 20)
+    {
+        if (_playerCreature == null)
+            return false;
+
+        const int maxAttempts = 200;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            int dx = _random.Next(-targetDistance, targetDistance + 1);
+            int dyMagnitude = targetDistance - Math.Abs(dx);
+            int dy = dyMagnitude == 0 ? 0 : (_random.Next(0, 2) == 0 ? -dyMagnitude : dyMagnitude);
+
+            int spawnX = _playerCreature.X + dx;
+            int spawnY = _playerCreature.Y + dy;
+            int spawnZ = Math.Max(0, _playerCreature.Z);
+
+            if (_combatManager.GetCreatureAt(spawnX, spawnY, spawnZ) != null)
+                continue;
+
+            var tile = _tacticalMap.Get(spawnX, spawnY, spawnZ);
+            if (tile != TileType.Floor && tile != TileType.Grass && tile != TileType.DifficultTerrain)
+                continue;
+
+            int enemyType = _random.Next(0, 7);
+            Creature enemy = enemyType switch
+            {
+                0 => Creature.CreateGoblin(spawnX, spawnY, spawnZ),
+                1 => Creature.CreateOrc(spawnX, spawnY, spawnZ),
+                2 => Creature.CreateSkeleton(spawnX, spawnY, spawnZ),
+                3 => Creature.CreateWolf(spawnX, spawnY, spawnZ),
+                4 => Creature.CreateKobold(spawnX, spawnY, spawnZ),
+                5 => Creature.CreateUmberHulk(spawnX, spawnY, spawnZ),
+                _ => Creature.CreateCouatl(spawnX, spawnY, spawnZ)
+            };
+
+            if (enemy.CanFly && _random.NextDouble() < 0.35)
+                enemy.IsFlying = true;
+
+            _combatManager.Combatants.Add(enemy);
+            AddToCombatLog($"Spawn: {enemy.Name} apparait en ({spawnX}, {spawnY}, {spawnZ}).");
+            UpdateVision();
+            return true;
+        }
+
+        AddToCombatLog("Spawn impossible: aucune case valide trouvee a 20 cases.");
+        return false;
+    }
+
     private void SetupCombatLighting()
     {
         _visionSystem.ClearLightSources();
@@ -1258,7 +1235,6 @@ public class Game1 : Game
                         {
                             _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                             _combatManager.Combatants.Clear();
-                            SpawnTestEnemies();
                         }
                         
                         // TODO: Go to multiplayer lobby
@@ -1342,7 +1318,6 @@ public class Game1 : Game
                                     {
                                         _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                                         _combatManager.Combatants.Clear();
-                                        SpawnTestEnemies();
                                     }
                                     
                                     // TODO: Go to multiplayer lobby
@@ -1395,7 +1370,6 @@ public class Game1 : Game
                     {
                         _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                         _combatManager.Combatants.Clear();
-                        SpawnTestEnemies();
                     }
                     // TODO: Go to multiplayer lobby
                     _state = AppState.Playing;
@@ -1462,7 +1436,6 @@ public class Game1 : Game
                         
                         // Clear existing enemies first to avoid duplicates
                         _combatManager.Combatants.Clear();
-                        SpawnTestEnemies();
                     }
                     
                     _state = AppState.Playing;
@@ -1543,7 +1516,6 @@ public class Game1 : Game
                                 {
                                     _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                                     _combatManager.Combatants.Clear();
-                                    SpawnTestEnemies();
                                 }
                                  
                                 _state = AppState.Playing;
@@ -1590,7 +1562,6 @@ public class Game1 : Game
                 {
                     _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                     _combatManager.Combatants.Clear();
-                    SpawnTestEnemies();
                 }
                 
                 _state = AppState.Playing;
@@ -1726,6 +1697,15 @@ public class Game1 : Game
                 mapButtonRect.Contains(mouse.Position))
             {
                 _showCampaignMap = true;
+                clickedOnGameplayUiButton = true;
+            }
+
+            var spawnButtonRect = GetSpawnButtonRect(GraphicsDevice.Viewport);
+            if (!_showCharacterSheet &&
+                mouseClickedThisFrame &&
+                spawnButtonRect.Contains(mouse.Position))
+            {
+                TrySpawnRandomCreatureNearPlayer();
                 clickedOnGameplayUiButton = true;
             }
 
@@ -2166,6 +2146,15 @@ public class Game1 : Game
         return new Rectangle(viewport.Width - buttonWidth - margin, margin + topOffset, buttonWidth, buttonHeight);
     }
 
+    private Rectangle GetSpawnButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 170;
+        const int buttonHeight = 40;
+        const int margin = 12;
+        const int topOffset = 104;
+        return new Rectangle(viewport.Width - buttonWidth - margin, margin + topOffset, buttonWidth, buttonHeight);
+    }
+
     private Rectangle GetRotateLeftButtonRect(Viewport viewport)
     {
         const int buttonWidth = 80;
@@ -2223,6 +2212,26 @@ public class Game1 : Game
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
                 buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.75f) / 2);
             _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private void DrawSpawnButton(Viewport viewport)
+    {
+        var buttonRect = GetSpawnButtonRect(viewport);
+        var mouse = Mouse.GetState();
+        bool isHovered = buttonRect.Contains(mouse.Position);
+
+        Color buttonColor = isHovered ? new Color(150, 95, 45) : new Color(120, 70, 30);
+        _spriteBatch.Draw(_pixel, buttonRect, buttonColor * 0.95f);
+
+        if (_font != null)
+        {
+            const string label = "Spawn";
+            var labelSize = _font.MeasureString(label);
+            var labelPos = new Vector2(
+                buttonRect.X + (buttonRect.Width - labelSize.X * 0.8f) / 2,
+                buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.8f) / 2);
+            _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         }
     }
 
@@ -2293,6 +2302,7 @@ public class Game1 : Game
 
             DrawInventoryButton(vp);
             DrawMapButton(vp, false);
+            DrawSpawnButton(vp);
             DrawRotationButtons(vp);
 
             if (_combatManager.InCombat && _showVisionOverlay)
