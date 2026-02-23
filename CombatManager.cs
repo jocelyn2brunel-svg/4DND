@@ -33,7 +33,12 @@ public class CombatManager
     private bool _inCombat = false;
     private readonly Random _random = new();
     private int _pendingXP = 0;
-    
+
+    /// <summary>
+    /// Messages generated during turn transitions (rage expiry, etc.) to be consumed by the caller.
+    /// </summary>
+    public List<string> TurnMessages { get; } = new();
+
     public bool InCombat => _inCombat;
     public List<Creature> Combatants => _combatants;
     public Creature? CurrentCombatant
@@ -299,14 +304,48 @@ public class CombatManager
     {
         // Process ongoing damage effects like poison, burning, etc.
         // This can be extended later for duration-based conditions
-        
+
         // Example: Poisoned creatures might take damage each turn
         if (creature.Conditions.HasCondition(Condition.Poisoned))
         {
             // Future: implement ongoing poison damage
         }
+
+        // Rage ends immediately if the creature is knocked unconscious
+        if (creature.IsRaging && creature.Conditions.HasCondition(Condition.Unconscious))
+        {
+            EndRage(creature);
+            TurnMessages.Add($"{creature.Name}'s rage ends (unconscious).");
+            return;
+        }
+
+        if (creature.IsRaging)
+        {
+            // On the first turn of rage (RageTurnsLeft still at its initial value of 10),
+            // skip the attack/damage check — the barbarian may not have acted yet.
+            bool firstTurnOfRage = creature.RageTurnsLeft == 10;
+
+            if (!firstTurnOfRage && !creature.HasAttackedThisRound && !creature.HasTakenDamageThisRound)
+            {
+                EndRage(creature);
+                TurnMessages.Add($"{creature.Name}'s rage ends (no attack or damage last turn).");
+            }
+            else if (creature.IsRaging)
+            {
+                creature.RageTurnsLeft--;
+                if (creature.RageTurnsLeft <= 0)
+                {
+                    EndRage(creature);
+                    TurnMessages.Add($"{creature.Name}'s rage ends (1 minute elapsed).");
+                }
+            }
+
+            // Reset per-turn tracking flags for the new turn
+            creature.HasAttackedThisRound = false;
+            creature.HasTakenDamageThisRound = false;
+        }
     }
-    
+
     /// <summary>
     /// Check if a creature of given size can occupy the space starting at (x, y, z).
     /// Large+ creatures need multiple tiles to be available.
@@ -1040,6 +1079,12 @@ public class CombatManager
         }
         
         return nearest != null ? (nearest.X, nearest.Y, nearest.Z) : null;
+    }
+
+    private void EndRage(Creature creature)
+    {
+        creature.IsRaging = false;
+        creature.RageTurnsLeft = 0;
     }
 }
 

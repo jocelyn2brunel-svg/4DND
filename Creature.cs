@@ -330,6 +330,40 @@ public class Creature
     /// </summary>
     public bool HasNimbleEscape { get; set; } = false;
 
+    /// <summary>
+    /// Whether this creature is currently in a Barbarian Rage.
+    /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
+    /// </summary>
+    public bool IsRaging { get; set; } = false;
+
+    /// <summary>
+    /// Number of Rage uses remaining until a long rest.
+    /// </summary>
+    public int RagesRemaining { get; set; } = 0;
+
+    /// <summary>
+    /// Bonus damage added to melee weapon attacks while raging.
+    /// Determined by Barbarian level.
+    /// </summary>
+    public int RageDamageBonus { get; set; } = 0;
+
+    /// <summary>
+    /// Number of turns remaining in the current rage (max 10 turns = 1 minute).
+    /// </summary>
+    public int RageTurnsLeft { get; set; } = 0;
+
+    /// <summary>
+    /// Whether this creature attacked a hostile creature since its last turn.
+    /// Used to determine whether the rage continues.
+    /// </summary>
+    public bool HasAttackedThisRound { get; set; } = false;
+
+    /// <summary>
+    /// Whether this creature took damage since its last turn.
+    /// Used to determine whether the rage continues.
+    /// </summary>
+    public bool HasTakenDamageThisRound { get; set; } = false;
+
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
 
     public bool IsAlive() => CurrentHP > 0;
@@ -782,12 +816,22 @@ public class Creature
             creature.DamageDice = "1";
             creature.DamageBonus = creature.GetAbilityModifier(creature.Strength);
         }
-        
+
+        if (character.Class == "Barbarian")
+        {
+            creature.RagesRemaining = character.RagesRemaining;
+            var barbarianData = ClassData.GetClass("Barbarian");
+            var levelData = barbarianData.GetLevelData(character.Level);
+            if (levelData != null)
+                creature.RageDamageBonus = levelData.RageDamage;
+        }
+
         return creature;
     }
     
     public void UpdateCharacter(Character character)
     {
         character.CurrentHP = CurrentHP;
+        character.RagesRemaining = RagesRemaining;
     }
 }
