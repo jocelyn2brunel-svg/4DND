@@ -433,6 +433,23 @@ public class Creature
         Z = z;
         // VisualX/Y/Z will be updated by UpdateMovementAnimation
     }
+
+    /// <summary>
+    /// Interrupts current movement, keeping only the immediate next waypoint.
+    /// Logical position (X, Y, Z) is updated to this next waypoint.
+    /// </summary>
+    public void InterruptMovement()
+    {
+        if (_movementWaypoints.Count > 0)
+        {
+            Vector3 nextWaypoint = _movementWaypoints.Peek();
+            _movementWaypoints.Clear();
+            _movementWaypoints.Enqueue(nextWaypoint);
+            X = (int)nextWaypoint.X;
+            Y = (int)nextWaypoint.Y;
+            Z = (int)nextWaypoint.Z;
+        }
+    }
     
     public static Creature CreateGoblin(int x, int y, int z = 0)
     {
