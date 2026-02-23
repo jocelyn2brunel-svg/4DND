@@ -22,10 +22,11 @@ public class CharacterSheet
     private string? _hoverTooltip;
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
-    private readonly List<(Rectangle Rect, string WeaponName)> _equippedWeaponRects = new();
+    private readonly List<(Rectangle Rect, string WeaponName, bool IsEquipped)> _weaponItemRects = new();
     private bool _showWeaponContextMenu;
     private Rectangle _weaponContextMenuRect;
     private string? _contextWeaponName;
+    private bool _contextWeaponIsEquipped;
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
 
@@ -64,10 +65,11 @@ public class CharacterSheet
 
         if (rightClick)
         {
-            var clickedWeapon = _equippedWeaponRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
+            var clickedWeapon = _weaponItemRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
             if (!string.IsNullOrEmpty(clickedWeapon.WeaponName))
             {
                 _contextWeaponName = clickedWeapon.WeaponName;
+                _contextWeaponIsEquipped = clickedWeapon.IsEquipped;
                 _showWeaponContextMenu = true;
                 _inspectWeaponText = null;
                 _weaponContextMenuRect = BuildContextMenuRect(_mousePosition);
@@ -90,6 +92,14 @@ public class CharacterSheet
                 var option = GetContextMenuOptionAt(_mousePosition);
                 switch (option)
                 {
+                    case "Équiper":
+                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        {
+                            character.InventoryData.EquipItem(_contextWeaponName);
+                            character.CalculateDerivedStats();
+                        }
+                        _showWeaponContextMenu = false;
+                        break;
                     case "Déséquiper":
                         if (!string.IsNullOrEmpty(_contextWeaponName))
                         {
@@ -110,7 +120,7 @@ public class CharacterSheet
                     case "Examiner":
                         if (!string.IsNullOrEmpty(_contextWeaponName))
                         {
-                            _inspectWeaponText = BuildItemTooltip(_contextWeaponName, true);
+                            _inspectWeaponText = BuildItemTooltip(_contextWeaponName, _contextWeaponIsEquipped);
                         }
                         _showWeaponContextMenu = false;
                         break;
@@ -142,7 +152,7 @@ public class CharacterSheet
 
         if (_font != null && character != null)
         {
-            _equippedWeaponRects.Clear();
+            _weaponItemRects.Clear();
             var c = character;
             int margin = Margin;
             int padding = 10;
@@ -618,9 +628,11 @@ public class CharacterSheet
                 spriteBatch.DrawString(_font, SafeString($"• {item}"), new Vector2(curX, currentItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                 RegisterTooltip(itemRect, BuildItemTooltip(item, item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield || item == c.InventoryData.EquippedWeapon));
 
-                if (item == c.InventoryData.EquippedWeapon)
+                var itemData = ItemDatabase.GetItem(item);
+                if (itemData.Type == ItemType.Weapon)
                 {
-                    _equippedWeaponRects.Add((itemRect, item));
+                    bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon;
+                    _weaponItemRects.Add((itemRect, item, isEquippedWeapon));
                 }
 
                 if (!left) currentItemY += lineHeight;
@@ -796,7 +808,7 @@ public class CharacterSheet
     {
         const int width = 180;
         const int optionHeight = 30;
-        const int optionCount = 3;
+        int optionCount = GetContextMenuOptions().Length;
         return new Rectangle(mousePosition.X, mousePosition.Y, width, optionHeight * optionCount);
     }
 
@@ -806,13 +818,18 @@ public class CharacterSheet
 
         int relativeY = position.Y - _weaponContextMenuRect.Y;
         int optionIndex = relativeY / 30;
-        return optionIndex switch
+        var options = GetContextMenuOptions();
+        return optionIndex >= 0 && optionIndex < options.Length ? options[optionIndex] : null;
+    }
+
+    private string[] GetContextMenuOptions()
+    {
+        if (_contextWeaponIsEquipped)
         {
-            0 => "Déséquiper",
-            1 => "Lancer",
-            2 => "Examiner",
-            _ => null
-        };
+            return new[] { "Déséquiper", "Lancer", "Examiner" };
+        }
+
+        return new[] { "Équiper", "Examiner" };
     }
 
     private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
@@ -826,7 +843,7 @@ public class CharacterSheet
         spriteBatch.Draw(_pixel, _weaponContextMenuRect, new Color(35, 35, 35, 245));
         DrawBorder(spriteBatch, _weaponContextMenuRect, new Color(220, 220, 220), 1);
 
-        string[] options = { "Déséquiper", "Lancer", "Examiner" };
+        var options = GetContextMenuOptions();
         for (int i = 0; i < options.Length; i++)
         {
             var optionRect = new Rectangle(_weaponContextMenuRect.X, _weaponContextMenuRect.Y + i * 30, _weaponContextMenuRect.Width, 30);
