@@ -88,6 +88,7 @@ public class Game1 : Game
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showCombatUI = false;
     private MouseState _prevMouse;
+    private DiceRoll3DAnimation _diceRollAnimation = new();
 
     public Game1()
     {
@@ -1180,6 +1181,8 @@ public class Game1 : Game
         var kb = Keyboard.GetState();
         var mouse = Mouse.GetState();
 
+        _diceRollAnimation.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+
         // MAIN MENU
         if (_state == AppState.MainMenu)
         {
@@ -1964,6 +1967,7 @@ public class Game1 : Game
                                 {
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
+                                    _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.None;
                                     
                                     // Check if combat ended
@@ -2039,6 +2043,7 @@ public class Game1 : Game
                                 // Attack
                                 var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
                                 AddToCombatLog(result.GetMessage());
+                                _diceRollAnimation.Start(result.AttackRoll);
                             }
                             else if (currentCombatant.MovementRemaining > 0)
                             {
@@ -2707,6 +2712,8 @@ public class Game1 : Game
                     _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     y += 18;
                 }
+
+                _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, vp);
                 
                 // Vision legend (right side)
                 if (_showVisionOverlay)
