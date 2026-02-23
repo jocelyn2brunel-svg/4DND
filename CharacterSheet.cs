@@ -113,6 +113,17 @@ public class CharacterSheet
                     case "Lancer":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
+                            // Pour l'instant, lancer retire l'objet de l'inventaire
+                            // (équivalent à un jet d'objet improvisé).
+                            character.InventoryData.UnequipItem(_contextItemName);
+                            character.InventoryData.RemoveItem(_contextItemName);
+                            character.CalculateDerivedStats();
+                        }
+                        _showItemContextMenu = false;
+                        break;
+                    case "Jeter":
+                        if (!string.IsNullOrEmpty(_contextItemName))
+                        {
                             character.InventoryData.UnequipItem(_contextItemName);
                             character.InventoryData.RemoveItem(_contextItemName);
                             character.CalculateDerivedStats();
@@ -833,15 +844,15 @@ public class CharacterSheet
     {
         if (_contextItemIsEquipped)
         {
-            return new[] { "Déséquiper", "Lancer", "Examiner" };
+            return new[] { "Déséquiper", "Jeter", "Lancer", "Examiner" };
         }
 
         if (_contextItemIsEquippable)
         {
-            return new[] { "Équiper", "Lancer", "Examiner" };
+            return new[] { "Équiper", "Jeter", "Lancer", "Examiner" };
         }
 
-        return new[] { "Lancer", "Examiner" };
+        return new[] { "Jeter", "Lancer", "Examiner" };
     }
 
     private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
