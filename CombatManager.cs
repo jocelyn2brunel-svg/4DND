@@ -45,7 +45,7 @@ public class CombatManager
     /// against the passive Wisdom (Perception) score of each creature on the opposing side.
     /// Any creature whose passive Perception is not exceeded by the Stealth check is surprised.
     /// 
-    /// <para>If neither side is hiding, no one is surprised — every creature notices every other.</para>
+    /// <para>If neither side is hiding, no one is surprised â€” every creature notices every other.</para>
     /// </summary>
     /// <param name="stealthySide">Creatures attempting to hide / be stealthy.</param>
     /// <param name="otherSide">Creatures that might be caught off-guard.</param>
@@ -77,7 +77,7 @@ public class CombatManager
 
         // Compare the lowest stealth roll on the stealthy side against each defender's passive Perception.
         // A creature is NOT surprised only if at least one stealth roll fails to beat its passive Perception.
-        // Per RAW: a creature is surprised when it doesn't notice the threat —
+        // Per RAW: a creature is surprised when it doesn't notice the threat â€”
         // i.e. every stealth roll beats its passive Perception.
         foreach (var defender in otherSide)
         {
@@ -101,7 +101,7 @@ public class CombatManager
     /// <summary>
     /// Begins a new combat encounter.
     /// Each participant rolls initiative (1d20 + Dexterity modifier) to determine turn order.
-    /// Combatants are sorted in descending initiative order — the highest roll acts first.
+    /// Combatants are sorted in descending initiative order â€” the highest roll acts first.
     /// This marks the start of Round 1.
     /// </summary>
     /// <param name="creatures">All participants in the encounter.</param>
@@ -134,7 +134,7 @@ public class CombatManager
         _currentRound = 1;
         _inCombat = true;
 
-        // Grant resources to the first combatant — their turn starts immediately
+        // Grant resources to the first combatant â€” their turn starts immediately
         if (_combatants.Count > 0)
         {
             var first = _combatants[0];
@@ -266,7 +266,7 @@ public class CombatManager
                 var tileType = TacticalMap.Get(checkX, checkY, z);
                 if (tileType == TileType.Wall || tileType == TileType.Empty)
                 {
-                    // Normal fit failed — try squeezing (one size smaller) if allowed
+                    // Normal fit failed â€” try squeezing (one size smaller) if allowed
                     if (allowSqueeze)
                     {
                         var smallerSize = SizeHelper.GetSmallerSize(size);
@@ -426,6 +426,7 @@ public class CombatManager
         var openSet = new List<TacticalMapNode> { start };
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
 
         while (openSet.Count > 0)
@@ -438,12 +439,19 @@ public class CombatManager
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
+                int tentativeTurns = turnCount[current] + GetTurnPenalty(cameFrom, current, neighbor);
                 int tentativeG = gScore[current] + GetMoveCost(creature, neighbor);
-                if (tentativeG >= gScore.GetValueOrDefault(neighbor, int.MaxValue))
+                int currentBestG = gScore.GetValueOrDefault(neighbor, int.MaxValue);
+                int currentBestTurns = turnCount.GetValueOrDefault(neighbor, int.MaxValue);
+
+                if (tentativeG > currentBestG)
+                    continue;
+                if (tentativeG == currentBestG && tentativeTurns >= currentBestTurns)
                     continue;
 
                 cameFrom[neighbor] = current;
                 gScore[neighbor] = tentativeG;
+                turnCount[neighbor] = tentativeTurns;
                 fScore[neighbor] = tentativeG + Heuristic(neighbor, goal);
 
                 if (!openSet.Contains(neighbor))
@@ -481,6 +489,22 @@ public class CombatManager
                 }
             }
         }
+    }
+
+    private static int GetTurnPenalty(Dictionary<TacticalMapNode, TacticalMapNode> cameFrom, TacticalMapNode current, TacticalMapNode neighbor)
+    {
+        if (!cameFrom.TryGetValue(current, out var previous))
+            return 0;
+
+        int dx1 = current.X - previous.X;
+        int dy1 = current.Y - previous.Y;
+        int dz1 = current.Z - previous.Z;
+
+        int dx2 = neighbor.X - current.X;
+        int dy2 = neighbor.Y - current.Y;
+        int dz2 = neighbor.Z - current.Z;
+
+        return (dx1 == dx2 && dy1 == dy2 && dz1 == dz2) ? 0 : 1;
     }
 
     private static int Heuristic(TacticalMapNode a, TacticalMapNode b)
