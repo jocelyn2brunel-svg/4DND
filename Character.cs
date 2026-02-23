@@ -74,6 +74,9 @@ public class Character
     // Wealth
     public int GoldPieces { get; set; } = 0;
 
+    // Barbarian-specific
+    public int RagesRemaining { get; set; } = 0;
+
     // Proficiencies (armor and weapons)
     public List<string> ArmorProficiencies { get; set; } = new();
     public List<string> WeaponProficiencies { get; set; } = new();

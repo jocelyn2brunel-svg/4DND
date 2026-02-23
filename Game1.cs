@@ -2315,6 +2315,21 @@ public class Game1 : Game
                                 AddToCombatLog(result.GetMessage());
                                 _diceRollAnimation.Start(result.AttackRoll);
                                 shouldEndTurn = false;
+
+                                // Nimble Escape: bonus action Disengage, then retreat
+                                if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
+                                {
+                                    currentCombatant.HasBonusAction = false;
+                                    AddToCombatLog($"{currentCombatant.Name} uses Nimble Escape (Disengage)");
+                                    var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
+                                    if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
+                                    {
+                                        _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z);
+                                        AddToCombatLog($"{currentCombatant.Name} retreats");
+                                        UpdateVision();
+                                    }
+                                    currentCombatant.MovementRemaining = 0;
+                                }
                             }
                             else if (currentCombatant.MovementRemaining > 0)
                             {
@@ -2968,6 +2983,23 @@ public class Game1 : Game
             return;
         }
 
+        // CHARACTER SHEET
+        if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
+        {
+            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+        
+        // CAMPAIGN MAP
+        if (_showCampaignMap && _state == AppState.Playing && _currentCampaign != null)
+        {
+            _campaignMapViewer.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
 
         
         // Combat UI
