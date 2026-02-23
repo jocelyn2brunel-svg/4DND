@@ -2152,6 +2152,8 @@ public class Game1 : Game
                 }
                 else if (currentCombatant != null && !currentCombatant.IsPlayer)
                 {
+                    bool shouldEndTurn = true;
+
                     // AI turn - check if they have action
                     if (currentCombatant.HasAction || currentCombatant.MovementRemaining > 0)
                     {
@@ -2165,6 +2167,7 @@ public class Game1 : Game
                                 var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
                                 AddToCombatLog(result.GetMessage());
                                 _diceRollAnimation.Start(result.AttackRoll);
+                                shouldEndTurn = false;
                             }
                             else if (currentCombatant.MovementRemaining > 0)
                             {
@@ -2174,25 +2177,15 @@ public class Game1 : Game
                                     _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z);
                                     AddToCombatLog($"{currentCombatant.Name} moved");
                                     UpdateVision();
-                                }
-                            }
-                            else
-                            {
-                                // Out of actions and movement, end turn
-                                int prevRound = _combatManager.CurrentRound;
-                                _combatManager.NextTurn();
-                                int newRound = _combatManager.CurrentRound;
-                        
-                                if (newRound > prevRound)
-                                {
-                                    AddToCombatLog($"=== Round {newRound} ===");
+                                    shouldEndTurn = false;
                                 }
                             }
                         }
                     }
-                    else
+
+                    if (shouldEndTurn)
                     {
-                        // No actions left, end turn
+                        // No valid action/move left, end turn.
                         int prevRound = _combatManager.CurrentRound;
                         _combatManager.NextTurn();
                         int newRound = _combatManager.CurrentRound;
