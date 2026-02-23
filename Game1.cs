@@ -939,7 +939,8 @@ public class Game1 : Game
                     (byte)(outlineColor.B * tint.B / 255));
             }
 
-            Draw3DTileOutline(creature.X, creature.Y, creature.Z, outlineColor);
+            var (w, h) = SizeHelper.GetSpaceInSquares(creature.Size);
+            Draw3DTileOutline(creature.X, creature.Y, creature.Z, outlineColor, w, h);
         }
     }
 
@@ -994,7 +995,7 @@ public class Game1 : Game
 
     private void DrawHoveredMovementPath((int x, int y)? hoveredTile)
     {
-        if (!hoveredTile.HasValue || !_combatManager.InCombat)
+        if (!hoveredTile.HasValue)
             return;
 
         if (_playerCreature == null || !_playerCreature.IsAlive())
@@ -1004,35 +1005,44 @@ public class Game1 : Game
         int targetY = hoveredTile.Value.y;
         int targetZ = _currentViewLevel;
 
-        if (_playerCreature.Z != _currentViewLevel)
+        // Path trace for flight is tricky, only show if on same level as target for now
+        // unless the creature is currently flying.
+        if (!_playerCreature.IsFlying && _playerCreature.Z != _currentViewLevel)
             return;
-
-        if (_combatManager.GetCreatureAt(targetX, targetY, targetZ) != null)
-            return;
-
-        var path = _combatManager.GetPath(_playerCreature, targetX, targetY, targetZ);
-        if (path == null || path.Count < 2)
-            return;
-
-        Color pathColor = _combatManager.CanMove(_playerCreature, targetX, targetY, targetZ)
-            ? new Color(0, 240, 255)
-            : new Color(255, 165, 0);
 
         const float zOffset = 0.12f;
+        var offset = SizeHelper.GetCenterOffset(_playerCreature.Size);
+        Vector3 previousPoint = new Vector3(_playerCreature.VisualX + offset.X, _playerCreature.VisualY + offset.Y, _playerCreature.VisualZ + zOffset);
 
-        Vector3 previousPoint = new Vector3(_playerCreature.X, _playerCreature.Y, _playerCreature.Z + zOffset);
+        Color activePathColor = new Color(0, 240, 255); // Blue for current movement
 
-        for (int i = 1; i < path.Count; i++)
+        // 1. Draw through remaining waypoints (current movement in progress)
+        var waypoints = _playerCreature.GetRemainingWaypoints();
+        foreach (var wp in waypoints)
         {
-            var to = path[i];
-            Vector3 nextPoint = new Vector3(to.x, to.y, to.z + zOffset);
-
-            Draw3DLine(
-                previousPoint,
-                nextPoint,
-                pathColor);
-
+            Vector3 nextPoint = new Vector3(wp.X + offset.X, wp.Y + offset.Y, wp.Z + zOffset);
+            Draw3DLine(previousPoint, nextPoint, activePathColor);
             previousPoint = nextPoint;
+        }
+
+        // 2. Draw potential new path from logical position to hover target
+        if (_combatManager.GetCreatureAt(targetX, targetY, targetZ) == null)
+        {
+            var path = _combatManager.GetPath(_playerCreature, targetX, targetY, targetZ);
+            if (path != null && path.Count >= 2)
+            {
+                Color hoverPathColor = (_combatManager.InCombat && !_combatManager.CanMove(_playerCreature, targetX, targetY, targetZ))
+                    ? new Color(255, 165, 0) // Orange if out of movement
+                    : activePathColor;
+
+                for (int i = 1; i < path.Count; i++)
+                {
+                    var to = path[i];
+                    Vector3 nextPoint = new Vector3(to.x + offset.X, to.y + offset.Y, to.z + zOffset);
+                    Draw3DLine(previousPoint, nextPoint, hoverPathColor);
+                    previousPoint = nextPoint;
+                }
+            }
         }
     }
 
@@ -1061,16 +1071,16 @@ public class Game1 : Game
         return isEnemy ? Color.Red : Color.DeepSkyBlue;
     }
 
-    private void Draw3DTileOutline(int x, int y, int z, Color color)
+    private void Draw3DTileOutline(int x, int y, int z, Color color, int width = 1, int height = 1)
     {
         const float halfTile = 0.5f;
         const float elevation = 0.07f;
         float zPos = z + elevation;
 
         Vector3 topLeft = new Vector3(x - halfTile, y - halfTile, zPos);
-        Vector3 topRight = new Vector3(x + halfTile, y - halfTile, zPos);
-        Vector3 bottomRight = new Vector3(x + halfTile, y + halfTile, zPos);
-        Vector3 bottomLeft = new Vector3(x - halfTile, y + halfTile, zPos);
+        Vector3 topRight = new Vector3(x + width - halfTile, y - halfTile, zPos);
+        Vector3 bottomRight = new Vector3(x + width - halfTile, y + height - halfTile, zPos);
+        Vector3 bottomLeft = new Vector3(x - halfTile, y + height - halfTile, zPos);
 
         Draw3DLine(topLeft, topRight, color);
         Draw3DLine(topRight, bottomRight, color);
@@ -1090,9 +1100,21 @@ public class Game1 : Game
         Color color = creature.DisplayColor;
         if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
         var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
+        var offset = SizeHelper.GetCenterOffset(creature.Size);
+
         // Use visual position for smooth movement
-        Draw3DCapsule(creature.VisualX, creature.VisualY, creature.VisualZ, capsuleRadius, capsuleHeight, color);
-        if (creature.VisualZ > 0) { Draw3DTile(creature.X, creature.Y, 0, Color.Black * 0.3f); Draw3DLine(new Vector3(creature.VisualX, creature.VisualY, creature.VisualZ), new Vector3(creature.VisualX, creature.VisualY, 0), Color.Gray * 0.3f); }
+        Draw3DCapsule(creature.VisualX + offset.X, creature.VisualY + offset.Y, creature.VisualZ, capsuleRadius, capsuleHeight, color);
+
+        if (creature.VisualZ > 0)
+        {
+            // Draw shadow centered under creature
+            var (w, h) = SizeHelper.GetSpaceInSquares(creature.Size);
+            for (int dx = 0; dx < w; dx++)
+                for (int dy = 0; dy < h; dy++)
+                    Draw3DTile(creature.X + dx, creature.Y + dy, 0, Color.Black * 0.3f);
+
+            Draw3DLine(new Vector3(creature.VisualX + offset.X, creature.VisualY + offset.Y, creature.VisualZ), new Vector3(creature.VisualX + offset.X, creature.VisualY + offset.Y, 0), Color.Gray * 0.3f);
+        }
     }
 
     private static (float Radius, float Height) GetCreatureCapsuleDimensions(CreatureSize size)
@@ -1155,8 +1177,10 @@ public class Game1 : Game
         }
         var (capsuleRadius, _) = GetCreatureCapsuleDimensions(creature.Size);
         float uiAnchorZ = GetCreatureVisualTopZ(creature) + MathF.Max(0.15f, capsuleRadius * 0.4f);
+        var offset = SizeHelper.GetCenterOffset(creature.Size);
+
         // Use visual position for UI anchoring
-        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.VisualX, creature.VisualY, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+        Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.VisualX + offset.X, creature.VisualY + offset.Y, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);

@@ -170,6 +170,16 @@ public static class SizeHelper
     }
     
     /// <summary>
+    /// Returns the visual center offset for a creature of the given size.
+    /// Medium (1x1) has 0 offset, Large (2x2) has 0.5 offset, etc.
+    /// </summary>
+    public static Vector2 GetCenterOffset(CreatureSize size)
+    {
+        var (width, height) = GetSpaceInSquares(size);
+        return new Vector2((width - 1) / 2.0f, (height - 1) / 2.0f);
+    }
+
+    /// <summary>
     /// Returns the size one step smaller than the given size, or null if already Tiny.
     /// Used for squeezing: a creature can squeeze into a space one size smaller.
     /// </summary>
@@ -382,6 +392,14 @@ public class Creature
         float dy = Y - VisualY;
         float dz = Z - VisualZ;
         return (dx * dx + dy * dy + dz * dz) > 0.01f;
+    }
+
+    /// <summary>
+    /// Returns the remaining waypoints in the movement queue.
+    /// </summary>
+    public List<Vector3> GetRemainingWaypoints()
+    {
+        return _movementWaypoints.ToList();
     }
     
     /// <summary>
