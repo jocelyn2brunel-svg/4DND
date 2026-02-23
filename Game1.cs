@@ -58,7 +58,6 @@ public class Game1 : Game
 
     private CharacterCreation _characterCreation = null!;
     private CharacterSheet _characterSheet = null!;
-    private JournalUI _journalUI = null!;
     private CampaignCreation _campaignCreation = null!;
     private CampaignMapViewer _campaignMapViewer = null!;
 
@@ -67,7 +66,6 @@ public class Game1 : Game
     private readonly string[] _menuItems = new[] { "Continue", "Options", "Main Menu", "Desktop" };
     
     private bool _showCampaignMap = false;
-    private bool _showJournal = false;
 
     private KeyboardState _prevKb;
     private SpriteFont _font = null!;
@@ -175,7 +173,6 @@ public class Game1 : Game
 
         _characterCreation = new CharacterCreation(_font, _pixel);
         _characterSheet = new CharacterSheet(_font, _pixel);
-        _journalUI = new JournalUI(_font, _pixel);
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
@@ -1414,22 +1411,6 @@ public class Game1 : Game
             return;
         }
 
-        if (_showJournal && _state == AppState.Playing && _currentCampaign != null)
-        {
-            _journalUI.Update(mouse);
-
-            if ((kb.IsKeyDown(Keys.J) && !_prevKb.IsKeyDown(Keys.J)) ||
-                (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape)))
-            {
-                _showJournal = false;
-            }
-
-            _prevKb = kb;
-            _prevMouse = mouse;
-            base.Update(gameTime);
-            return;
-        }
-
         // CHARACTER SELECT
         if (_state == AppState.CharacterSelect)
         {
@@ -1987,13 +1968,6 @@ public class Game1 : Game
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
             {
                 _showCampaignMap = !_showCampaignMap;
-            }
-
-            // Toggle journal with J
-            if (kb.IsKeyDown(Keys.J) && !_prevKb.IsKeyDown(Keys.J))
-            {
-                _showJournal = !_showJournal;
-                if (_showJournal) _journalUI.ResetScroll();
             }
             
             // Change view level with PageUp/PageDown
@@ -2731,15 +2705,6 @@ public class Game1 : Game
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
         {
             _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
-            _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
-        }
-
-        // JOURNAL
-        if (_showJournal && _state == AppState.Playing && _currentCampaign != null)
-        {
-            _journalUI.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
