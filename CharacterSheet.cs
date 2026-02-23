@@ -18,6 +18,8 @@ public class CharacterSheet
     private const int CloseButtonWidth = 120;
     private const int CloseButtonHeight = 36;
     private const int HeaderHeight = 110;
+    private Point _mousePosition;
+    private string? _hoverTooltip;
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -27,6 +29,8 @@ public class CharacterSheet
 
     public void Update(MouseState mouse)
     {
+        _mousePosition = mouse.Position;
+
         if (_prevScrollValue == 0)
         {
             _prevScrollValue = mouse.ScrollWheelValue;
@@ -50,6 +54,7 @@ public class CharacterSheet
     public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character, Campaign? campaign = null)
     {
         var vp = graphics.Viewport;
+        _hoverTooltip = null;
 
         spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), new Color(20, 20, 20));
 
@@ -122,6 +127,7 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, hint, new Vector2((vp.Width - hintSize.X) / 2, vp.Height - 30), Color.White * 0.8f);
 
             DrawCloseButton(spriteBatch, vp);
+            DrawTooltip(spriteBatch, vp);
         }
     }
 
@@ -308,6 +314,8 @@ public class CharacterSheet
         int checkboxX = x + 5;
         int checkboxY = y + height / 2 - checkboxSize / 2;
         DrawCheckbox(spriteBatch, checkboxX, checkboxY, checkboxSize, saveProficiency);
+
+        RegisterTooltip(outerRect, $"{name}: score {score} ({modText}). Saving throw {(saveProficiency ? "proficient" : "not proficient")}.");
         
         spriteBatch.DrawString(_font, "SAVING THROWS", new Vector2(x + 2, y + height - 10), Color.Black * 0.4f, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
     }
@@ -624,9 +632,54 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, skillName, new Vector2(x + 60, skillY - 2), proficient ? Color.Black : Color.Black * 0.6f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             
             spriteBatch.DrawString(_font, $"({ability})", new Vector2(x + width - 45, skillY - 2), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+            var skillRect = new Rectangle(x + 4, skillY - 2, width - 8, lineHeight);
+            RegisterTooltip(skillRect, $"{skillName} ({ability}) : bonus {bonusText}. {(proficient ? "Vous êtes compétent." : "Pas de maîtrise." )}");
             
             skillY += lineHeight;
         }
+    }
+
+    private void RegisterTooltip(Rectangle area, string text)
+    {
+        if (_hoverTooltip == null && area.Contains(_mousePosition))
+        {
+            _hoverTooltip = text;
+        }
+    }
+
+    private void DrawTooltip(SpriteBatch spriteBatch, Viewport viewport)
+    {
+        if (string.IsNullOrWhiteSpace(_hoverTooltip))
+        {
+            return;
+        }
+
+        const int padding = 8;
+        var textSize = _font.MeasureString(_hoverTooltip);
+        int width = (int)textSize.X + padding * 2;
+        int height = (int)textSize.Y + padding * 2;
+
+        int x = _mousePosition.X + 16;
+        int y = _mousePosition.Y + 18;
+
+        if (x + width > viewport.Width - 4)
+        {
+            x = viewport.Width - width - 4;
+        }
+
+        if (y + height > viewport.Height - 4)
+        {
+            y = _mousePosition.Y - height - 8;
+        }
+
+        x = System.Math.Max(4, x);
+        y = System.Math.Max(4, y);
+
+        var tooltipRect = new Rectangle(x, y, width, height);
+        spriteBatch.Draw(_pixel, tooltipRect, new Color(30, 30, 30, 240));
+        DrawBorder(spriteBatch, tooltipRect, new Color(220, 220, 220), 1);
+        spriteBatch.DrawString(_font, _hoverTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 
     private void DrawSmallBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height)
