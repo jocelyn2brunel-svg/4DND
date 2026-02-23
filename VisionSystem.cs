@@ -9,6 +9,9 @@ namespace _4DND;
 
 public class VisionSystem
 {
+    private const int MaxExploredTiles = 120000;
+    private const int ExploredRetentionRadius = 120;
+
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
@@ -175,6 +178,8 @@ public class VisionSystem
             {
                 AddTremorsenseVision(observer);
             }
+
+            TrimExploredTiles(observer);
             
             return;
         }
@@ -209,6 +214,28 @@ public class VisionSystem
                 CastVisibilityRay(observer, observer.X + d, observer.Y + visionTiles, observer.Z + dz);
             }
         }
+
+        TrimExploredTiles(observer);
+    }
+
+    private void TrimExploredTiles(Creature observer)
+    {
+        if (_exploredTiles.Count <= MaxExploredTiles)
+            return;
+
+        var toRemove = new List<(int, int, int)>();
+        foreach (var tile in _exploredTiles)
+        {
+            int distance = Math.Max(
+                Math.Max(Math.Abs(tile.Item1 - observer.X), Math.Abs(tile.Item2 - observer.Y)),
+                Math.Abs(tile.Item3 - observer.Z));
+
+            if (distance > ExploredRetentionRadius)
+                toRemove.Add(tile);
+        }
+
+        foreach (var tile in toRemove)
+            _exploredTiles.Remove(tile);
     }
 
     private void CastVisibilityRay(Creature observer, int tx, int ty, int tz)
