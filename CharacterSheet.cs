@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -21,13 +21,11 @@ public class CharacterSheet
     private const int HeaderHeight = 110;
     private Point _mousePosition;
     private string? _hoverTooltip;
-    private HashSet<char> _supportedChars;
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
         _font = font;
         _pixel = pixel;
-        _supportedChars = font != null ? new HashSet<char>(font.Characters) : new HashSet<char>();
     }
 
     public void Update(MouseState mouse)
@@ -179,13 +177,16 @@ public class CharacterSheet
     {
         int padding = 10;
         
-        var logoRect = new Rectangle(x + padding, y + padding, 120, 40);
-        spriteBatch.Draw(_pixel, logoRect, Color.Black * 0.2f);
-        spriteBatch.DrawString(_font, "D&D 5E", new Vector2(logoRect.X + 10, logoRect.Y + 10), Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-        
-        int nameX = x + padding + 130;
-        int nameY = y + padding + 5;
-        spriteBatch.DrawString(_font, SafeString(c.Name), new Vector2(nameX, nameY), Color.Black, 0f, Vector2.Zero, 1.8f, SpriteEffects.None, 0f);
+        if (spriteBatch != null)
+        {
+            var logoRect = new Rectangle(x + padding, y + padding, 120, 40);
+            spriteBatch.Draw(_pixel, logoRect, Color.Black * 0.2f);
+            spriteBatch.DrawString(_font, "D&D 5E", new Vector2(logoRect.X + 10, logoRect.Y + 10), Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+
+            int nameX = x + padding + 130;
+            int nameY = y + padding + 5;
+            spriteBatch.DrawString(_font, c.Name, new Vector2(nameX, nameY), Color.Black, 0f, Vector2.Zero, 1.8f, SpriteEffects.None, 0f);
+        }
         
         int infoY = y + padding + 50;
         int infoSpacing = (width - padding * 2) / 6;
@@ -200,9 +201,19 @@ public class CharacterSheet
 
     private void DrawHeaderField(SpriteBatch spriteBatch, string label, string value, int x, int y, int width)
     {
-        var fieldRect = new Rectangle(x, y, width, 26);
-        spriteBatch.DrawString(_font, SafeString(label), new Vector2(x, y), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-        spriteBatch.DrawString(_font, SafeString(value), new Vector2(x + 2, y + 10), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        string wrappedValue = WrapText(_font, value, width, 0.7f);
+        var valueSize = _font.MeasureString(wrappedValue) * 0.7f;
+        int fieldHeight = (int)System.Math.Max(26, 12 + valueSize.Y);
+
+        if (spriteBatch != null)
+        {
+            var fieldRect = new Rectangle(x, y, width, fieldHeight);
+            spriteBatch.DrawString(_font, label, new Vector2(x, y), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, wrappedValue, new Vector2(x + 2, y + 10), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+            RegisterTooltip(fieldRect, string.IsNullOrWhiteSpace(value)
+                ? $"{label}: champ à renseigner."
+                : $"{label}: {value}.");
 
         RegisterTooltip(fieldRect, string.IsNullOrWhiteSpace(value)
             ? $"{label}: champ à renseigner."
@@ -260,16 +271,7 @@ public class CharacterSheet
         // Armor proficiencies
         if (c.ArmorProficiencies != null && c.ArmorProficiencies.Count > 0)
         {
-            spriteBatch.DrawString(_font, "Armor:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            contentY += 15;
-            
-            foreach (var armor in c.ArmorProficiencies)
-            {
-                spriteBatch.DrawString(_font, SafeString($"? {armor}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Maîtrise d'armure: {armor}.");
-                contentY += 14;
-            }
-            contentY += 5;
+            currentY += 15 + c.ArmorProficiencies.Count * 14 + 5;
         }
         
         // Weapon proficiencies
@@ -280,47 +282,20 @@ public class CharacterSheet
             
             foreach (var weapon in c.WeaponProficiencies)
             {
-                spriteBatch.DrawString(_font, SafeString($"? {weapon}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Maîtrise d'arme: {weapon}.");
-                contentY += 14;
+                spriteBatch.DrawString(_font, "Weapons:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                contentY += 15;
+                foreach (var weapon in c.WeaponProficiencies)
+                {
+                    spriteBatch.DrawString(_font, $"? {weapon}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Maîtrise d'arme: {weapon}.");
+                    contentY += 14;
+                }
+                contentY += 5;
             }
             contentY += 5;
         }
-        
-        // Class info
-        var classData = ClassData.GetClass(c.Class);
-        spriteBatch.DrawString(_font, "Class Info:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-        contentY += 15;
-        spriteBatch.DrawString(_font, SafeString($"? Hit Die: d{c.HitDiceType}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-        RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Dé de vie de classe: d{c.HitDiceType}.");
-        contentY += 14;
-        spriteBatch.DrawString(_font, SafeString($"? Primary Ability: {classData.PrimaryAbility}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-        RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Capacité principale de la classe: {classData.PrimaryAbility}.");
-        contentY += 14;
 
-        // Barbarian-specific level features
-        if (c.Class == "Barbarian")
-        {
-            var levelData = classData.GetLevelData(c.Level);
-            if (levelData != null)
-            {
-                contentY += 5;
-                spriteBatch.DrawString(_font, "Barbarian:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                contentY += 15;
-
-                string ragesMax = levelData.Rages == -1 ? "Unlimited" : levelData.Rages.ToString();
-                spriteBatch.DrawString(_font, SafeString($"? Rages: {c.RagesRemaining}/{ragesMax}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Rages par jour: {ragesMax}. Restantes: {c.RagesRemaining}.");
-                contentY += 14;
-
-                spriteBatch.DrawString(_font, SafeString($"? Rage Damage: +{levelData.RageDamage}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Bonus de dégâts en rage: +{levelData.RageDamage}.");
-                contentY += 14;
-
-                spriteBatch.DrawString(_font, SafeString($"? {levelData.Features}"), new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Capacités de niveau {c.Level}: {levelData.Features}.");
-            }
-        }
+        return totalHeight;
     }
 
     private void DrawAbilityBox(SpriteBatch spriteBatch, Character c, string name, int score, bool saveProficiency, int x, int y, int width, int height)
@@ -448,23 +423,51 @@ public class CharacterSheet
             string damage = GetWeaponDamage(weapon);
             var weaponRect = new Rectangle(nameCol - 4, entryY - 2, width - 20, lineHeight);
             
-            spriteBatch.DrawString(_font, SafeString(weapon), new Vector2(nameCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, SafeString(FormatModifier(atkBonus)), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, SafeString(damage), new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(weaponRect, BuildWeaponTooltip(weapon, atkBonus, damage));
-            entryY += lineHeight;
-        }
-        else
-        {
-            RegisterTooltip(new Rectangle(x + 6, headerY + 18, width - 12, lineHeight), "Aucune arme équipée. Équipez une arme pour afficher son bonus d'attaque et ses dégâts.");
-        }
-        
-        // Draw empty lines for additional attacks
-        for (int i = 0; i < 8; i++)
-        {
-            var entryLineRect = new Rectangle(x + 5, entryY + lineHeight - 2, width - 10, 1);
-            spriteBatch.Draw(_pixel, entryLineRect, Color.Black * 0.15f);
-            entryY += lineHeight;
+            spriteBatch.DrawString(_font, "ATTACKS & SPELLCASTING", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+            // Table headers
+            int headerY = y + 30;
+            int nameCol = x + 10;
+            int atkBonusCol = x + width / 2;
+            int damageCol = x + width / 2 + 80;
+
+            spriteBatch.DrawString(_font, "NAME", new Vector2(nameCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "ATK BONUS", new Vector2(atkBonusCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "DAMAGE/TYPE", new Vector2(damageCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+            // Draw separator line
+            var lineRect = new Rectangle(x + 5, headerY + 15, width - 10, 1);
+            spriteBatch.Draw(_pixel, lineRect, Color.Black * 0.3f);
+
+            // Draw weapon entries
+            int entryY = headerY + 20;
+            int lineHeight = 20;
+
+            if (c.InventoryData.EquippedWeapon != null)
+            {
+                string weapon = c.InventoryData.EquippedWeapon;
+                int atkBonus = c.GetAbilityModifier(c.Strength) + c.ProficiencyBonus;
+                string damage = GetWeaponDamage(weapon);
+                var weaponRect = new Rectangle(nameCol - 4, entryY - 2, width - 20, lineHeight);
+
+                spriteBatch.DrawString(_font, weapon, new Vector2(nameCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, FormatModifier(atkBonus), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, damage, new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                RegisterTooltip(weaponRect, BuildWeaponTooltip(weapon, atkBonus, damage));
+                entryY += lineHeight;
+            }
+            else
+            {
+                RegisterTooltip(new Rectangle(x + 6, headerY + 18, width - 12, lineHeight), "Aucune arme équipée. Équipez une arme pour afficher son bonus d'attaque et ses dégâts.");
+            }
+
+            // Draw empty lines for additional attacks
+            for (int i = 0; i < 8; i++)
+            {
+                var entryLineRect = new Rectangle(x + 5, entryY + lineHeight - 2, width - 10, 1);
+                spriteBatch.Draw(_pixel, entryLineRect, Color.Black * 0.15f);
+                entryY += lineHeight;
+            }
         }
     }
     
@@ -481,30 +484,16 @@ public class CharacterSheet
         int col1 = x + 10;
         int col2 = x + width / 2 + 5;
         
-        // Equipped items
-        if (c.InventoryData.EquippedArmor != null)
-        {
-            string armorName = c.InventoryData.EquippedArmor;
-            spriteBatch.DrawString(_font, SafeString($" {armorName}"), new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(armorName, true));
-            itemY += lineHeight;
-        }
+        int itemCount = c.InventoryData.Items.Count + (c.InventoryData.EquippedArmor != null ? 1 : 0) + (c.InventoryData.EquippedShield != null ? 1 : 0);
+        int itemsInLeftCol = System.Math.Min(itemCount, maxItemsPerCol);
+        int itemsInRightCol = System.Math.Max(0, itemCount - maxItemsPerCol);
         
-        if (c.InventoryData.EquippedShield != null)
-        {
-            string shieldName = c.InventoryData.EquippedShield;
-            spriteBatch.DrawString(_font, SafeString($" {shieldName}"), new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(shieldName, true));
-            itemY += lineHeight;
-        }
-        
-        // Two-column inventory list
-        itemY = y + 30;
-        int leftColCount = 0;
-        int maxItemsPerCol = 10;
-        int rightItemY = y + 30;
-        
-        foreach (var item in c.InventoryData.Items)
+        int itemYHeight = 30 + (itemsInLeftCol * (lineHeight - 2));
+        int rightItemYHeight = 30 + (itemsInRightCol * (lineHeight - 2));
+
+        int height = System.Math.Max(itemYHeight, rightItemYHeight) + 45;
+
+        if (spriteBatch != null)
         {
             if (item == c.InventoryData.EquippedWeapon || 
                 item == c.InventoryData.EquippedArmor || 
@@ -513,16 +502,32 @@ public class CharacterSheet
             
             if (leftColCount < maxItemsPerCol)
             {
-                spriteBatch.DrawString(_font, SafeString($" {item}"), new Vector2(col1, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
-                itemY += lineHeight - 2;
+                string shieldName = c.InventoryData.EquippedShield;
+                spriteBatch.DrawString(_font, $"• {shieldName}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(shieldName, true));
+                itemY += lineHeight;
                 leftColCount++;
             }
             else
             {
-                spriteBatch.DrawString(_font, SafeString($" {item}"), new Vector2(col2, rightItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(col2 - 2, rightItemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
-                rightItemY += lineHeight - 2;
+                if (item == c.InventoryData.EquippedWeapon ||
+                    item == c.InventoryData.EquippedArmor ||
+                    item == c.InventoryData.EquippedShield)
+                    continue;
+
+                if (leftColCount < maxItemsPerCol)
+                {
+                    spriteBatch.DrawString(_font, $"• {item}", new Vector2(col1, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
+                    itemY += lineHeight - 2;
+                    leftColCount++;
+                }
+                else
+                {
+                    spriteBatch.DrawString(_font, $"• {item}", new Vector2(col2, rightItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(col2 - 2, rightItemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
+                    rightItemY += lineHeight - 2;
+                }
             }
         }
         
@@ -724,8 +729,7 @@ public class CharacterSheet
         }
 
         const int padding = 8;
-        var safeTooltip = SafeString(_hoverTooltip);
-        var textSize = _font.MeasureString(safeTooltip);
+        var textSize = _font.MeasureString(_hoverTooltip);
         int width = (int)textSize.X + padding * 2;
         int height = (int)textSize.Y + padding * 2;
 
@@ -748,7 +752,7 @@ public class CharacterSheet
         var tooltipRect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, tooltipRect, new Color(30, 30, 30, 240));
         DrawBorder(spriteBatch, tooltipRect, new Color(220, 220, 220), 1);
-        spriteBatch.DrawString(_font, safeTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, _hoverTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 
     private void DrawSmallBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height, string? tooltipText = null)
@@ -834,16 +838,6 @@ public class CharacterSheet
     {
         return value >= 0 ? $"+{value}" : $"{value}";
     }
-
-    private string SafeString(string? text)
-    {
-        if (_font == null || text == null) return text ?? "";
-        var chars = text.ToCharArray();
-        for (int i = 0; i < chars.Length; i++)
-            if (!_supportedChars.Contains(chars[i]))
-                chars[i] = '?';
-        return new string(chars);
-    }
     
     private string GetWeaponDamage(string weapon)
     {
@@ -927,47 +921,7 @@ public class CharacterSheet
         };
     }
 
-    private void DrawAdventureJournal(SpriteBatch spriteBatch, Campaign campaign, int x, int y, int width)
-    {
-        int height = 400;
-        var rect = new Rectangle(x, y, width, height);
-        spriteBatch.Draw(_pixel, rect, Color.White);
-        DrawBorder(spriteBatch, rect, Color.Black, 2);
-
-        spriteBatch.DrawString(_font, "ADVENTURE JOURNAL", new Vector2(x + 10, y + 10), Color.DarkRed, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
-
-        int currentY = y + 50;
-        int sectionHeight = 110;
-
-        DrawAdventureSection(spriteBatch, "THE BEGINNING (HOOK)", campaign.AdventureHook, x + 10, currentY, width - 20, sectionHeight, Color.DarkBlue);
-        currentY += sectionHeight + 5;
-
-        DrawAdventureSection(spriteBatch, "THE MIDDLE (DEVELOPMENT)", campaign.AdventureMiddle, x + 10, currentY, width - 20, sectionHeight, Color.DarkGreen);
-        currentY += sectionHeight + 5;
-
-        DrawAdventureSection(spriteBatch, "THE ENDING (CLIMAX)", campaign.AdventureEnding, x + 10, currentY, width - 20, sectionHeight, Color.DarkOrange);
-    }
-
-    private void DrawAdventureSection(SpriteBatch spriteBatch, string title, string content, int x, int y, int width, int height, Color titleColor)
-    {
-        var rect = new Rectangle(x, y, width, height);
-        spriteBatch.Draw(_pixel, rect, Color.Black * 0.05f);
-        DrawBorder(spriteBatch, rect, Color.Black * 0.2f, 1);
-
-        spriteBatch.DrawString(_font, title, new Vector2(x + 5, y + 5), titleColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-
-        if (!string.IsNullOrEmpty(content))
-        {
-            string wrapped = WrapText(_font, SafeString(content), width - 20);
-            spriteBatch.DrawString(_font, wrapped, new Vector2(x + 10, y + 25), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-        }
-        else
-        {
-            spriteBatch.DrawString(_font, "No details available.", new Vector2(x + 10, y + 25), Color.Gray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-        }
-    }
-
-    private string WrapText(SpriteFont font, string text, float maxLineWidth)
+    private string WrapText(SpriteFont font, string text, float maxLineWidth, float scale = 0.7f)
     {
         if (string.IsNullOrEmpty(text)) return "";
         string[] words = text.Split(' ');
