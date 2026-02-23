@@ -1021,15 +1021,19 @@ public class Game1 : Game
 
         const float zOffset = 0.12f;
 
+        Vector3 previousPoint = new Vector3(currentCombatant.X, currentCombatant.Y, currentCombatant.Z + zOffset);
+
         for (int i = 1; i < path.Count; i++)
         {
-            var from = path[i - 1];
             var to = path[i];
+            Vector3 nextPoint = new Vector3(to.x, to.y, to.z + zOffset);
 
             Draw3DLine(
-                new Vector3(from.x, from.y, from.z + zOffset),
-                new Vector3(to.x, to.y, to.z + zOffset),
+                previousPoint,
+                nextPoint,
                 pathColor);
+
+            previousPoint = nextPoint;
         }
     }
 
@@ -1043,8 +1047,8 @@ public class Game1 : Game
             if (!_visionSystem.CanSee(enemy, _playerCreature))
                 continue;
 
-            Vector3 enemyPos = new Vector3(enemy.VisualX, enemy.VisualY, enemy.VisualZ + 0.65f);
-            Vector3 playerPos = new Vector3(_playerCreature.VisualX, _playerCreature.VisualY, _playerCreature.VisualZ + 0.65f);
+            Vector3 enemyPos = new Vector3(enemy.X, enemy.Y, enemy.Z + 0.65f);
+            Vector3 playerPos = new Vector3(_playerCreature.X, _playerCreature.Y, _playerCreature.Z + 0.65f);
             Draw3DLine(enemyPos, playerPos, Color.Red * 0.9f);
         }
     }
