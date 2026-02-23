@@ -1835,6 +1835,9 @@ public class Game1 : Game
 
             var rotateLeftButtonRect = GetRotateLeftButtonRect(GraphicsDevice.Viewport);
             var rotateRightButtonRect = GetRotateRightButtonRect(GraphicsDevice.Viewport);
+            var combatMoveButtonRect = GetCombatMoveButtonRect(GraphicsDevice.Viewport);
+            var combatAttackButtonRect = GetCombatAttackButtonRect(GraphicsDevice.Viewport);
+            var combatEndTurnButtonRect = GetCombatEndTurnButtonRect(GraphicsDevice.Viewport);
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
             {
@@ -1847,6 +1850,28 @@ public class Game1 : Game
                 {
                     _targetYaw += MathHelper.ToRadians(45f);
                     clickedOnGameplayUiButton = true;
+                }
+                else if (_combatManager.InCombat && _showCombatUI)
+                {
+                    var currentCombatant = _combatManager.CurrentCombatant;
+                    if (currentCombatant != null && currentCombatant.IsPlayer)
+                    {
+                        if (combatMoveButtonRect.Contains(mouse.Position))
+                        {
+                            _selectedAction = CombatAction.Move;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (combatAttackButtonRect.Contains(mouse.Position))
+                        {
+                            _selectedAction = CombatAction.Attack;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (combatEndTurnButtonRect.Contains(mouse.Position))
+                        {
+                            EndCurrentPlayerTurn(currentCombatant);
+                            clickedOnGameplayUiButton = true;
+                        }
+                    }
                 }
             }
             
@@ -2041,18 +2066,7 @@ public class Game1 : Game
                         _selectedAction = CombatAction.Attack;
                     if (kb.IsKeyDown(Keys.D3) && !_prevKb.IsKeyDown(Keys.D3))
                     {
-                        // End turn
-                        int prevRound = _combatManager.CurrentRound;
-                        _combatManager.NextTurn();
-                        int newRound = _combatManager.CurrentRound;
-                        
-                        if (newRound > prevRound)
-                        {
-                            AddToCombatLog($"=== Round {newRound} ===");
-                        }
-                        
-                        AddToCombatLog($"{currentCombatant.Name} ended turn");
-                        _selectedAction = CombatAction.Move;
+                        EndCurrentPlayerTurn(currentCombatant);
                     }
                     
                     // Handle attack action
@@ -2294,6 +2308,72 @@ public class Game1 : Game
         const int buttonHeight = 40;
         const int margin = 12;
         return new Rectangle(viewport.Width - buttonWidth - margin, viewport.Height - buttonHeight - margin, buttonWidth, buttonHeight);
+    }
+
+    private Rectangle GetCombatMoveButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int buttonHeight = 34;
+        const int startX = 10;
+        const int y = 95;
+        return new Rectangle(startX, y, buttonWidth, buttonHeight);
+    }
+
+    private Rectangle GetCombatAttackButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int spacing = 10;
+        var moveRect = GetCombatMoveButtonRect(viewport);
+        return new Rectangle(moveRect.Right + spacing, moveRect.Y, buttonWidth, moveRect.Height);
+    }
+
+    private Rectangle GetCombatEndTurnButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int spacing = 10;
+        var attackRect = GetCombatAttackButtonRect(viewport);
+        return new Rectangle(attackRect.Right + spacing, attackRect.Y, buttonWidth, attackRect.Height);
+    }
+
+    private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected)
+    {
+        var mouse = Mouse.GetState();
+        bool isHovered = rect.Contains(mouse.Position);
+        Color fillColor = isSelected
+            ? new Color(Math.Min(baseColor.R + 30, 255), Math.Min(baseColor.G + 30, 255), Math.Min(baseColor.B + 30, 255))
+            : baseColor;
+
+        if (isHovered)
+        {
+            fillColor = new Color(Math.Min(fillColor.R + 20, 255), Math.Min(fillColor.G + 20, 255), Math.Min(fillColor.B + 20, 255));
+        }
+
+        _spriteBatch.Draw(_pixel, rect, fillColor * 0.95f);
+        DrawBorder(_spriteBatch, _pixel, rect, Color.Black * 0.7f, 2);
+
+        if (_font == null)
+            return;
+
+        var labelSize = _font.MeasureString(label);
+        var labelPos = new Vector2(
+            rect.X + (rect.Width - labelSize.X * 0.65f) / 2,
+            rect.Y + (rect.Height - labelSize.Y * 0.65f) / 2);
+        _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+    }
+
+    private void EndCurrentPlayerTurn(Creature currentCombatant)
+    {
+        int prevRound = _combatManager.CurrentRound;
+        _combatManager.NextTurn();
+        int newRound = _combatManager.CurrentRound;
+
+        if (newRound > prevRound)
+        {
+            AddToCombatLog($"=== Round {newRound} ===");
+        }
+
+        AddToCombatLog($"{currentCombatant.Name} ended turn");
+        _selectedAction = CombatAction.Move;
     }
 
     private void DrawInventoryButton(Viewport viewport)
@@ -2817,8 +2897,24 @@ public class Game1 : Game
                     // Player actions
                     if (currentCombatant.IsPlayer)
                     {
-                        _spriteBatch.DrawString(_font, "Actions: [1] Move  [2] Attack  [3] End Turn", new Vector2(10, y), Color.White);
-                        y += 25;
+                        DrawCombatActionButton(
+                            GetCombatMoveButtonRect(vp),
+                            "Move",
+                            new Color(45, 95, 145),
+                            _selectedAction == CombatAction.Move);
+                        DrawCombatActionButton(
+                            GetCombatAttackButtonRect(vp),
+                            "Attack",
+                            new Color(130, 70, 50),
+                            _selectedAction == CombatAction.Attack);
+                        DrawCombatActionButton(
+                            GetCombatEndTurnButtonRect(vp),
+                            "End Turn",
+                            new Color(90, 70, 115),
+                            false);
+
+                        _spriteBatch.DrawString(_font, "Raccourcis: [1] Move  [2] Attack  [3] End Turn", new Vector2(10, y + 10), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                        y += 45;
                         
                         if (_selectedAction != CombatAction.None)
                         {
