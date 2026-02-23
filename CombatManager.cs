@@ -136,6 +136,7 @@ public class CombatManager
             creature.HasBonusAction = false;
             creature.HasReaction = false;
             creature.MovementRemaining = 0;
+            creature.DiagonalStepsTaken = 0;
         }
         
         // Sort by initiative (descending)
@@ -153,6 +154,7 @@ public class CombatManager
             first.HasBonusAction = true;
             first.HasReaction = true;
             first.MovementRemaining = first.Speed;
+            first.DiagonalStepsTaken = 0;
             ProcessStartOfTurnEffects(first);
         }
 
@@ -265,6 +267,7 @@ public class CombatManager
                 CurrentCombatant.HasBonusAction = true;
                 CurrentCombatant.HasReaction = true;
                 CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
+                CurrentCombatant.DiagonalStepsTaken = 0;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -407,19 +410,23 @@ public class CombatManager
 
         int movementSpent = 0;
         int remaining = creature.MovementRemaining;
+        int diagonalCount = creature.DiagonalStepsTaken;
 
         for (int i = 1; i < path.Count; i++)
         {
-            int stepCost = GetMoveCost(creature, path[i]);
+            int stepCost = GetMoveCost(creature, path[i - 1], path[i], diagonalCount);
 
             if (movementSpent + stepCost > remaining)
                 break;
 
             movementSpent += stepCost;
+            if (IsDiagonalStep(path[i - 1], path[i]))
+                diagonalCount++;
             creature.MoveTo(path[i].X, path[i].Y, path[i].Z);
         }
 
         creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
+        creature.DiagonalStepsTaken = diagonalCount;
 
         // Update squeezing state based on final position
         creature.IsSqueezingThrough = WouldRequireSqueeze(creature, creature.X, creature.Y, creature.Z);
@@ -450,29 +457,34 @@ public class CombatManager
             return reachable;
 
         var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
-        var bestCost = new Dictionary<TacticalMapNode, int> { [start] = 0 };
-        var open = new PriorityQueue<TacticalMapNode, int>();
-        open.Enqueue(start, 0);
+        int startDiagParity = creature.DiagonalStepsTaken % 2;
+        var bestCost = new Dictionary<(TacticalMapNode, int), int> { [(start, startDiagParity)] = 0 };
+        var open = new PriorityQueue<(TacticalMapNode, int), int>();
+        open.Enqueue((start, startDiagParity), 0);
 
         while (open.Count > 0)
         {
-            var current = open.Dequeue();
-            int currentCost = bestCost[current];
+            var (current, diagParity) = open.Dequeue();
+            int currentCost = bestCost.GetValueOrDefault((current, diagParity), int.MaxValue);
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
-                int stepCost = GetMoveCost(creature, neighbor);
+                bool isDiag = IsDiagonalStep(current, neighbor);
+                int stepCost = GetMoveCost(creature, current, neighbor, diagParity);
                 int totalCost = currentCost + stepCost;
 
                 if (totalCost > creature.MovementRemaining)
                     continue;
 
-                int knownCost = bestCost.GetValueOrDefault(neighbor, int.MaxValue);
+                int newDiagParity = isDiag ? 1 - diagParity : diagParity;
+                var neighborState = (neighbor, newDiagParity);
+
+                int knownCost = bestCost.GetValueOrDefault(neighborState, int.MaxValue);
                 if (totalCost >= knownCost)
                     continue;
 
-                bestCost[neighbor] = totalCost;
-                open.Enqueue(neighbor, totalCost);
+                bestCost[neighborState] = totalCost;
+                open.Enqueue(neighborState, totalCost);
                 reachable.Add((neighbor.X, neighbor.Y, neighbor.Z));
             }
         }
@@ -517,6 +529,42 @@ public class CombatManager
         return (step.X, step.Y, step.Z);
     }
 
+    /// <summary>
+    /// Returns the best single step that moves <paramref name="creature"/> away from
+    /// <paramref name="target"/>, picking the adjacent tile that maximises Chebyshev distance.
+    /// Returns null if the creature is cornered and cannot increase distance.
+    /// </summary>
+    public (int x, int y, int z)? GetNextStepAwayFrom(Creature creature, Creature target)
+    {
+        (int x, int y, int z)? best = null;
+        int bestDist = CalculateDistance(creature.X, creature.Y, creature.Z, target.X, target.Y, target.Z);
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
+
+                int nx = creature.X + dx;
+                int ny = creature.Y + dy;
+                int nz = creature.Z;
+
+                if (!CanOccupySpace(creature.Size, nx, ny, nz, creature))
+                    continue;
+
+                int dist = CalculateDistance(nx, ny, nz, target.X, target.Y, target.Z);
+                if (dist > bestDist)
+                {
+                    bestDist = dist;
+                    best = (nx, ny, nz);
+                }
+            }
+        }
+
+        return best;
+    }
+
     private List<TacticalMapNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
     {
         var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
@@ -534,6 +582,7 @@ public class CombatManager
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
 
         while (openSet.Count > 0)
@@ -546,8 +595,12 @@ public class CombatManager
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
+                bool isDiag = IsDiagonalStep(current, neighbor);
+                int currentDiagParity = diagParity[current];
+                int newDiagParity = isDiag ? 1 - currentDiagParity : currentDiagParity;
+
                 int tentativeTurns = turnCount[current] + GetTurnPenalty(cameFrom, current, neighbor);
-                int tentativeG = gScore[current] + GetMoveCost(creature, neighbor);
+                int tentativeG = gScore[current] + GetMoveCost(creature, current, neighbor, currentDiagParity);
                 int currentBestG = gScore.GetValueOrDefault(neighbor, int.MaxValue);
                 int currentBestTurns = turnCount.GetValueOrDefault(neighbor, int.MaxValue);
 
@@ -559,6 +612,7 @@ public class CombatManager
                 cameFrom[neighbor] = current;
                 gScore[neighbor] = tentativeG;
                 turnCount[neighbor] = tentativeTurns;
+                diagParity[neighbor] = newDiagParity;
                 fScore[neighbor] = tentativeG + Heuristic(neighbor, goal);
 
                 if (!openSet.Contains(neighbor))
@@ -619,12 +673,27 @@ public class CombatManager
         return Max(Max(Abs(b.X - a.X), Abs(b.Y - a.Y)), Abs(b.Z - a.Z)) * 5;
     }
 
-    private int GetMoveCost(Creature creature, TacticalMapNode node)
+    private static bool IsDiagonalStep(TacticalMapNode from, TacticalMapNode to)
     {
-        int baseCost = TacticalMap != null && TacticalMap.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
+        int axes = 0;
+        if (to.X != from.X) axes++;
+        if (to.Y != from.Y) axes++;
+        if (to.Z != from.Z) axes++;
+        return axes > 1;
+    }
+
+    private int GetMoveCost(Creature creature, TacticalMapNode from, TacticalMapNode to, int diagonalStepsTaken)
+    {
+        // Alternating diagonal rule (DMG variant): odd diagonals cost 5 ft, even diagonals cost 10 ft.
+        // diagonalStepsTaken tracks how many diagonals have been taken so far this turn.
+        bool isDiagonal = IsDiagonalStep(from, to);
+        int baseCost = isDiagonal && diagonalStepsTaken % 2 == 1 ? 10 : 5;
+
+        if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
+            baseCost *= 2;
 
         // If squeezing is required, double the movement cost
-        if (WouldRequireSqueeze(creature, node.X, node.Y, node.Z))
+        if (WouldRequireSqueeze(creature, to.X, to.Y, to.Z))
             baseCost *= 2;
 
         return baseCost;
@@ -646,9 +715,13 @@ public class CombatManager
     private int CalculatePathCost(Creature creature, List<TacticalMapNode> path)
     {
         int cost = 0;
+        int diagonalParity = creature.DiagonalStepsTaken % 2;
         for (int i = 1; i < path.Count; i++)
-            cost += GetMoveCost(creature, path[i]);
-
+        {
+            bool isDiag = IsDiagonalStep(path[i - 1], path[i]);
+            cost += GetMoveCost(creature, path[i - 1], path[i], diagonalParity);
+            if (isDiag) diagonalParity = 1 - diagonalParity;
+        }
         return cost;
     }
 
@@ -687,16 +760,28 @@ public class CombatManager
         if (dist == 0) return 0;
 
         int totalCost = 0;
+        int diagonalParity = 0;
         for (int i = 1; i <= dist; i++)
         {
-            float t = (float)i / dist;
-            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
-            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
-            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
+            float tPrev = (float)(i - 1) / dist;
+            float tCurr = (float)i / dist;
+            var from = new TacticalMapNode(
+                (int)Math.Round(x1 + (x2 - x1) * tPrev),
+                (int)Math.Round(y1 + (y2 - y1) * tPrev),
+                (int)Math.Round(z1 + (z2 - z1) * tPrev));
+            var to = new TacticalMapNode(
+                (int)Math.Round(x1 + (x2 - x1) * tCurr),
+                (int)Math.Round(y1 + (y2 - y1) * tCurr),
+                (int)Math.Round(z1 + (z2 - z1) * tCurr));
 
-            totalCost += 5;
-            if (TacticalMap != null && TacticalMap.Get(cx, cy, cz) == TileType.DifficultTerrain)
-                totalCost += 5;
+            bool isDiag = IsDiagonalStep(from, to);
+            int stepCost = isDiag && diagonalParity == 1 ? 10 : 5;
+            if (isDiag) diagonalParity = 1 - diagonalParity;
+
+            if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
+                stepCost += stepCost;
+
+            totalCost += stepCost;
         }
 
         return totalCost;

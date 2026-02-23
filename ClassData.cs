@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 namespace _4DND;
 
+public record ClassLevelData(int Level, string Features, int Rages, int RageDamage);
+
 public class ClassData
 {
     public string Name { get; set; } = "";
@@ -12,6 +14,14 @@ public class ClassData
     public List<string> SavingThrowProficiencies { get; set; } = new();
     public List<string> ArmorProficiencies { get; set; } = new();
     public List<string> WeaponProficiencies { get; set; } = new();
+    public List<ClassLevelData> LevelProgression { get; set; } = new();
+
+    public ClassLevelData? GetLevelData(int level)
+    {
+        foreach (var entry in LevelProgression)
+            if (entry.Level == level) return entry;
+        return null;
+    }
     
     private static readonly Dictionary<string, ClassData> _classDatabase = new();
     
@@ -30,7 +40,30 @@ public class ClassData
             PrimaryAbility = "Strength",
             SavingThrowProficiencies = new List<string> { "Strength", "Constitution" },
             ArmorProficiencies = new List<string> { "Light armor", "Medium armor", "Shields" },
-            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" }
+            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" },
+            LevelProgression = new List<ClassLevelData>
+            {
+                new(1,  "Rage, Unarmored Defense",        2,  2),
+                new(2,  "Reckless Attack, Danger Sense",  2,  2),
+                new(3,  "Primal Path",                    3,  2),
+                new(4,  "Ability Score Improvement",      3,  2),
+                new(5,  "Extra Attack, Fast Movement",    3,  2),
+                new(6,  "Path feature",                   4,  2),
+                new(7,  "Feral Instinct",                 4,  2),
+                new(8,  "Ability Score Improvement",      4,  2),
+                new(9,  "Brutal Critical (1 die)",        4,  3),
+                new(10, "Path feature",                   4,  3),
+                new(11, "Relentless Rage",                4,  3),
+                new(12, "Ability Score Improvement",      5,  3),
+                new(13, "Brutal Critical (2 dice)",       5,  3),
+                new(14, "Path feature",                   5,  3),
+                new(15, "Persistent Rage",                5,  3),
+                new(16, "Ability Score Improvement",      5,  4),
+                new(17, "Brutal Critical (3 dice)",       6,  4),
+                new(18, "Indomitable Might",              6,  4),
+                new(19, "Ability Score Improvement",      6,  4),
+                new(20, "Primal Champion",               -1,  4), // -1 = Unlimited
+            }
         };
         
         _classDatabase["Bard"] = new ClassData
