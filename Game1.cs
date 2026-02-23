@@ -997,31 +997,30 @@ public class Game1 : Game
         if (!hoveredTile.HasValue || !_combatManager.InCombat)
             return;
 
-        var currentCombatant = _combatManager.CurrentCombatant;
-        if (currentCombatant == null || !currentCombatant.IsPlayer || !currentCombatant.IsAlive())
+        if (_playerCreature == null || !_playerCreature.IsAlive())
             return;
 
         int targetX = hoveredTile.Value.x;
         int targetY = hoveredTile.Value.y;
         int targetZ = _currentViewLevel;
 
-        if (currentCombatant.Z != _currentViewLevel)
+        if (_playerCreature.Z != _currentViewLevel)
             return;
 
         if (_combatManager.GetCreatureAt(targetX, targetY, targetZ) != null)
             return;
 
-        var path = _combatManager.GetPath(currentCombatant, targetX, targetY, targetZ);
+        var path = _combatManager.GetPath(_playerCreature, targetX, targetY, targetZ);
         if (path == null || path.Count < 2)
             return;
 
-        Color pathColor = _combatManager.CanMove(currentCombatant, targetX, targetY, targetZ)
+        Color pathColor = _combatManager.CanMove(_playerCreature, targetX, targetY, targetZ)
             ? new Color(0, 240, 255)
             : new Color(255, 165, 0);
 
         const float zOffset = 0.12f;
 
-        Vector3 previousPoint = new Vector3(currentCombatant.X, currentCombatant.Y, currentCombatant.Z + zOffset);
+        Vector3 previousPoint = new Vector3(_playerCreature.X, _playerCreature.Y, _playerCreature.Z + zOffset);
 
         for (int i = 1; i < path.Count; i++)
         {
