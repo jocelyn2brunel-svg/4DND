@@ -1446,8 +1446,8 @@ public class Game1 : Game
                     _currentCharacter = _characters[_characterIndex];
                     if (_isMultiplayerMode)
                     {
-                        // Initialize player creature when entering game (only if not already created)
-                        if (_currentCharacter != null && _playerCreature == null)
+                        // Initialize player creature from the selected character
+                        if (_currentCharacter != null)
                         {
                             _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                             _combatManager.Combatants.Clear();
@@ -1529,8 +1529,8 @@ public class Game1 : Game
                                 _currentCharacter = _characters[i];
                                 if (_isMultiplayerMode)
                                 {
-                                    // Initialize player creature when entering game (only if not already created)
-                                    if (_currentCharacter != null && _playerCreature == null)
+                                    // Initialize player creature from the selected character
+                                    if (_currentCharacter != null)
                                     {
                                         _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                                         _combatManager.Combatants.Clear();
@@ -1581,12 +1581,9 @@ public class Game1 : Game
                 _currentCharacter = newCharacter;
                 if (_isMultiplayerMode)
                 {
-                    // Initialize player creature only if not already created
-                    if (_playerCreature == null)
-                    {
-                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                        _combatManager.Combatants.Clear();
-                    }
+                    // Initialize player creature from the selected character
+                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+                    _combatManager.Combatants.Clear();
                     // TODO: Go to multiplayer lobby
                     _state = AppState.Playing;
                     UpdateVision();
@@ -1645,8 +1642,8 @@ public class Game1 : Game
                         SaveCampaigns();
                     }
                     
-                    // Initialize player creature when entering game (only once!)
-                    if (_currentCharacter != null && _playerCreature == null)
+                    // Initialize player creature from the selected character
+                    if (_currentCharacter != null)
                     {
                         _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                         
@@ -1727,8 +1724,8 @@ public class Game1 : Game
                                     SaveCampaigns();
                                 }
                                 
-                                // Initialize player creature when entering game (only if not already created)
-                                if (_currentCharacter != null && _playerCreature == null)
+                                // Initialize player creature from the selected character
+                                if (_currentCharacter != null)
                                 {
                                     _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                                     _combatManager.Combatants.Clear();
@@ -1773,8 +1770,8 @@ public class Game1 : Game
                 }
                 SaveCampaign();
                 
-                // Initialize player creature when entering game (only if not already created)
-                if (_currentCharacter != null && _playerCreature == null)
+                // Initialize player creature from the selected character
+                if (_currentCharacter != null)
                 {
                     _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
                     _combatManager.Combatants.Clear();
