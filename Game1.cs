@@ -992,6 +992,47 @@ public class Game1 : Game
         }
     }
 
+    private void DrawHoveredMovementPath((int x, int y)? hoveredTile)
+    {
+        if (!hoveredTile.HasValue || !_combatManager.InCombat)
+            return;
+
+        var currentCombatant = _combatManager.CurrentCombatant;
+        if (currentCombatant == null || !currentCombatant.IsPlayer || !currentCombatant.IsAlive())
+            return;
+
+        int targetX = hoveredTile.Value.x;
+        int targetY = hoveredTile.Value.y;
+        int targetZ = _currentViewLevel;
+
+        if (currentCombatant.Z != _currentViewLevel)
+            return;
+
+        if (_combatManager.GetCreatureAt(targetX, targetY, targetZ) != null)
+            return;
+
+        var path = _combatManager.GetPath(currentCombatant, targetX, targetY, targetZ);
+        if (path == null || path.Count < 2)
+            return;
+
+        Color pathColor = _combatManager.CanMove(currentCombatant, targetX, targetY, targetZ)
+            ? new Color(0, 240, 255)
+            : new Color(255, 165, 0);
+
+        const float zOffset = 0.12f;
+
+        for (int i = 1; i < path.Count; i++)
+        {
+            var from = path[i - 1];
+            var to = path[i];
+
+            Draw3DLine(
+                new Vector3(from.x, from.y, from.z + zOffset),
+                new Vector3(to.x, to.y, to.z + zOffset),
+                pathColor);
+        }
+    }
+
     private void DrawEnemySightLinesToPlayer()
     {
         if (_playerCreature == null || !_playerCreature.IsAlive())
@@ -2364,6 +2405,7 @@ public class Game1 : Game
             Draw3DCreatures();
             DrawEnemySightLinesToPlayer();
             var hovered = GetHoveredTile();
+            DrawHoveredMovementPath(hovered);
             if (hovered.HasValue)
             {
                 hoveredX = hovered.Value.x;
