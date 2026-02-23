@@ -1877,6 +1877,8 @@ public class Game1 : Game
         {
             bool wasCharacterSheetOpen = _showCharacterSheet;
             bool wasJournalOpen = _showJournal;
+            bool mouseClickedThisFrame = mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released;
+            bool clickedOnGameplayUiButton = false;
 
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1939,28 +1941,26 @@ public class Game1 : Game
             if (_showCharacterSheet)
             {
                 var closeSheetButtonRect = _characterSheet.GetCloseButtonRect(GraphicsDevice.Viewport);
-                if (mouse.LeftButton == ButtonState.Pressed &&
-                    _prevMouse.LeftButton == ButtonState.Released &&
+                if (mouseClickedThisFrame &&
                     closeSheetButtonRect.Contains(mouse.Position))
                 {
                     _showCharacterSheet = false;
+                    clickedOnGameplayUiButton = true;
                 }
             }
 
             if (_showJournal)
             {
                 var closeJournalButtonRect = _journalUI.GetCloseButtonRect(GraphicsDevice.Viewport);
-                if (mouse.LeftButton == ButtonState.Pressed &&
-                    _prevMouse.LeftButton == ButtonState.Released &&
+                if (mouseClickedThisFrame &&
                     closeJournalButtonRect.Contains(mouse.Position))
                 {
                     _showJournal = false;
+                    clickedOnGameplayUiButton = true;
                 }
             }
 
             var inventoryButtonRect = GetInventoryButtonRect(GraphicsDevice.Viewport);
-            bool mouseClickedThisFrame = mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released;
-            bool clickedOnGameplayUiButton = false;
 
             if (!wasCharacterSheetOpen &&
                 !_showCharacterSheet &&
