@@ -888,6 +888,7 @@ public class Game1 : Game
 
     private void Draw3DLine(Vector3 start, Vector3 end, Color color)
     {
+        _basicEffect.World = Matrix.Identity;
         var vertices = new[] { new VertexPositionColor(start, color), new VertexPositionColor(end, color) };
         _basicEffect.LightingEnabled = false;
         foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices, 0, 1); }
