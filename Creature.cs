@@ -241,6 +241,7 @@ public class Creature
     public int CurrentHP { get; set; }
     public int ArmorClass { get; set; }
     public int Speed { get; set; } = 30;
+    public int XPReward { get; set; } = 0;
     
     // Ability Scores
     public int Strength { get; set; } = 10;
@@ -322,8 +323,14 @@ public class Creature
     /// </summary>
     public bool IsSqueezingThrough { get; set; } = false;
 
+    /// <summary>
+    /// Whether this creature has the Nimble Escape trait.
+    /// Allows the creature to take the Disengage or Hide action as a bonus action on each of its turns.
+    /// </summary>
+    public bool HasNimbleEscape { get; set; } = false;
+
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
-    
+
     public bool IsAlive() => CurrentHP > 0;
     
     public bool IsBlinded()
@@ -480,11 +487,14 @@ public class Creature
             DamageDice = "1d6",
             DamageBonus = 2,
             DarkvisionRange = 60,
+            StealthProficiency = true,
+            HasNimbleEscape = true,
+            XPReward = 50,  // CR 1/4
             DisplayColor = Color.Green,
             IsPlayer = false,
         };
     }
-    
+
     public static Creature CreateOrc(int x, int y, int z = 0)
     {
         return new Creature
@@ -514,11 +524,12 @@ public class Creature
             DamageDice = "1d12",
             DamageBonus = 3,
             DarkvisionRange = 60,
+            XPReward = 100,  // CR 1/2
             DisplayColor = Color.DarkRed,
             IsPlayer = false,
         };
     }
-    
+
     public static Creature CreateSkeleton(int x, int y, int z = 0)
     {
         return new Creature
@@ -548,11 +559,12 @@ public class Creature
             DamageDice = "1d6",
             DamageBonus = 2,
             DarkvisionRange = 60,
+            XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
             IsPlayer = false,
         };
     }
-    
+
     public static Creature CreateWolf(int x, int y, int z = 0)
     {
         return new Creature
@@ -582,13 +594,14 @@ public class Creature
             DamageDice = "2d4",
             DamageBonus = 2,
             DarkvisionRange = 0,
-            HasBlindSight = true,
-            BlindSightRange = 30,
+            StealthProficiency = true,
+            PerceptionProficiency = true,
+            XPReward = 50,  // CR 1/4
             DisplayColor = Color.Gray,
             IsPlayer = false
         };
     }
-    
+
     public static Creature CreateKobold(int x, int y, int z = 0)
     {
         return new Creature
@@ -619,11 +632,12 @@ public class Creature
             DamageBonus = 2,
             DarkvisionRange = 60,
             HasSunlightSensitivity = true,
+            XPReward = 25,  // CR 1/8
             DisplayColor = Color.Brown,
             IsPlayer = false
         };
     }
-    
+
     public static Creature CreateUmberHulk(int x, int y, int z = 0)
     {
         return new Creature
@@ -655,11 +669,12 @@ public class Creature
             DarkvisionRange = 60,
             HasTremorsense = true,
             TremorsenseRange = 60,
+            XPReward = 1800,  // CR 5
             DisplayColor = Color.DarkGray,
             IsPlayer = false
         };
     }
-    
+
     public static Creature CreateCouatl(int x, int y, int z = 0)
     {
         return new Creature
@@ -693,6 +708,7 @@ public class Creature
             DarkvisionRange = 60,
             HasTrueSight = true,
             TrueSightRange = 120,
+            XPReward = 1100,  // CR 4
             DisplayColor = Color.LightGoldenrodYellow,
             IsPlayer = false,
             CharismaSaveProficiency = true,

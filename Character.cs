@@ -215,7 +215,7 @@ public class Character
     public bool IsProficientWithWeapon(string weaponName)
     {
         if (WeaponProficiencies == null) return false;
-        
+
         foreach (var prof in WeaponProficiencies)
         {
             if (prof.Equals(weaponName, StringComparison.OrdinalIgnoreCase) ||
@@ -223,6 +223,27 @@ public class Character
                 prof.Equals("Martial weapons", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
+        return false;
+    }
+
+    /// <summary>
+    /// Adds XP to this character and levels up if the threshold is reached.
+    /// Returns true if the character gained at least one level.
+    /// </summary>
+    public bool GainXP(int amount)
+    {
+        if (amount <= 0) return false;
+
+        XP += amount;
+
+        int newLevel = DndMath.GetLevelForXP(XP);
+        if (newLevel > Level)
+        {
+            Level = Math.Min(newLevel, 20);
+            CalculateDerivedStats();
+            return true;
+        }
+
         return false;
     }
 }

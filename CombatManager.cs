@@ -32,6 +32,7 @@ public class CombatManager
     private int _currentRound = 0;
     private bool _inCombat = false;
     private readonly Random _random = new();
+    private int _pendingXP = 0;
     
     public bool InCombat => _inCombat;
     public List<Creature> Combatants => _combatants;
@@ -181,6 +182,17 @@ public class CombatManager
         _currentTurnIndex = 0;
         _currentRound = 0;
     }
+
+    /// <summary>
+    /// Returns the total XP earned since the last call and resets the counter.
+    /// XP is split equally among the players who participated in the battle.
+    /// </summary>
+    public int CollectPendingXP()
+    {
+        int xp = _pendingXP;
+        _pendingXP = 0;
+        return xp;
+    }
     
     /// <summary>
     /// Ends the current combatant's turn and advances to the next in initiative order.
@@ -196,6 +208,18 @@ public class CombatManager
         // End the current combatant's turn: clear their surprised condition now
         if (CurrentCombatant != null)
             CurrentCombatant.IsSurprised = false;
+
+        // Collect XP from enemies that died this turn
+        var dyingEnemies = _combatants.Where(c => !c.IsAlive() && !c.IsPlayer).ToList();
+        if (dyingEnemies.Count > 0)
+        {
+            int playerCount = _combatants.Count(c => c.IsPlayer && c.IsAlive());
+            if (playerCount > 0)
+            {
+                int totalXP = dyingEnemies.Sum(c => c.XPReward);
+                _pendingXP += totalXP / playerCount;
+            }
+        }
 
         // Remove dead creatures
         _combatants.RemoveAll(c => !c.IsAlive());

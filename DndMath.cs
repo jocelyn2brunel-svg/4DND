@@ -107,5 +107,59 @@ namespace _4DND
         {
             return total >= dc;
         }
+
+        /// <summary>
+        /// XP required to reach each level (D&D 5e Character Advancement table, PHB p.15).
+        /// Index = level (1-based), value = total XP needed to reach that level.
+        /// </summary>
+        private static readonly int[] XPThresholds = new int[]
+        {
+                 0,   //  1
+               300,   //  2
+               900,   //  3
+             2_700,   //  4
+             6_500,   //  5
+            14_000,   //  6
+            23_000,   //  7
+            34_000,   //  8
+            48_000,   //  9
+            64_000,   // 10
+            85_000,   // 11
+           100_000,   // 12
+           120_000,   // 13
+           140_000,   // 14
+           165_000,   // 15
+           195_000,   // 16
+           225_000,   // 17
+           265_000,   // 18
+           305_000,   // 19
+           355_000,   // 20
+        };
+
+        /// <summary>
+        /// Returns the minimum XP required to reach <paramref name="level"/> (1–20).
+        /// </summary>
+        public static int GetXPThreshold(int level)
+        {
+            int index = Math.Clamp(level, 1, 20) - 1;
+            return XPThresholds[index];
+        }
+
+        /// <summary>
+        /// Returns the character level (1–20) that corresponds to <paramref name="totalXP"/>.
+        /// </summary>
+        public static int GetLevelForXP(int totalXP)
+        {
+            int level = 1;
+            for (int i = XPThresholds.Length - 1; i >= 0; i--)
+            {
+                if (totalXP >= XPThresholds[i])
+                {
+                    level = i + 1;
+                    break;
+                }
+            }
+            return level;
+        }
     }
 }

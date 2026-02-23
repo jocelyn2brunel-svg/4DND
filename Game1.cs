@@ -2511,6 +2511,15 @@ public class Game1 : Game
         _combatManager.NextTurn();
         int newRound = _combatManager.CurrentRound;
 
+        int xpEarned = _combatManager.CollectPendingXP();
+        if (xpEarned > 0 && _currentCharacter != null)
+        {
+            bool leveledUp = _currentCharacter.GainXP(xpEarned);
+            AddToCombatLog($"Gained {xpEarned} XP!");
+            if (leveledUp)
+                AddToCombatLog($"Level up! Now level {_currentCharacter.Level}!");
+        }
+
         if (newRound > prevRound)
         {
             AddToCombatLog($"=== Round {newRound} ===");
