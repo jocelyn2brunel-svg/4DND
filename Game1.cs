@@ -224,7 +224,7 @@ public class Game1 : Game
         _combatManager.Combatants.Clear();
         _combatManager.StartCombat(combatants);
         _showCombatUI = true;
-        _selectedAction = CombatAction.None;
+        _selectedAction = CombatAction.Move;
         AddToCombatLog("Combat started!");
         AddToCombatLog($"Round {_combatManager.CurrentRound} begins!");
         
@@ -2011,7 +2011,7 @@ public class Game1 : Game
                         }
                         
                         AddToCombatLog($"{currentCombatant.Name} ended turn");
-                        _selectedAction = CombatAction.None;
+                        _selectedAction = CombatAction.Move;
                     }
                     
                     // Handle attack action
@@ -2031,7 +2031,7 @@ public class Game1 : Game
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
                                     _diceRollAnimation.Start(result.AttackRoll);
-                                    _selectedAction = CombatAction.None;
+                                    _selectedAction = CombatAction.Move;
                                     
                                     // Check if combat ended
                                     if (!_combatManager.InCombat)
@@ -2078,7 +2078,7 @@ public class Game1 : Game
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog($"{currentCombatant.Name} moved to ({currentCombatant.X}, {currentCombatant.Y}, {currentCombatant.Z}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
-                                        _selectedAction = CombatAction.None;
+                                        _selectedAction = CombatAction.Move;
                                         
                                         // Update vision after movement
                                         UpdateVision();
