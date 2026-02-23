@@ -261,6 +261,7 @@ public class Creature
     public bool HasBonusAction { get; set; } = true;
     public bool HasReaction { get; set; } = true;
     public int MovementRemaining { get; set; } = 30;
+    public int DiagonalStepsTaken { get; set; } = 0;
     
     // Attack info
     public string AttackName { get; set; } = "Attack";
