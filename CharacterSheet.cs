@@ -22,11 +22,12 @@ public class CharacterSheet
     private string? _hoverTooltip;
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
-    private readonly List<(Rectangle Rect, string WeaponName, bool IsEquipped)> _weaponItemRects = new();
-    private bool _showWeaponContextMenu;
-    private Rectangle _weaponContextMenuRect;
-    private string? _contextWeaponName;
-    private bool _contextWeaponIsEquipped;
+    private readonly List<(Rectangle Rect, string ItemName, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
+    private bool _showItemContextMenu;
+    private Rectangle _itemContextMenuRect;
+    private string? _contextItemName;
+    private bool _contextItemIsEquipped;
+    private bool _contextItemIsEquippable;
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
 
@@ -65,18 +66,19 @@ public class CharacterSheet
 
         if (rightClick)
         {
-            var clickedWeapon = _weaponItemRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
-            if (!string.IsNullOrEmpty(clickedWeapon.WeaponName))
+            var clickedItem = _inventoryItemRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
+            if (!string.IsNullOrEmpty(clickedItem.ItemName))
             {
-                _contextWeaponName = clickedWeapon.WeaponName;
-                _contextWeaponIsEquipped = clickedWeapon.IsEquipped;
-                _showWeaponContextMenu = true;
+                _contextItemName = clickedItem.ItemName;
+                _contextItemIsEquipped = clickedItem.IsEquipped;
+                _contextItemIsEquippable = clickedItem.IsEquippable;
+                _showItemContextMenu = true;
                 _inspectWeaponText = null;
-                _weaponContextMenuRect = BuildContextMenuRect(_mousePosition);
+                _itemContextMenuRect = BuildContextMenuRect(_mousePosition);
             }
             else
             {
-                _showWeaponContextMenu = false;
+                _showItemContextMenu = false;
             }
         }
 
@@ -87,47 +89,47 @@ public class CharacterSheet
                 _inspectWeaponText = null;
             }
 
-            if (_showWeaponContextMenu)
+            if (_showItemContextMenu)
             {
                 var option = GetContextMenuOptionAt(_mousePosition);
                 switch (option)
                 {
                     case "Équiper":
-                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.EquipItem(_contextWeaponName);
+                            character.InventoryData.EquipItem(_contextItemName);
                             character.CalculateDerivedStats();
                         }
-                        _showWeaponContextMenu = false;
+                        _showItemContextMenu = false;
                         break;
                     case "Déséquiper":
-                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.UnequipItem(_contextWeaponName);
+                            character.InventoryData.UnequipItem(_contextItemName);
                             character.CalculateDerivedStats();
                         }
-                        _showWeaponContextMenu = false;
+                        _showItemContextMenu = false;
                         break;
                     case "Lancer":
-                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.UnequipItem(_contextWeaponName);
-                            character.InventoryData.RemoveItem(_contextWeaponName);
+                            character.InventoryData.UnequipItem(_contextItemName);
+                            character.InventoryData.RemoveItem(_contextItemName);
                             character.CalculateDerivedStats();
                         }
-                        _showWeaponContextMenu = false;
+                        _showItemContextMenu = false;
                         break;
                     case "Examiner":
-                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            _inspectWeaponText = BuildItemTooltip(_contextWeaponName, _contextWeaponIsEquipped);
+                            _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
                         }
-                        _showWeaponContextMenu = false;
+                        _showItemContextMenu = false;
                         break;
                     default:
-                        if (!_weaponContextMenuRect.Contains(_mousePosition))
+                        if (!_itemContextMenuRect.Contains(_mousePosition))
                         {
-                            _showWeaponContextMenu = false;
+                            _showItemContextMenu = false;
                         }
                         break;
                 }
@@ -152,7 +154,7 @@ public class CharacterSheet
 
         if (_font != null && character != null)
         {
-            _weaponItemRects.Clear();
+            _inventoryItemRects.Clear();
             var c = character;
             int margin = Margin;
             int padding = 10;
@@ -632,7 +634,12 @@ public class CharacterSheet
                 if (itemData.Type == ItemType.Weapon)
                 {
                     bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon;
-                    _weaponItemRects.Add((itemRect, item, isEquippedWeapon));
+                    _inventoryItemRects.Add((itemRect, item, isEquippedWeapon, itemData.IsEquippable));
+                }
+                else
+                {
+                    bool isEquippedItem = item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield;
+                    _inventoryItemRects.Add((itemRect, item, isEquippedItem, itemData.IsEquippable));
                 }
 
                 if (!left) currentItemY += lineHeight;
@@ -814,9 +821,9 @@ public class CharacterSheet
 
     private string? GetContextMenuOptionAt(Point position)
     {
-        if (!_weaponContextMenuRect.Contains(position)) return null;
+        if (!_itemContextMenuRect.Contains(position)) return null;
 
-        int relativeY = position.Y - _weaponContextMenuRect.Y;
+        int relativeY = position.Y - _itemContextMenuRect.Y;
         int optionIndex = relativeY / 30;
         var options = GetContextMenuOptions();
         return optionIndex >= 0 && optionIndex < options.Length ? options[optionIndex] : null;
@@ -824,29 +831,34 @@ public class CharacterSheet
 
     private string[] GetContextMenuOptions()
     {
-        if (_contextWeaponIsEquipped)
+        if (_contextItemIsEquipped)
         {
             return new[] { "Déséquiper", "Lancer", "Examiner" };
         }
 
-        return new[] { "Équiper", "Examiner" };
+        if (_contextItemIsEquippable)
+        {
+            return new[] { "Équiper", "Lancer", "Examiner" };
+        }
+
+        return new[] { "Lancer", "Examiner" };
     }
 
     private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
     {
-        if (!_showWeaponContextMenu || string.IsNullOrEmpty(_contextWeaponName)) return;
+        if (!_showItemContextMenu || string.IsNullOrEmpty(_contextItemName)) return;
 
-        int menuX = Math.Clamp(_weaponContextMenuRect.X, 8, viewport.Width - _weaponContextMenuRect.Width - 8);
-        int menuY = Math.Clamp(_weaponContextMenuRect.Y, 8, viewport.Height - _weaponContextMenuRect.Height - 8);
-        _weaponContextMenuRect = new Rectangle(menuX, menuY, _weaponContextMenuRect.Width, _weaponContextMenuRect.Height);
+        int menuX = Math.Clamp(_itemContextMenuRect.X, 8, viewport.Width - _itemContextMenuRect.Width - 8);
+        int menuY = Math.Clamp(_itemContextMenuRect.Y, 8, viewport.Height - _itemContextMenuRect.Height - 8);
+        _itemContextMenuRect = new Rectangle(menuX, menuY, _itemContextMenuRect.Width, _itemContextMenuRect.Height);
 
-        spriteBatch.Draw(_pixel, _weaponContextMenuRect, new Color(35, 35, 35, 245));
-        DrawBorder(spriteBatch, _weaponContextMenuRect, new Color(220, 220, 220), 1);
+        spriteBatch.Draw(_pixel, _itemContextMenuRect, new Color(35, 35, 35, 245));
+        DrawBorder(spriteBatch, _itemContextMenuRect, new Color(220, 220, 220), 1);
 
         var options = GetContextMenuOptions();
         for (int i = 0; i < options.Length; i++)
         {
-            var optionRect = new Rectangle(_weaponContextMenuRect.X, _weaponContextMenuRect.Y + i * 30, _weaponContextMenuRect.Width, 30);
+            var optionRect = new Rectangle(_itemContextMenuRect.X, _itemContextMenuRect.Y + i * 30, _itemContextMenuRect.Width, 30);
             bool hovered = optionRect.Contains(_mousePosition);
             if (hovered)
             {
