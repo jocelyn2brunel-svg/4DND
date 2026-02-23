@@ -378,6 +378,48 @@ public class CombatManager
         return path.Select(n => (n.X, n.Y, n.Z)).ToList();
     }
 
+    /// <summary>
+    /// Gets all map positions reachable by the creature with its remaining movement.
+    /// The start tile is excluded from the result.
+    /// </summary>
+    public HashSet<(int x, int y, int z)> GetReachablePositions(Creature creature)
+    {
+        var reachable = new HashSet<(int x, int y, int z)>();
+
+        if (creature.MovementRemaining <= 0)
+            return reachable;
+
+        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        var bestCost = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var open = new PriorityQueue<TacticalMapNode, int>();
+        open.Enqueue(start, 0);
+
+        while (open.Count > 0)
+        {
+            var current = open.Dequeue();
+            int currentCost = bestCost[current];
+
+            foreach (var neighbor in GetNeighbors(creature, current))
+            {
+                int stepCost = GetMoveCost(creature, neighbor);
+                int totalCost = currentCost + stepCost;
+
+                if (totalCost > creature.MovementRemaining)
+                    continue;
+
+                int knownCost = bestCost.GetValueOrDefault(neighbor, int.MaxValue);
+                if (totalCost >= knownCost)
+                    continue;
+
+                bestCost[neighbor] = totalCost;
+                open.Enqueue(neighbor, totalCost);
+                reachable.Add((neighbor.X, neighbor.Y, neighbor.Z));
+            }
+        }
+
+        return reachable;
+    }
+
     public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)
     {
         List<TacticalMapNode>? bestPath = null;
