@@ -241,6 +241,12 @@ public static class CreatureD20Extensions
             "CHA" or "Charisma" => creature.Charisma,
             _ => 10
         };
+
+        // Barbarian Rage grants advantage on Strength checks
+        if (creature.IsRaging && (abilityName == "STR" || abilityName == "Strength"))
+        {
+            hasAdvantage = true;
+        }
         
         return D20CheckFactory.MakeAbilityCheck(abilityName, abilityScore, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
     }
@@ -260,6 +266,12 @@ public static class CreatureD20Extensions
             "CHA" or "Charisma" => (creature.Charisma, creature.CharismaSaveProficiency),
             _ => (10, false)
         };
+
+        // Barbarian Rage grants advantage on Strength saving throws
+        if (creature.IsRaging && (abilityName == "STR" || abilityName == "Strength"))
+        {
+            hasAdvantage = true;
+        }
         
         // Creatures typically don't have proficiency bonus unless they're players
         // For monsters, proficiency is already baked into their proficiency flags
