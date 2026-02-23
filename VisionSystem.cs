@@ -182,7 +182,7 @@ public class VisionSystem
         int visionRange = CalculateVisionRange(observer);
         // Limit to 20 tiles (100ft) for performance on a tactical combat map
         int visionTiles = Math.Min(visionRange / 5, 20);
-        // Limit vertical vision — most combat is on a single plane
+        // Limit vertical vision â€” most combat is on a single plane
         int verticalTiles = Math.Min(visionTiles, 4);
         
         // Raycasting to all tiles on the surface of the visibility volume
@@ -408,7 +408,8 @@ public class VisionSystem
         }
         else if (IsExplored(x, y, z))
         {
-            return new Color(32, 32, 32);
+            // Reduce fog-of-war darkness intensity by 50% for explored but currently unseen tiles.
+            return new Color(64, 64, 64);
         }
         else
         {
