@@ -38,14 +38,15 @@ public class CharacterSheet
         _supportedChars = font != null ? new HashSet<char>(font.Characters) : new HashSet<char>();
     }
 
-    public void Update(MouseState mouse, Character? character = null)
+    public bool Update(MouseState mouse, Character? character = null)
     {
+        bool hasCharacterChanges = false;
         _mousePosition = mouse.Position;
 
         if (_prevScrollValue == 0)
         {
             _prevScrollValue = mouse.ScrollWheelValue;
-            return;
+            return false;
         }
         
         int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
@@ -58,7 +59,7 @@ public class CharacterSheet
         if (character == null)
         {
             _prevMouseState = mouse;
-            return;
+            return false;
         }
 
         bool rightClick = mouse.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released;
@@ -97,16 +98,22 @@ public class CharacterSheet
                     case "Équiper":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.EquipItem(_contextItemName);
-                            character.CalculateDerivedStats();
+                            if (character.InventoryData.EquipItem(_contextItemName))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Déséquiper":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.UnequipItem(_contextItemName);
-                            character.CalculateDerivedStats();
+                            if (character.InventoryData.UnequipItem(_contextItemName))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
@@ -115,18 +122,26 @@ public class CharacterSheet
                         {
                             // Pour l'instant, lancer retire l'objet de l'inventaire
                             // (équivalent à un jet d'objet improvisé).
-                            character.InventoryData.UnequipItem(_contextItemName);
-                            character.InventoryData.RemoveItem(_contextItemName);
-                            character.CalculateDerivedStats();
+                            bool changed = character.InventoryData.UnequipItem(_contextItemName);
+                            changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
+                            if (changed)
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Jeter":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.InventoryData.UnequipItem(_contextItemName);
-                            character.InventoryData.RemoveItem(_contextItemName);
-                            character.CalculateDerivedStats();
+                            bool changed = character.InventoryData.UnequipItem(_contextItemName);
+                            changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
+                            if (changed)
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
@@ -148,6 +163,7 @@ public class CharacterSheet
         }
 
         _prevMouseState = mouse;
+        return hasCharacterChanges;
     }
 
     public void ResetScroll()
