@@ -818,10 +818,12 @@ public class CharacterSheet
     }
 
     private void RegisterTooltip(Rectangle area, string text) {
+        if (_showItemContextMenu) return;
         if (_hoverTooltip == null && area.Contains(_mousePosition)) _hoverTooltip = text;
     }
 
     private void DrawTooltip(SpriteBatch spriteBatch, Viewport viewport) {
+        if (_showItemContextMenu) return;
         if (string.IsNullOrWhiteSpace(_hoverTooltip)) return;
         const int padding = 8;
         var safeTooltip = SafeString(_hoverTooltip);
