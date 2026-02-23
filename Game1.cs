@@ -84,6 +84,8 @@ public class Game1 : Game
     private VisionSystem _visionSystem = new();
     private bool _showVisionOverlay = true;
     private bool _visionNeedsUpdate = false;
+    private bool _wasPlayerMovingForVision = false;
+    private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
     private enum CombatAction { None, Move, Attack, EndTurn }
@@ -1880,9 +1882,29 @@ public class Game1 : Game
             if (_playerCreature != null)
             {
                 _playerCreature.UpdateMovementAnimation(deltaTime);
-                if (_playerCreature.IsMoving())
+
+                bool isPlayerMoving = _playerCreature.IsMoving();
+                if (isPlayerMoving)
                 {
+                    int roundedVisualX = (int)MathF.Round(_playerCreature.VisualX);
+                    int roundedVisualY = (int)MathF.Round(_playerCreature.VisualY);
+                    int roundedVisualZ = (int)MathF.Round(_playerCreature.VisualZ);
+                    var roundedVisualTile = (roundedVisualX, roundedVisualY, roundedVisualZ);
+
+                    if (!_wasPlayerMovingForVision || _lastRoundedVisualTile != roundedVisualTile)
+                    {
+                        UpdateVision();
+                        _lastRoundedVisualTile = roundedVisualTile;
+                    }
+
+                    _wasPlayerMovingForVision = true;
+                }
+                else if (_wasPlayerMovingForVision)
+                {
+                    // Ensure we refresh one last time when movement ends.
                     UpdateVision();
+                    _wasPlayerMovingForVision = false;
+                    _lastRoundedVisualTile = null;
                 }
             }
             foreach (var creature in _combatManager.Combatants)
