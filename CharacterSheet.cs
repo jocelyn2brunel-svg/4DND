@@ -17,6 +17,7 @@ public class CharacterSheet
     private const int ScrollbarWidth = 20;
     private const int CloseButtonWidth = 120;
     private const int CloseButtonHeight = 36;
+    private const int HeaderHeight = 110;
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -64,7 +65,7 @@ public class CharacterSheet
             int sheetX = margin;
             int sheetY = margin;
             
-            int totalContentHeight = 80 + MainColumnsHeight + 20;
+            int totalContentHeight = HeaderHeight + MainColumnsHeight + 20;
             if (campaign != null)
             {
                 totalContentHeight += JournalHeight + 20;
@@ -87,7 +88,7 @@ public class CharacterSheet
             
             DrawHeader(spriteBatch, c, sheetX, scrollY, sheetWidth);
             
-            int contentY = scrollY + 80;
+            int contentY = scrollY + HeaderHeight;
             
             int col1Width = (int)(sheetWidth * 0.25f);
             int col2Width = (int)(sheetWidth * 0.35f);
