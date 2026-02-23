@@ -921,7 +921,13 @@ public class Game1 : Game
         foreach (var creature in creatures)
         {
             if (creature.Z > _currentViewLevel) continue;
-            if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) continue;
+
+            bool isVisible = _visionSystem.IsVisible(creature.X, creature.Y, creature.Z);
+            if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
+            {
+                Color fogTint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
+                if (fogTint == Color.Black) continue;
+            }
 
             Color outlineColor = GetCreatureFactionOutlineColor(creature);
             if (_showVisionOverlay && _playerCreature != null)
@@ -966,9 +972,14 @@ public class Game1 : Game
     private void Draw3DCreature(Creature creature)
     {
         if (creature.Z > _currentViewLevel) return;
-        if (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z)) return;
+        bool isVisible = _visionSystem.IsVisible(creature.X, creature.Y, creature.Z);
+        if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
+        {
+            Color fogTint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
+            if (fogTint == Color.Black) return;
+        }
         Color color = creature.DisplayColor;
-        if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
+        if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
         var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
         // Use visual position for smooth movement
         Draw3DCapsule(creature.VisualX, creature.VisualY, creature.VisualZ, capsuleRadius, capsuleHeight, color);
@@ -1025,7 +1036,14 @@ public class Game1 : Game
     private void Draw3DCreatureUI(Creature creature)
     {
         if (creature.Z > _currentViewLevel) return;
-        if (_font == null || (_combatManager.InCombat && _showVisionOverlay && !_visionSystem.IsVisible(creature.X, creature.Y, creature.Z))) return;
+        if (_font == null) return;
+
+        bool isVisible = _visionSystem.IsVisible(creature.X, creature.Y, creature.Z);
+        if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
+        {
+            Color fogTint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
+            if (fogTint == Color.Black) return;
+        }
         var (capsuleRadius, _) = GetCreatureCapsuleDimensions(creature.Size);
         float uiAnchorZ = GetCreatureVisualTopZ(creature) + MathF.Max(0.15f, capsuleRadius * 0.4f);
         // Use visual position for UI anchoring
