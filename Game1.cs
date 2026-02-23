@@ -58,6 +58,7 @@ public class Game1 : Game
 
     private CharacterCreation _characterCreation = null!;
     private CharacterSheet _characterSheet = null!;
+    private JournalUI _journalUI = null!;
     private CampaignCreation _campaignCreation = null!;
     private CampaignMapViewer _campaignMapViewer = null!;
 
@@ -72,6 +73,7 @@ public class Game1 : Game
     private HashSet<char> _supportedChars = new();
 
     private bool _showCharacterSheet = false;
+    private bool _showJournal = false;
 
     private CombatManager _combatManager = new();
     private Creature _playerCreature = null;
@@ -173,6 +175,7 @@ public class Game1 : Game
 
         _characterCreation = new CharacterCreation(_font, _pixel);
         _characterSheet = new CharacterSheet(_font, _pixel);
+        _journalUI = new JournalUI(_font, _pixel);
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
@@ -1855,6 +1858,7 @@ public class Game1 : Game
         if (_state == AppState.Playing)
         {
             bool wasCharacterSheetOpen = _showCharacterSheet;
+            bool wasJournalOpen = _showJournal;
 
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1875,7 +1879,18 @@ public class Game1 : Game
                 _showCharacterSheet = !_showCharacterSheet;
                 if (_showCharacterSheet)
                 {
+                    _showJournal = false;
                     _characterSheet.ResetScroll();
+                }
+            }
+
+            if (kb.IsKeyDown(Keys.J) && !_prevKb.IsKeyDown(Keys.J))
+            {
+                _showJournal = !_showJournal;
+                if (_showJournal)
+                {
+                    _showCharacterSheet = false;
+                    _journalUI.ResetScroll();
                 }
             }
 
@@ -1887,6 +1902,17 @@ public class Game1 : Game
                     closeSheetButtonRect.Contains(mouse.Position))
                 {
                     _showCharacterSheet = false;
+                }
+            }
+
+            if (_showJournal)
+            {
+                var closeJournalButtonRect = _journalUI.GetCloseButtonRect(GraphicsDevice.Viewport);
+                if (mouse.LeftButton == ButtonState.Pressed &&
+                    _prevMouse.LeftButton == ButtonState.Released &&
+                    closeJournalButtonRect.Contains(mouse.Position))
+                {
+                    _showJournal = false;
                 }
             }
 
@@ -2094,6 +2120,15 @@ public class Game1 : Game
             if (_showCharacterSheet)
             {
                 _characterSheet.Update(mouse);
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
+            if (_showJournal)
+            {
+                _journalUI.Update(mouse);
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
@@ -2710,6 +2745,14 @@ public class Game1 : Game
             return;
         }
 
+        if (_showJournal && _state == AppState.Playing && _currentCampaign != null)
+        {
+            _journalUI.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
         // CAMPAIGN MAP
         if (_showCampaignMap && _state == AppState.Playing && _currentCampaign != null)
         {
@@ -2983,23 +3026,6 @@ public class Game1 : Game
             return;
         }
 
-        // CHARACTER SHEET
-        if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
-        {
-            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
-            _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
-        }
-        
-        // CAMPAIGN MAP
-        if (_showCampaignMap && _state == AppState.Playing && _currentCampaign != null)
-        {
-            _campaignMapViewer.Draw(_spriteBatch, GraphicsDevice, _currentCampaign);
-            _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
-        }
 
         
         // Combat UI
