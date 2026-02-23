@@ -303,6 +303,26 @@ public class Game1 : Game
         SetupCombatLighting();
         UpdateVision();
     }
+
+    private bool TryStartCombatFromEnemyDetection()
+    {
+        if (_combatManager.InCombat || _playerCreature == null || _currentCharacter == null)
+        {
+            return false;
+        }
+
+        var spottingEnemy = _combatManager.Combatants
+            .FirstOrDefault(enemy => !enemy.IsPlayer && enemy.IsAlive() && _visionSystem.CanSee(enemy, _playerCreature));
+
+        if (spottingEnemy == null)
+        {
+            return false;
+        }
+
+        StartCombatWithNearbyEnemies();
+        AddToCombatLog($"{spottingEnemy.Name} spotted you! Combat started automatically.");
+        return true;
+    }
     
     private void SetupCombatLighting()
     {
@@ -1853,6 +1873,14 @@ public class Game1 : Game
             if (_showCharacterSheet)
             {
                 _characterSheet.Update(mouse);
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
+            if (TryStartCombatFromEnemyDetection())
+            {
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
