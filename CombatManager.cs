@@ -318,10 +318,12 @@ public class CombatManager
     /// <summary>
     /// Check if the target space can accommodate the creature's size
     /// and calculate the effective movement cost (including squeezing penalty if applicable).
+    /// Movement is independent from the action: a creature can move before acting,
+    /// after acting, or split movement around their action.
     /// </summary>
     public bool CanMove(Creature creature, int targetX, int targetY, int targetZ)
     {
-        if (!creature.HasAction && creature.MovementRemaining <= 0)
+        if (creature.MovementRemaining <= 0)
             return false;
 
         // Check if the target space can accommodate the creature's size
