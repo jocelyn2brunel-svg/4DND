@@ -7,40 +7,39 @@ namespace _4DND;
 
 public class Inventory
 {
-    private readonly List<string> _items = new();
     public int Capacity { get; set; } = 50;
     
     public string? EquippedWeapon { get; set; }
     public string? EquippedArmor { get; set; }
     public string? EquippedShield { get; set; }
     
-    public List<string> Items => _items;
+    public List<string> Items { get; set; } = new();
     
     public bool AddItem(string itemName)
     {
-        if (_items.Count >= Capacity) return false;
-        _items.Add(itemName);
+        if (Items.Count >= Capacity) return false;
+        Items.Add(itemName);
         return true;
     }
     
     public bool RemoveItem(string itemName)
     {
-        return _items.Remove(itemName);
+        return Items.Remove(itemName);
     }
     
     public bool HasItem(string itemName)
     {
-        return _items.Contains(itemName);
+        return Items.Contains(itemName);
     }
     
     public int GetItemCount(string itemName)
     {
-        return _items.Count(i => i == itemName);
+        return Items.Count(i => i == itemName);
     }
     
     public bool EquipItem(string itemName)
     {
-        if (!_items.Contains(itemName)) return false;
+        if (!Items.Contains(itemName)) return false;
         
         var item = ItemDatabase.GetItem(itemName);
         if (!item.IsEquippable) return false;
@@ -84,7 +83,7 @@ public class Inventory
     public int GetTotalWeight()
     {
         int total = 0;
-        foreach (var itemName in _items)
+        foreach (var itemName in Items)
         {
             var item = ItemDatabase.GetItem(itemName);
             total += item.Weight;

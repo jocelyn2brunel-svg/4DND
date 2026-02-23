@@ -2182,7 +2182,10 @@ public class Game1 : Game
 
             if (_showCharacterSheet)
             {
-                _characterSheet.Update(mouse, _currentCharacter);
+                if (_characterSheet.Update(mouse, _currentCharacter))
+                {
+                    SaveCharacters();
+                }
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
