@@ -98,6 +98,9 @@ A MonoGame-based D&D 5th Edition character management and tactical combat system
 
 ## Technical Details
 
+### Art & Terrain
+- `TILE_TEXTURES.md`: Guide pratique pour les textures de tuiles de gazon (lisibilité, variation, performance)
+
 ### File Structure
 - `Game1.cs`: Main game loop and state management
 - `Character.cs`: Character data model

@@ -642,7 +642,7 @@ public class Game1 : Game
                 }
                 else
                 {
-                    AddTileVertices(tileVertices, x, y, 0, color);
+                    AddTileVertices(tileVertices, x, y, 0, type, color);
                     if (type == TileType.DifficultTerrain)
                     {
                         Draw3DLine(new Vector3(x - 0.2f, y - 0.2f, 0.01f), new Vector3(x + 0.2f, y + 0.2f, 0.01f), Color.Black * 0.5f);
@@ -674,7 +674,7 @@ public class Game1 : Game
             }
             else
             {
-                AddTileVertices(tileVertices, cx, cy, cz, color);
+                AddTileVertices(tileVertices, cx, cy, cz, cell.Value, color);
                 if (cell.Value == TileType.DifficultTerrain)
                 {
                     Draw3DLine(new Vector3(cx - 0.2f, cy - 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy + 0.2f, cz + 0.01f), Color.Black * 0.5f);
@@ -709,13 +709,35 @@ public class Game1 : Game
     {
         Color baseColor = type switch
         {
-            TileType.Floor => Color.ForestGreen,
+            TileType.Floor => new Color(70, 145, 70),
             TileType.Grass => new Color(80, 180, 80),
             TileType.DifficultTerrain => new Color(139, 69, 19),
             TileType.Wall => new Color(100, 100, 110),
             TileType.Water => Color.CornflowerBlue,
             _ => Color.ForestGreen
         };
+
+        // Deterministic tile-level variation to mimic texture diversity and reduce visible tiling.
+        if (type == TileType.Grass || type == TileType.Floor)
+        {
+            float dryness = Hash01(x, y, z, 11);
+            float moisture = Hash01(x, y, z, 23);
+            float wear = Hash01(x, y, z, 37);
+
+            // Blend toward worn and humid variants while staying readable for tactical overlays.
+            baseColor = Color.Lerp(baseColor, new Color(118, 106, 74), MathHelper.Clamp((wear - 0.72f) * 1.7f, 0f, 0.28f));
+            baseColor = Color.Lerp(baseColor, new Color(52, 128, 78), MathHelper.Clamp((moisture - 0.65f) * 1.4f, 0f, 0.22f));
+            baseColor = Color.Lerp(baseColor, new Color(142, 160, 93), MathHelper.Clamp((dryness - 0.8f) * 1.3f, 0f, 0.18f));
+
+            // Parity keeps grid rhythm readable without making a checkerboard too obvious.
+            float parity = (((x + y) & 1) == 0) ? 1.02f : 0.98f;
+            baseColor = ScaleColor(baseColor, parity);
+        }
+        else if (type == TileType.DifficultTerrain)
+        {
+            float mudNoise = Hash01(x, y, z, 53);
+            baseColor = ScaleColor(baseColor, 0.92f + mudNoise * 0.12f);
+        }
 
         if (z < zLevel) baseColor *= 0.3f;
         if (_showVisionOverlay && _playerCreature != null)
@@ -728,20 +750,56 @@ public class Game1 : Game
         return baseColor;
     }
 
-    private void AddTileVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
+    private void AddTileVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, TileType type, Color baseColor)
     {
         const float half = 0.5f;
         Vector3 n = Vector3.Up;
 
+        Color bottomLeft = baseColor;
+        Color bottomRight = baseColor;
+        Color topRight = baseColor;
+        Color topLeft = baseColor;
+
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.DifficultTerrain)
+        {
+            // Per-corner variation creates a subtle faux texture and breaks up repeated flat color blocks.
+            bottomLeft = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 101) * 0.16f);
+            bottomRight = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 102) * 0.16f);
+            topRight = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 103) * 0.16f);
+            topLeft = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 104) * 0.16f);
+        }
+
         // Triangle 1
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, color));
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y - half, z), n, color));
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, bottomLeft));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y - half, z), n, bottomRight));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, topRight));
 
         // Triangle 2
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, color));
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, color));
-        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y + half, z), n, color));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y - half, z), n, bottomLeft));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x + half, y + half, z), n, topRight));
+        vertices.Add(new VertexPositionNormalColor(new Vector3(x - half, y + half, z), n, topLeft));
+    }
+
+    private static Color ScaleColor(Color color, float factor)
+    {
+        factor = MathHelper.Clamp(factor, 0f, 2f);
+        return new Color(
+            (byte)MathHelper.Clamp(color.R * factor, 0f, 255f),
+            (byte)MathHelper.Clamp(color.G * factor, 0f, 255f),
+            (byte)MathHelper.Clamp(color.B * factor, 0f, 255f),
+            color.A);
+    }
+
+    private static float Hash01(int x, int y, int z, int seed)
+    {
+        unchecked
+        {
+            int h = x * 374761393 + y * 668265263 + z * 982451653 + seed * 1442695041;
+            h = (h ^ (h >> 13)) * 1274126177;
+            h ^= h >> 16;
+            uint u = (uint)h;
+            return (u & 0x00FFFFFF) / 16777215f;
+        }
     }
 
     private void AddThinWallVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
