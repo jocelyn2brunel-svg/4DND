@@ -35,7 +35,17 @@ public class CombatManager
     
     public bool InCombat => _inCombat;
     public List<Creature> Combatants => _combatants;
-    public Creature? CurrentCombatant => _inCombat && _combatants.Count > 0 ? _combatants[_currentTurnIndex] : null;
+    public Creature? CurrentCombatant
+    {
+        get
+        {
+            if (!_inCombat || _combatants.Count == 0)
+                return null;
+
+            NormalizeTurnIndex();
+            return _combatants[_currentTurnIndex];
+        }
+    }
     public int CurrentRound => _currentRound;
     
     /// <summary>
@@ -189,6 +199,14 @@ public class CombatManager
 
         // Remove dead creatures
         _combatants.RemoveAll(c => !c.IsAlive());
+
+        if (_combatants.Count == 0)
+        {
+            EndCombat();
+            return false;
+        }
+
+        NormalizeTurnIndex();
         
         // Check if combat should end
         bool hasPlayer = _combatants.Any(c => c.IsPlayer);
@@ -230,6 +248,24 @@ public class CombatManager
         }
 
         return newRound;
+    }
+
+    private void NormalizeTurnIndex()
+    {
+        if (_combatants.Count == 0)
+        {
+            _currentTurnIndex = 0;
+            return;
+        }
+
+        if (_currentTurnIndex < 0)
+        {
+            _currentTurnIndex = ((_currentTurnIndex % _combatants.Count) + _combatants.Count) % _combatants.Count;
+        }
+        else if (_currentTurnIndex >= _combatants.Count)
+        {
+            _currentTurnIndex %= _combatants.Count;
+        }
     }
     
     private void ProcessStartOfTurnEffects(Creature creature)
