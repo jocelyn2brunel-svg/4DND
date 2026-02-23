@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -410,10 +411,12 @@ public class CharacterSheet
             string weapon = c.InventoryData.EquippedWeapon;
             int atkBonus = c.GetAbilityModifier(c.Strength) + c.ProficiencyBonus;
             string damage = GetWeaponDamage(weapon);
+            var weaponRect = new Rectangle(nameCol - 4, entryY - 2, width - 20, lineHeight);
             
             spriteBatch.DrawString(_font, weapon, new Vector2(nameCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, FormatModifier(atkBonus), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, damage, new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            RegisterTooltip(weaponRect, BuildWeaponTooltip(weapon, atkBonus, damage));
             entryY += lineHeight;
         }
         
@@ -442,13 +445,17 @@ public class CharacterSheet
         // Equipped items
         if (c.InventoryData.EquippedArmor != null)
         {
-            spriteBatch.DrawString(_font, $" {c.InventoryData.EquippedArmor}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            string armorName = c.InventoryData.EquippedArmor;
+            spriteBatch.DrawString(_font, $" {armorName}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(armorName, true));
             itemY += lineHeight;
         }
         
         if (c.InventoryData.EquippedShield != null)
         {
-            spriteBatch.DrawString(_font, $" {c.InventoryData.EquippedShield}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            string shieldName = c.InventoryData.EquippedShield;
+            spriteBatch.DrawString(_font, $" {shieldName}", new Vector2(col1, itemY), Color.Black, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(shieldName, true));
             itemY += lineHeight;
         }
         
@@ -456,6 +463,7 @@ public class CharacterSheet
         itemY = y + 30;
         int leftColCount = 0;
         int maxItemsPerCol = 10;
+        int rightItemY = y + 30;
         
         foreach (var item in c.InventoryData.Items)
         {
@@ -467,22 +475,26 @@ public class CharacterSheet
             if (leftColCount < maxItemsPerCol)
             {
                 spriteBatch.DrawString(_font, $" {item}", new Vector2(col1, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(col1 - 2, itemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
                 itemY += lineHeight - 2;
                 leftColCount++;
             }
             else
             {
-                spriteBatch.DrawString(_font, $" {item}", new Vector2(col2, itemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                itemY += lineHeight - 2;
+                spriteBatch.DrawString(_font, $" {item}", new Vector2(col2, rightItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(col2 - 2, rightItemY - 2, width / 2 - 12, lineHeight), BuildItemTooltip(item));
+                rightItemY += lineHeight - 2;
             }
         }
         
         // Weight info
         int totalWeight = c.InventoryData.GetTotalWeight();
         spriteBatch.DrawString(_font, $"Total Weight: {totalWeight} lbs", new Vector2(x + 10, y + height - 35), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        RegisterTooltip(new Rectangle(x + 8, y + height - 37, width - 16, 14), $"Poids transporté: {totalWeight} lbs. Capacité d'inventaire: {c.InventoryData.Capacity} objets.");
         
         // Gold pieces
         spriteBatch.DrawString(_font, $"Gold: {c.GoldPieces} gp", new Vector2(x + 10, y + height - 20), Color.DarkGoldenrod, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        RegisterTooltip(new Rectangle(x + 8, y + height - 22, width - 16, 14), $"Richesse disponible: {c.GoldPieces} pièces d'or.");
     }
 
     private void DrawHexBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height)
@@ -767,6 +779,78 @@ public class CharacterSheet
             return $"{item.DamageDice} {item.DamageType.ToLower()}";
         }
         return "1d6";
+    }
+
+    private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage)
+    {
+        var item = ItemDatabase.GetItem(weaponName);
+        string rangeInfo = item.IsRanged ? $"Portée: {item.Range}/{item.Range * 3} ft." : "Attaque de mêlée.";
+        string properties = GetWeaponProperties(item);
+
+        return $"{weaponName} (équipée)\n" +
+               $"Bonus d'attaque: {FormatModifier(attackBonus)} (carac + maîtrise).\n" +
+               $"Dégâts: {damage}.\n" +
+               $"{rangeInfo}\n" +
+               $"{properties}";
+    }
+
+    private string BuildItemTooltip(string itemName, bool isEquipped = false)
+    {
+        var item = ItemDatabase.GetItem(itemName);
+        string equippedText = isEquipped ? " (équipé)" : "";
+        string details = $"{item.Name}{equippedText}\nType: {GetItemTypeLabel(item.Type)}\nPoids: {item.Weight} lbs | Valeur: {item.Value} gp";
+
+        if (!string.IsNullOrWhiteSpace(item.Description))
+        {
+            details += $"\n{item.Description}";
+        }
+
+        if (item.Type == ItemType.Weapon)
+        {
+            details += $"\nDégâts: {item.DamageDice} {item.DamageType.ToLower()}";
+            details += $"\n{GetWeaponProperties(item)}";
+        }
+        else if (item.Type == ItemType.Armor)
+        {
+            string dexCap = item.MaxDexBonus >= 10 ? "sans limite" : $"max {FormatModifier(item.MaxDexBonus)}";
+            details += $"\nCA: {item.ArmorClass} | Bonus DEX: {dexCap}";
+            if (item.StealthDisadvantage)
+            {
+                details += "\nDésavantage en Discrétion.";
+            }
+        }
+        else if (item.Type == ItemType.Shield)
+        {
+            details += $"\nBonus de CA: +{item.ArmorClass}";
+        }
+
+        return details;
+    }
+
+    private string GetWeaponProperties(Item item)
+    {
+        List<string> properties = new();
+        if (item.IsFinesse) properties.Add("Finesse");
+        if (item.IsVersatile && !string.IsNullOrWhiteSpace(item.VersatileDamageDice)) properties.Add($"Polyvalente ({item.VersatileDamageDice})");
+        if (item.IsRanged) properties.Add("Distance");
+
+        return properties.Count > 0
+            ? $"Propriétés: {string.Join(", ", properties)}."
+            : "Propriétés: aucune.";
+    }
+
+    private string GetItemTypeLabel(ItemType type)
+    {
+        return type switch
+        {
+            ItemType.Weapon => "Arme",
+            ItemType.Armor => "Armure",
+            ItemType.Shield => "Bouclier",
+            ItemType.Consumable => "Consommable",
+            ItemType.Treasure => "Trésor",
+            ItemType.Misc => "Divers",
+            _ => "Inconnu"
+        };
     }
 
     private void DrawAdventureJournal(SpriteBatch spriteBatch, Campaign campaign, int x, int y, int width)
