@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -20,6 +21,13 @@ public class CharacterSheet
     private Point _mousePosition;
     private string? _hoverTooltip;
     private HashSet<char> _supportedChars;
+    private MouseState _prevMouseState;
+    private readonly List<(Rectangle Rect, string WeaponName)> _equippedWeaponRects = new();
+    private bool _showWeaponContextMenu;
+    private Rectangle _weaponContextMenuRect;
+    private string? _contextWeaponName;
+    private string? _inspectWeaponText;
+    private Rectangle _inspectPopupRect;
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -28,7 +36,7 @@ public class CharacterSheet
         _supportedChars = font != null ? new HashSet<char>(font.Characters) : new HashSet<char>();
     }
 
-    public void Update(MouseState mouse)
+    public void Update(MouseState mouse, Character? character = null)
     {
         _mousePosition = mouse.Position;
 
@@ -44,6 +52,79 @@ public class CharacterSheet
             _scrollOffset -= scrollDelta * 0.5f;
             _prevScrollValue = mouse.ScrollWheelValue;
         }
+
+        if (character == null)
+        {
+            _prevMouseState = mouse;
+            return;
+        }
+
+        bool rightClick = mouse.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released;
+        bool leftClick = mouse.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released;
+
+        if (rightClick)
+        {
+            var clickedWeapon = _equippedWeaponRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
+            if (!string.IsNullOrEmpty(clickedWeapon.WeaponName))
+            {
+                _contextWeaponName = clickedWeapon.WeaponName;
+                _showWeaponContextMenu = true;
+                _inspectWeaponText = null;
+                _weaponContextMenuRect = BuildContextMenuRect(_mousePosition);
+            }
+            else
+            {
+                _showWeaponContextMenu = false;
+            }
+        }
+
+        if (leftClick)
+        {
+            if (!string.IsNullOrEmpty(_inspectWeaponText) && !_inspectPopupRect.Contains(_mousePosition))
+            {
+                _inspectWeaponText = null;
+            }
+
+            if (_showWeaponContextMenu)
+            {
+                var option = GetContextMenuOptionAt(_mousePosition);
+                switch (option)
+                {
+                    case "Déséquiper":
+                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        {
+                            character.InventoryData.UnequipItem(_contextWeaponName);
+                            character.CalculateDerivedStats();
+                        }
+                        _showWeaponContextMenu = false;
+                        break;
+                    case "Lancer":
+                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        {
+                            character.InventoryData.UnequipItem(_contextWeaponName);
+                            character.InventoryData.RemoveItem(_contextWeaponName);
+                            character.CalculateDerivedStats();
+                        }
+                        _showWeaponContextMenu = false;
+                        break;
+                    case "Examiner":
+                        if (!string.IsNullOrEmpty(_contextWeaponName))
+                        {
+                            _inspectWeaponText = BuildItemTooltip(_contextWeaponName, true);
+                        }
+                        _showWeaponContextMenu = false;
+                        break;
+                    default:
+                        if (!_weaponContextMenuRect.Contains(_mousePosition))
+                        {
+                            _showWeaponContextMenu = false;
+                        }
+                        break;
+                }
+            }
+        }
+
+        _prevMouseState = mouse;
     }
 
     public void ResetScroll()
@@ -61,6 +142,7 @@ public class CharacterSheet
 
         if (_font != null && character != null)
         {
+            _equippedWeaponRects.Clear();
             var c = character;
             int margin = Margin;
             int padding = 10;
@@ -127,6 +209,8 @@ public class CharacterSheet
 
             DrawCloseButton(spriteBatch, vp);
             DrawTooltip(spriteBatch, vp);
+            DrawWeaponContextMenu(spriteBatch, vp);
+            DrawInspectPopup(spriteBatch, vp);
         }
     }
 
@@ -530,8 +614,14 @@ public class CharacterSheet
             foreach (var item in c.InventoryData.Items)
             {
                 int curX = left ? col1 : col2;
+                var itemRect = new Rectangle(curX, currentItemY, width / 2 - 15, lineHeight);
                 spriteBatch.DrawString(_font, SafeString($"• {item}"), new Vector2(curX, currentItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(curX, currentItemY, width / 2 - 15, lineHeight), BuildItemTooltip(item, item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield || item == c.InventoryData.EquippedWeapon));
+                RegisterTooltip(itemRect, BuildItemTooltip(item, item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield || item == c.InventoryData.EquippedWeapon));
+
+                if (item == c.InventoryData.EquippedWeapon)
+                {
+                    _equippedWeaponRects.Add((itemRect, item));
+                }
 
                 if (!left) currentItemY += lineHeight;
                 left = !left;
@@ -700,6 +790,73 @@ public class CharacterSheet
         spriteBatch.Draw(_pixel, rect, new Color(30, 30, 30, 240));
         DrawBorder(spriteBatch, rect, new Color(220, 220, 220), 1);
         spriteBatch.DrawString(_font, safeTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+    }
+
+    private Rectangle BuildContextMenuRect(Point mousePosition)
+    {
+        const int width = 180;
+        const int optionHeight = 30;
+        const int optionCount = 3;
+        return new Rectangle(mousePosition.X, mousePosition.Y, width, optionHeight * optionCount);
+    }
+
+    private string? GetContextMenuOptionAt(Point position)
+    {
+        if (!_weaponContextMenuRect.Contains(position)) return null;
+
+        int relativeY = position.Y - _weaponContextMenuRect.Y;
+        int optionIndex = relativeY / 30;
+        return optionIndex switch
+        {
+            0 => "Déséquiper",
+            1 => "Lancer",
+            2 => "Examiner",
+            _ => null
+        };
+    }
+
+    private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
+    {
+        if (!_showWeaponContextMenu || string.IsNullOrEmpty(_contextWeaponName)) return;
+
+        int menuX = Math.Clamp(_weaponContextMenuRect.X, 8, viewport.Width - _weaponContextMenuRect.Width - 8);
+        int menuY = Math.Clamp(_weaponContextMenuRect.Y, 8, viewport.Height - _weaponContextMenuRect.Height - 8);
+        _weaponContextMenuRect = new Rectangle(menuX, menuY, _weaponContextMenuRect.Width, _weaponContextMenuRect.Height);
+
+        spriteBatch.Draw(_pixel, _weaponContextMenuRect, new Color(35, 35, 35, 245));
+        DrawBorder(spriteBatch, _weaponContextMenuRect, new Color(220, 220, 220), 1);
+
+        string[] options = { "Déséquiper", "Lancer", "Examiner" };
+        for (int i = 0; i < options.Length; i++)
+        {
+            var optionRect = new Rectangle(_weaponContextMenuRect.X, _weaponContextMenuRect.Y + i * 30, _weaponContextMenuRect.Width, 30);
+            bool hovered = optionRect.Contains(_mousePosition);
+            if (hovered)
+            {
+                spriteBatch.Draw(_pixel, optionRect, new Color(90, 90, 90, 230));
+            }
+
+            spriteBatch.DrawString(_font, SafeString(options[i]), new Vector2(optionRect.X + 10, optionRect.Y + 7), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private void DrawInspectPopup(SpriteBatch spriteBatch, Viewport viewport)
+    {
+        if (string.IsNullOrWhiteSpace(_inspectWeaponText)) return;
+
+        string title = "Examiner l'arme";
+        string content = WrapText(_font, SafeString(_inspectWeaponText), 320, 0.65f);
+        int width = 360;
+        int height = 160;
+        int x = (viewport.Width - width) / 2;
+        int y = (viewport.Height - height) / 2;
+        _inspectPopupRect = new Rectangle(x, y, width, height);
+
+        spriteBatch.Draw(_pixel, _inspectPopupRect, new Color(20, 20, 20, 245));
+        DrawBorder(spriteBatch, _inspectPopupRect, Color.White, 2);
+        spriteBatch.DrawString(_font, SafeString(title), new Vector2(x + 12, y + 10), Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, content, new Vector2(x + 12, y + 40), Color.White * 0.95f, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, "(Cliquez à l'extérieur pour fermer)", new Vector2(x + 12, y + height - 24), Color.White * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
     }
 
     private void DrawSmallBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height, string? tooltipText = null) {

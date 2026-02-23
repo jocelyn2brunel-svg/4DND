@@ -2119,7 +2119,7 @@ public class Game1 : Game
 
             if (_showCharacterSheet)
             {
-                _characterSheet.Update(mouse);
+                _characterSheet.Update(mouse, _currentCharacter);
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
