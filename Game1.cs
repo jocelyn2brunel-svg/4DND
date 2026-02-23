@@ -339,6 +339,17 @@ public class Game1 : Game
     {
         if (_playerCreature != null)
         {
+            int originalX = _playerCreature.X;
+            int originalY = _playerCreature.Y;
+            int originalZ = _playerCreature.Z;
+
+            if (_playerCreature.IsMoving())
+            {
+                _playerCreature.X = (int)MathF.Round(_playerCreature.VisualX);
+                _playerCreature.Y = (int)MathF.Round(_playerCreature.VisualY);
+                _playerCreature.Z = (int)MathF.Round(_playerCreature.VisualZ);
+            }
+
             // Update positions of attached light sources
             foreach (var light in _visionSystem._lightSources)
             {
@@ -352,6 +363,10 @@ public class Game1 : Game
             
             _visionSystem.CalculateLighting();
             _visionSystem.CalculateVisibility(_playerCreature);
+
+            _playerCreature.X = originalX;
+            _playerCreature.Y = originalY;
+            _playerCreature.Z = originalZ;
         }
         _visionNeedsUpdate = false;
     }
@@ -1865,6 +1880,10 @@ public class Game1 : Game
             if (_playerCreature != null)
             {
                 _playerCreature.UpdateMovementAnimation(deltaTime);
+                if (_playerCreature.IsMoving())
+                {
+                    UpdateVision();
+                }
             }
             foreach (var creature in _combatManager.Combatants)
             {
