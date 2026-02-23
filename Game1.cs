@@ -943,6 +943,22 @@ public class Game1 : Game
         }
     }
 
+    private void DrawEnemySightLinesToPlayer()
+    {
+        if (_playerCreature == null || !_playerCreature.IsAlive())
+            return;
+
+        foreach (var enemy in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()))
+        {
+            if (!_visionSystem.CanSee(enemy, _playerCreature))
+                continue;
+
+            Vector3 enemyPos = new Vector3(enemy.VisualX, enemy.VisualY, enemy.VisualZ + 0.65f);
+            Vector3 playerPos = new Vector3(_playerCreature.VisualX, _playerCreature.VisualY, _playerCreature.VisualZ + 0.65f);
+            Draw3DLine(enemyPos, playerPos, Color.Red * 0.9f);
+        }
+    }
+
     private static Color GetCreatureFactionOutlineColor(Creature creature)
     {
         if (creature.IsPlayer)
@@ -2296,6 +2312,7 @@ public class Game1 : Game
 
             DrawCreatureTileOutlines();
             Draw3DCreatures();
+            DrawEnemySightLinesToPlayer();
             var hovered = GetHoveredTile();
             if (hovered.HasValue)
             {
