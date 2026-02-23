@@ -268,6 +268,8 @@ public class Creature
     public int AttackBonus { get; set; } = 2;
     public string DamageDice { get; set; } = "1d6";
     public int DamageBonus { get; set; } = 0;
+    public string CurrentDamageType { get; set; } = "Bludgeoning";
+    public bool IsMeleeAttack { get; set; } = true;
     
     // Vision properties
     public int DarkvisionRange { get; set; } = 0;  // In feet
@@ -373,9 +375,16 @@ public class Creature
         return Conditions.HasCondition(Condition.Blinded) || Conditions.HasCondition(Condition.Unconscious);
     }
     
-    public void TakeDamage(int amount)
+    public void TakeDamage(int amount, string damageType = "")
     {
+        // Barbarian Rage resistance: Resistance to bludgeoning, piercing, and slashing damage.
+        if (IsRaging && (damageType == "Bludgeoning" || damageType == "Piercing" || damageType == "Slashing"))
+        {
+            amount /= 2;
+        }
+
         CurrentHP = Math.Max(0, CurrentHP - amount);
+        HasTakenDamageThisRound = true;
     }
     
     public void Heal(int amount)
@@ -521,6 +530,8 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d6",
             DamageBonus = 2,
+            CurrentDamageType = "Slashing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             StealthProficiency = true,
             HasNimbleEscape = true,
@@ -558,6 +569,8 @@ public class Creature
             AttackBonus = 5,
             DamageDice = "1d12",
             DamageBonus = 3,
+            CurrentDamageType = "Slashing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             XPReward = 100,  // CR 1/2
             DisplayColor = Color.DarkRed,
@@ -593,6 +606,8 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d6",
             DamageBonus = 2,
+            CurrentDamageType = "Piercing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
@@ -628,6 +643,8 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "2d4",
             DamageBonus = 2,
+            CurrentDamageType = "Piercing",
+            IsMeleeAttack = true,
             DarkvisionRange = 0,
             StealthProficiency = true,
             PerceptionProficiency = true,
@@ -665,6 +682,8 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d4",
             DamageBonus = 2,
+            CurrentDamageType = "Piercing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasSunlightSensitivity = true,
             XPReward = 25,  // CR 1/8
@@ -701,6 +720,8 @@ public class Creature
             AttackBonus = 8,
             DamageDice = "2d10",
             DamageBonus = 6,
+            CurrentDamageType = "Piercing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasTremorsense = true,
             TremorsenseRange = 60,
@@ -740,6 +761,8 @@ public class Creature
             AttackBonus = 6,
             DamageDice = "1d8",
             DamageBonus = 3,
+            CurrentDamageType = "Piercing",
+            IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasTrueSight = true,
             TrueSightRange = 120,
@@ -807,6 +830,8 @@ public class Creature
             creature.AttackBonus = abilityMod + character.ProficiencyBonus;
             creature.DamageDice = weapon.DamageDice;
             creature.DamageBonus = abilityMod;
+            creature.CurrentDamageType = weapon.DamageType;
+            creature.IsMeleeAttack = !weapon.IsRanged;
         }
         else
         {
@@ -815,6 +840,8 @@ public class Creature
             creature.AttackBonus = creature.GetAbilityModifier(creature.Strength) + character.ProficiencyBonus;
             creature.DamageDice = "1";
             creature.DamageBonus = creature.GetAbilityModifier(creature.Strength);
+            creature.CurrentDamageType = "Bludgeoning";
+            creature.IsMeleeAttack = true;
         }
 
         if (character.Class == "Barbarian")

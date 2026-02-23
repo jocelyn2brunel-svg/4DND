@@ -940,8 +940,19 @@ public class CombatManager
         // Roll damage if hit
         if (result.IsHit)
         {
-            result.Damage = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
-            target.TakeDamage(result.Damage);
+            int damageBonus = attacker.DamageBonus;
+
+            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength.
+            if (attacker.IsRaging && attacker.IsMeleeAttack)
+            {
+                damageBonus += attacker.RageDamageBonus;
+            }
+
+            result.Damage = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
+            result.DamageType = attacker.CurrentDamageType;
+            target.TakeDamage(result.Damage, result.DamageType);
+
+            attacker.HasAttackedThisRound = true;
         }
         
         return result;
@@ -1081,6 +1092,22 @@ public class CombatManager
         return nearest != null ? (nearest.X, nearest.Y, nearest.Z) : null;
     }
 
+    public void StartRage(Creature creature)
+    {
+        if (creature.RagesRemaining <= 0 && creature.IsPlayer)
+            return;
+
+        if (creature.IsRaging)
+            return;
+
+        creature.IsRaging = true;
+        creature.RageTurnsLeft = 10;
+        if (creature.RagesRemaining > 0)
+            creature.RagesRemaining--;
+
+        TurnMessages.Add($"{creature.Name} enters a RAGE!");
+    }
+
     private void EndRage(Creature creature)
     {
         creature.IsRaging = false;
@@ -1095,6 +1122,7 @@ public class AttackResult
     public int AttackRoll { get; set; }
     public int TotalAttackBonus { get; set; }
     public int TotalToHit { get; set; }
+    public string DamageType { get; set; } = "";
     public bool IsHit { get; set; }
     public bool IsCritical { get; set; }
     public bool IsCriticalMiss { get; set; }

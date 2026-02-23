@@ -88,8 +88,9 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, EndTurn }
+    private enum CombatAction { None, Move, Attack, BonusAction, EndTurn }
     private CombatAction _selectedAction = CombatAction.None;
+    private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
     private const int CombatTopPanelHeight = 220;
     private MouseState _prevMouse;
@@ -1993,7 +1994,10 @@ public class Game1 : Game
             var rotateRightButtonRect = GetRotateRightButtonRect(GraphicsDevice.Viewport);
             var combatMoveButtonRect = GetCombatMoveButtonRect(GraphicsDevice.Viewport);
             var combatAttackButtonRect = GetCombatAttackButtonRect(GraphicsDevice.Viewport);
+            var combatBonusActionButtonRect = GetCombatBonusActionButtonRect(GraphicsDevice.Viewport);
             var combatEndTurnButtonRect = GetCombatEndTurnButtonRect(GraphicsDevice.Viewport);
+            var combatRageButtonRect = GetCombatRageButtonRect(GraphicsDevice.Viewport);
+
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
             {
@@ -2015,16 +2019,34 @@ public class Game1 : Game
                         if (combatMoveButtonRect.Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Move;
+                            _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Attack;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (combatBonusActionButtonRect.Contains(mouse.Position))
+                        {
+                            _showBonusActionMenu = !_showBonusActionMenu;
                             clickedOnGameplayUiButton = true;
                         }
                         else if (combatEndTurnButtonRect.Contains(mouse.Position))
                         {
                             EndCurrentPlayerTurn(currentCombatant);
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (_showBonusActionMenu && combatRageButtonRect.Contains(mouse.Position))
+                        {
+                            if (currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian")
+                            {
+                                _combatManager.StartRage(currentCombatant);
+                                currentCombatant.HasBonusAction = false;
+                                AddToCombatLog($"{currentCombatant.Name} enters RAGE!");
+                            }
+                            _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
                     }
@@ -2256,10 +2278,20 @@ public class Game1 : Game
                 {
                     // Player's turn
                     if (kb.IsKeyDown(Keys.D1) && !_prevKb.IsKeyDown(Keys.D1))
+                    {
                         _selectedAction = CombatAction.Move;
+                        _showBonusActionMenu = false;
+                    }
                     if (kb.IsKeyDown(Keys.D2) && !_prevKb.IsKeyDown(Keys.D2))
+                    {
                         _selectedAction = CombatAction.Attack;
+                        _showBonusActionMenu = false;
+                    }
                     if (kb.IsKeyDown(Keys.D3) && !_prevKb.IsKeyDown(Keys.D3))
+                    {
+                        _showBonusActionMenu = !_showBonusActionMenu;
+                    }
+                    if (kb.IsKeyDown(Keys.D4) && !_prevKb.IsKeyDown(Keys.D4))
                     {
                         EndCurrentPlayerTurn(currentCombatant);
                     }
@@ -2562,12 +2594,28 @@ public class Game1 : Game
         return new Rectangle(moveRect.Right + spacing, moveRect.Y, buttonWidth, moveRect.Height);
     }
 
-    private Rectangle GetCombatEndTurnButtonRect(Viewport viewport)
+    private Rectangle GetCombatBonusActionButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
         const int spacing = 10;
         var attackRect = GetCombatAttackButtonRect(viewport);
         return new Rectangle(attackRect.Right + spacing, attackRect.Y, buttonWidth, attackRect.Height);
+    }
+
+    private Rectangle GetCombatEndTurnButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int spacing = 10;
+        var bonusRect = GetCombatBonusActionButtonRect(viewport);
+        return new Rectangle(bonusRect.Right + spacing, bonusRect.Y, buttonWidth, bonusRect.Height);
+    }
+
+    private Rectangle GetCombatRageButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int buttonHeight = 34;
+        var bonusRect = GetCombatBonusActionButtonRect(viewport);
+        return new Rectangle(bonusRect.X, bonusRect.Bottom + 5, buttonWidth, buttonHeight);
     }
 
     private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected)
@@ -2598,6 +2646,7 @@ public class Game1 : Game
 
     private void EndCurrentPlayerTurn(Creature currentCombatant)
     {
+        _showBonusActionMenu = false;
         int prevRound = _combatManager.CurrentRound;
         _combatManager.NextTurn();
         int newRound = _combatManager.CurrentRound;
@@ -3143,15 +3192,30 @@ public class Game1 : Game
                             new Color(130, 70, 50),
                             _selectedAction == CombatAction.Attack);
                         DrawCombatActionButton(
+                            GetCombatBonusActionButtonRect(vp),
+                            "Bonus Action",
+                            new Color(45, 145, 95),
+                            _showBonusActionMenu);
+                        DrawCombatActionButton(
                             GetCombatEndTurnButtonRect(vp),
                             "End Turn",
                             new Color(90, 70, 115),
                             false);
 
-                        _spriteBatch.DrawString(_font, "Raccourcis: [1] Move  [2] Attack  [3] End Turn", new Vector2(10, y + 10), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                        if (_showBonusActionMenu)
+                        {
+                            bool canRage = currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian";
+                            DrawCombatActionButton(
+                                GetCombatRageButtonRect(vp),
+                                $"Rage ({currentCombatant.RagesRemaining})",
+                                canRage ? Color.DarkRed : Color.Gray,
+                                false);
+                        }
+
+                        _spriteBatch.DrawString(_font, "Raccourcis: [1] Move  [2] Attack  [3] Bonus Act  [4] End Turn", new Vector2(10, y + 10), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
                         y += 45;
-                        
-                        if (_selectedAction != CombatAction.None)
+
+                        if (_selectedAction != CombatAction.None && _selectedAction != CombatAction.BonusAction)
                         {
                             var actionText = _selectedAction switch
                             {
