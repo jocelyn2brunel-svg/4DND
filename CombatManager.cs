@@ -7,6 +7,22 @@ using static System.Math;
 
 namespace _4DND;
 
+/// <summary>
+/// Manages D&D 5e combat encounters following the official Order of Combat rules.
+/// 
+/// <para><b>The Order of Combat</b></para>
+/// <para>
+/// A typical combat encounter is a clash between two sides, a flurry of weapon swings, feints,
+/// parries, footwork, and spellcasting. The game organizes the chaos of combat into a cycle of
+/// rounds and turns.
+/// </para>
+/// <para>
+/// A <b>round</b> represents about 6 seconds in the game world. During a round, each participant
+/// in a battle takes a <b>turn</b>. The order of turns is determined at the beginning of a combat
+/// encounter, when everyone rolls initiative. Once everyone has taken a turn, the fight continues
+/// to the next round if neither side has defeated the other.
+/// </para>
+/// </summary>
 public class CombatManager
 {
     private readonly record struct TacticalMapNode(int X, int Y, int Z);
@@ -22,6 +38,12 @@ public class CombatManager
     public Creature? CurrentCombatant => _inCombat && _combatants.Count > 0 ? _combatants[_currentTurnIndex] : null;
     public int CurrentRound => _currentRound;
     
+    /// <summary>
+    /// Begins a new combat encounter.
+    /// Each participant rolls initiative (1d20 + Dexterity modifier) to determine turn order.
+    /// Combatants are sorted in descending initiative order — the highest roll acts first.
+    /// This marks the start of Round 1.
+    /// </summary>
     public void StartCombat(List<Creature> creatures)
     {
         _combatants.Clear();
@@ -33,11 +55,11 @@ public class CombatManager
             int dexMod = creature.GetAbilityModifier(creature.Dexterity);
             creature.Initiative = RollD20() + dexMod;
             
-            // Reset turn resources
-            creature.HasAction = true;
-            creature.HasBonusAction = true;
-            creature.HasReaction = true;
-            creature.MovementRemaining = creature.Speed;
+            // Clear all resources; each creature receives them at the start of their turn
+            creature.HasAction = false;
+            creature.HasBonusAction = false;
+            creature.HasReaction = false;
+            creature.MovementRemaining = 0;
         }
         
         // Sort by initiative (descending)
@@ -46,6 +68,17 @@ public class CombatManager
         _currentTurnIndex = 0;
         _currentRound = 1;
         _inCombat = true;
+
+        // Grant resources to the first combatant — their turn starts immediately
+        if (_combatants.Count > 0)
+        {
+            var first = _combatants[0];
+            first.HasAction = true;
+            first.HasBonusAction = true;
+            first.HasReaction = true;
+            first.MovementRemaining = first.Speed;
+            ProcessStartOfTurnEffects(first);
+        }
     }
     
     public void EndCombat()
@@ -56,9 +89,16 @@ public class CombatManager
         _currentRound = 0;
     }
     
-    public void NextTurn()
+    /// <summary>
+    /// Ends the current combatant's turn and advances to the next in initiative order.
+    /// When all combatants have taken their turn, a new round begins (~6 seconds of game time).
+    /// At the start of their turn, each combatant recovers their action, bonus action,
+    /// reaction, and movement. The fight continues until one side is defeated.
+    /// </summary>
+    /// <returns>True if a new round has begun.</returns>
+    public bool NextTurn()
     {
-        if (!_inCombat || _combatants.Count == 0) return;
+        if (!_inCombat || _combatants.Count == 0) return false;
         
         // Remove dead creatures
         _combatants.RemoveAll(c => !c.IsAlive());
@@ -70,39 +110,35 @@ public class CombatManager
         if (!hasPlayer || !hasEnemy)
         {
             EndCombat();
-            return;
+            return false;
         }
         
         // Move to next turn
         _currentTurnIndex++;
         
+        bool newRound = false;
+
         // Check if we completed a round
         if (_currentTurnIndex >= _combatants.Count)
         {
             _currentTurnIndex = 0;
             _currentRound++;
-            
-            // Start of new round - refresh all combatants' actions
-            foreach (var creature in _combatants)
-            {
-                creature.HasAction = true;
-                creature.HasBonusAction = true;
-                creature.HasReaction = true;
-                creature.MovementRemaining = creature.Speed;
-                
-                // Process ongoing effects (poison, etc.)
-                ProcessStartOfTurnEffects(creature);
-            }
+            newRound = true;
         }
         
-        // Refresh current combatant's actions (redundant for first turn of round but safe)
+        // Refresh the incoming combatant's resources at the start of their turn
         if (CurrentCombatant != null)
         {
             CurrentCombatant.HasAction = true;
             CurrentCombatant.HasBonusAction = true;
             CurrentCombatant.HasReaction = true;
             CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
+
+            // Process ongoing effects (poison, burning, etc.)
+            ProcessStartOfTurnEffects(CurrentCombatant);
         }
+
+        return newRound;
     }
     
     private void ProcessStartOfTurnEffects(Creature creature)
@@ -118,15 +154,16 @@ public class CombatManager
     }
     
     /// <summary>
-    /// Check if a creature of given size can occupy the space starting at (x, y, z)
-    /// Large+ creatures need multiple tiles to be available
+    /// Check if a creature of given size can occupy the space starting at (x, y, z).
+    /// Large+ creatures need multiple tiles to be available.
+    /// Returns whether the creature can fit normally or by squeezing, and sets isSqueeze accordingly.
     /// </summary>
-    private bool CanOccupySpace(CreatureSize size, int x, int y, int z, Creature? movingCreature = null)
+    private bool CanOccupySpace(CreatureSize size, int x, int y, int z, Creature? movingCreature = null, bool allowSqueeze = true)
     {
         if (TacticalMap == null) return true;
-        
+
         var (width, height) = SizeHelper.GetSpaceInSquares(size);
-        
+
         // Check all tiles the creature would occupy
         for (int dx = 0; dx < width; dx++)
         {
@@ -134,22 +171,63 @@ public class CombatManager
             {
                 int checkX = x + dx;
                 int checkY = y + dy;
-                
-                // Check if tile is blocked
+
                 var tileType = TacticalMap.Get(checkX, checkY, z);
                 if (tileType == TileType.Wall || tileType == TileType.Empty)
+                {
+                    // Normal fit failed — try squeezing (one size smaller) if allowed
+                    if (allowSqueeze)
+                    {
+                        var smallerSize = SizeHelper.GetSmallerSize(size);
+                        if (smallerSize.HasValue)
+                        {
+                            return CanOccupySpace(smallerSize.Value, x, y, z, movingCreature, allowSqueeze: false);
+                        }
+                    }
                     return false;
-                
-                // Check if another creature is there (unless checking current position)
+                }
+
                 var creatureAtTile = GetCreatureAt(checkX, checkY, z);
                 if (creatureAtTile != null && creatureAtTile != movingCreature)
                     return false;
             }
         }
-        
+
         return true;
     }
     
+    /// <summary>
+    /// Determines whether a creature must squeeze to occupy the given space.
+    /// </summary>
+    private bool WouldRequireSqueeze(Creature creature, int x, int y, int z)
+    {
+        if (TacticalMap == null) return false;
+
+        var (width, height) = SizeHelper.GetSpaceInSquares(creature.Size);
+
+        for (int dx = 0; dx < width; dx++)
+        {
+            for (int dy = 0; dy < height; dy++)
+            {
+                var tileType = TacticalMap.Get(x + dx, y + dy, z);
+                if (tileType == TileType.Wall || tileType == TileType.Empty)
+                {
+                    // Normal fit would fail; if squeezing would work, this is a squeeze
+                    var smallerSize = SizeHelper.GetSmallerSize(creature.Size);
+                    if (smallerSize.HasValue && CanOccupySpace(smallerSize.Value, x, y, z, creature, allowSqueeze: false))
+                        return true;
+                    return false;
+                }
+            }
+        }
+
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if the target space can accommodate the creature's size
+    /// and calculate the effective movement cost (including squeezing penalty if applicable).
+    /// </summary>
     public bool CanMove(Creature creature, int targetX, int targetY, int targetZ)
     {
         if (!creature.HasAction && creature.MovementRemaining <= 0)
@@ -163,7 +241,7 @@ public class CombatManager
         if (path == null)
             return false;
 
-        int totalCost = CalculatePathCost(path);
+        int totalCost = CalculatePathCost(creature, path);
         
         return totalCost <= creature.MovementRemaining;
     }
@@ -177,12 +255,10 @@ public class CombatManager
         int movementSpent = 0;
         int remaining = creature.MovementRemaining;
 
-        // Follow path step-by-step instead of jumping directly to target.
-        // This preserves path shape (detours around obstacles/difficult terrain)
-        // and prevents straight-line teleporting when movement is limited.
         for (int i = 1; i < path.Count; i++)
         {
-            int stepCost = GetMoveCost(path[i]);
+            int stepCost = GetMoveCost(creature, path[i]);
+
             if (movementSpent + stepCost > remaining)
                 break;
 
@@ -191,6 +267,9 @@ public class CombatManager
         }
 
         creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
+
+        // Update squeezing state based on final position
+        creature.IsSqueezingThrough = WouldRequireSqueeze(creature, creature.X, creature.Y, creature.Z);
     }
 
     /// <summary>
@@ -230,7 +309,7 @@ public class CombatManager
                     if (path == null || path.Count < 2)
                         continue;
 
-                    if (bestPath == null || CalculatePathCost(path) < CalculatePathCost(bestPath))
+                    if (bestPath == null || CalculatePathCost(creature, path) < CalculatePathCost(creature, bestPath))
                         bestPath = path;
                 }
             }
@@ -266,7 +345,7 @@ public class CombatManager
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
-                int tentativeG = gScore[current] + GetMoveCost(neighbor);
+                int tentativeG = gScore[current] + GetMoveCost(creature, neighbor);
                 if (tentativeG >= gScore.GetValueOrDefault(neighbor, int.MaxValue))
                     continue;
 
@@ -316,9 +395,15 @@ public class CombatManager
         return Max(Max(Abs(b.X - a.X), Abs(b.Y - a.Y)), Abs(b.Z - a.Z)) * 5;
     }
 
-    private int GetMoveCost(TacticalMapNode node)
+    private int GetMoveCost(Creature creature, TacticalMapNode node)
     {
-        return TacticalMap != null && TacticalMap.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
+        int baseCost = TacticalMap != null && TacticalMap.Get(node.X, node.Y, node.Z) == TileType.DifficultTerrain ? 10 : 5;
+        
+        // If squeezing is required, double the movement cost
+        if (WouldRequireSqueeze(creature, node.X, node.Y, node.Z))
+            baseCost *= 2;
+        
+        return baseCost;
     }
 
     private static List<TacticalMapNode> ReconstructPath(Dictionary<TacticalMapNode, TacticalMapNode> cameFrom, TacticalMapNode current)
@@ -334,11 +419,11 @@ public class CombatManager
         return path;
     }
 
-    private int CalculatePathCost(List<TacticalMapNode> path)
+    private int CalculatePathCost(Creature creature, List<TacticalMapNode> path)
     {
         int cost = 0;
         for (int i = 1; i < path.Count; i++)
-            cost += GetMoveCost(path[i]);
+            cost += GetMoveCost(creature, path[i]);
 
         return cost;
     }
@@ -468,9 +553,11 @@ public class CombatManager
         
         // Determine advantage/disadvantage
         bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
-                           target.Conditions.HasCondition(Condition.Paralyzed) || 
-                           target.Conditions.HasCondition(Condition.Unconscious);
-        bool hasDisadvantage = !attackerCanSee;
+                           target.Conditions.HasCondition(Condition.Paralyzed) ||
+                           target.Conditions.HasCondition(Condition.Unconscious) ||
+                           target.IsSqueezingThrough;  // Attack rolls against a squeezing creature have advantage
+        bool hasDisadvantage = !attackerCanSee ||
+                               attacker.IsSqueezingThrough;  // Squeezing creature has disadvantage on attack rolls
         
         // Check for sunlight sensitivity (circumstantial disadvantage)
         if (visionSystem != null && attacker.HasSunlightSensitivity)
@@ -546,10 +633,23 @@ public class CombatManager
     private int RollD(int sides)
     {
         if (sides <= 0) return 0;
-        
         return _random.Next(1, sides + 1);
     }
 
+    /// <summary>
+    /// Make a saving throw for a creature, automatically applying squeezing disadvantage
+    /// on Dexterity saving throws per the squeezing rules.
+    /// </summary>
+    public D20Check MakeSavingThrow(Creature creature, string abilityName, int dc, bool hasAdvantage = false, bool hasDisadvantage = false)
+    {
+        // Squeezing: disadvantage on Dexterity saving throws
+        bool isDexSave = abilityName is "DEX" or "Dexterity";
+        if (creature.IsSqueezingThrough && isDexSave)
+            hasDisadvantage = true;
+
+        return creature.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage);
+    }
+    
     public Creature? GetCreatureAt(int x, int y, int z = 0)
     {
         foreach (var creature in _combatants)

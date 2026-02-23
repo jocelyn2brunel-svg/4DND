@@ -168,6 +168,34 @@ public static class SizeHelper
             _ => 8
         };
     }
+    
+    /// <summary>
+    /// Returns the size one step smaller than the given size, or null if already Tiny.
+    /// Used for squeezing: a creature can squeeze into a space one size smaller.
+    /// </summary>
+    public static CreatureSize? GetSmallerSize(CreatureSize size)
+    {
+        return size switch
+        {
+            CreatureSize.Small => CreatureSize.Tiny,
+            CreatureSize.Medium => CreatureSize.Small,
+            CreatureSize.Large => CreatureSize.Medium,
+            CreatureSize.Huge => CreatureSize.Large,
+            CreatureSize.Gargantuan => CreatureSize.Huge,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Returns true if a creature of <paramref name="creatureSize"/> can squeeze through
+    /// a space sized for <paramref name="spaceSize"/>.
+    /// A creature can squeeze through a space large enough for a creature one size smaller.
+    /// </summary>
+    public static bool CanSqueezeInto(CreatureSize creatureSize, CreatureSize spaceSize)
+    {
+        var smallerSize = GetSmallerSize(creatureSize);
+        return smallerSize.HasValue && smallerSize.Value == spaceSize;
+    }
 }
 
 public class Creature
@@ -250,6 +278,14 @@ public class Creature
     public bool WisdomSaveProficiency { get; set; } = false;
     public bool CharismaSaveProficiency { get; set; } = false;
     
+    /// <summary>
+    /// Whether this creature is currently squeezing through a smaller space.
+    /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
+    /// disadvantage on attack rolls and Dexterity saving throws,
+    /// and attack rolls against this creature have advantage.
+    /// </summary>
+    public bool IsSqueezingThrough { get; set; } = false;
+
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
     
     public bool IsAlive() => CurrentHP > 0;

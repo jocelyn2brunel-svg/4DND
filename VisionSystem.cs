@@ -63,7 +63,7 @@ public class VisionSystem
             if (!source.IsActive) continue;
             
             int brightTiles = Math.Min(source.BrightRadius / 5, 20); // Limit to reasonable range
-            int dimTiles = Math.Min(source.DimRadius / 5, 30);
+            int dimTiles = Math.Min(source.DimRadius / 5, 20);
             
             for (int dz = -dimTiles; dz <= dimTiles; dz++)
             {
@@ -180,10 +180,10 @@ public class VisionSystem
         }
         
         int visionRange = CalculateVisionRange(observer);
-        // Limit to 40 tiles (200ft) for performance while allowing wide exploration
-        int visionTiles = Math.Min(visionRange / 5, 40);
-        // Limit vertical vision for performance unless necessary
-        int verticalTiles = Math.Min(visionTiles, 10);
+        // Limit to 20 tiles (100ft) for performance on a tactical combat map
+        int visionTiles = Math.Min(visionRange / 5, 20);
+        // Limit vertical vision — most combat is on a single plane
+        int verticalTiles = Math.Min(visionTiles, 4);
         
         // Raycasting to all tiles on the surface of the visibility volume
         // This is O(R^2) rays instead of O(R^3) raycasts, which is significantly faster
@@ -349,21 +349,17 @@ public class VisionSystem
                 // In darkness, darkvision allows seeing as if in dim light
                 return creature.DarkvisionRange;
             }
-            else if (lightLevel == LightType.Dim)
+            else
             {
-                // In dim light, darkvision allows seeing as if in bright light
-                return 1000; // Extended range
-            }
-            else // Bright light
-            {
-                return 1000; // Normal extended vision
+                // In dim or bright light with darkvision, cap at a practical tactical range
+                return 100;
             }
         }
         
         // Normal vision
         if (lightLevel == LightType.Bright)
         {
-            return 1000; // Can see far in bright light
+            return 100; // Practical tactical range (20 tiles)
         }
         else if (lightLevel == LightType.Dim)
         {
