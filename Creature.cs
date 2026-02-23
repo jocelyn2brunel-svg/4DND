@@ -277,7 +277,32 @@ public class Creature
     public bool IntelligenceSaveProficiency { get; set; } = false;
     public bool WisdomSaveProficiency { get; set; } = false;
     public bool CharismaSaveProficiency { get; set; } = false;
-    
+
+    // Skill proficiencies relevant to surprise
+    public bool StealthProficiency { get; set; } = false;
+    public bool PerceptionProficiency { get; set; } = false;
+
+    /// <summary>
+    /// Passive Wisdom (Perception): 10 + Wisdom modifier + proficiency bonus if proficient.
+    /// Used to determine whether a creature notices a hidden threat at the start of combat.
+    /// </summary>
+    public int PassivePerception
+    {
+        get
+        {
+            int wisdomMod = GetAbilityModifier(Wisdom);
+            int profBonus = IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
+            return 10 + wisdomMod + (PerceptionProficiency ? profBonus : 0);
+        }
+    }
+
+    /// <summary>
+    /// Whether this creature is surprised at the start of combat.
+    /// A surprised creature cannot move, take actions, or take reactions on its first turn.
+    /// The surprised condition ends at the end of its first turn.
+    /// </summary>
+    public bool IsSurprised { get; set; } = false;
+
     /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
@@ -673,7 +698,9 @@ public class Creature
             ConstitutionSaveProficiency = character.ConstitutionSaveProficiency,
             IntelligenceSaveProficiency = character.IntelligenceSaveProficiency,
             WisdomSaveProficiency = character.WisdomSaveProficiency,
-            CharismaSaveProficiency = character.CharismaSaveProficiency
+            CharismaSaveProficiency = character.CharismaSaveProficiency,
+            StealthProficiency = character.StealthProficiency,
+            PerceptionProficiency = character.PerceptionProficiency
         };
         
         // Apply race-specific vision traits

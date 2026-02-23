@@ -39,12 +39,77 @@ public class CombatManager
     public int CurrentRound => _currentRound;
     
     /// <summary>
+    /// Determines which creatures are surprised at the start of an encounter.
+    /// 
+    /// The DM compares the Dexterity (Stealth) check of any hiding creature
+    /// against the passive Wisdom (Perception) score of each creature on the opposing side.
+    /// Any creature whose passive Perception is not exceeded by the Stealth check is surprised.
+    /// 
+    /// <para>If neither side is hiding, no one is surprised — every creature notices every other.</para>
+    /// </summary>
+    /// <param name="stealthySide">Creatures attempting to hide / be stealthy.</param>
+    /// <param name="otherSide">Creatures that might be caught off-guard.</param>
+    /// <returns>
+    /// The set of creatures from <paramref name="otherSide"/> that are surprised,
+    /// along with a log of each stealth roll vs. passive perception comparison.
+    /// </returns>
+    public (HashSet<Creature> Surprised, List<string> Log) RollSurprise(
+        List<Creature> stealthySide,
+        List<Creature> otherSide)
+    {
+        var surprised = new HashSet<Creature>();
+        var log = new List<string>();
+
+        if (stealthySide.Count == 0 || otherSide.Count == 0)
+            return (surprised, log);
+
+        // Each member of the stealthy side rolls Dexterity (Stealth)
+        var stealthRolls = new List<(Creature Creature, int Roll)>();
+        foreach (var sneaker in stealthySide)
+        {
+            int dexMod = sneaker.GetAbilityModifier(sneaker.Dexterity);
+            int profBonus = sneaker.IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
+            int bonus = dexMod + (sneaker.StealthProficiency ? profBonus : 0);
+            int roll = RollD20() + bonus;
+            stealthRolls.Add((sneaker, roll));
+            log.Add($"{sneaker.Name} Stealth check: {roll} (d20 + {bonus})");
+        }
+
+        // Compare the lowest stealth roll on the stealthy side against each defender's passive Perception.
+        // A creature is NOT surprised only if at least one stealth roll fails to beat its passive Perception.
+        // Per RAW: a creature is surprised when it doesn't notice the threat —
+        // i.e. every stealth roll beats its passive Perception.
+        foreach (var defender in otherSide)
+        {
+            int passivePerception = defender.PassivePerception;
+            bool allRollsBeatPassive = stealthRolls.All(sr => sr.Roll > passivePerception);
+
+            if (allRollsBeatPassive)
+            {
+                surprised.Add(defender);
+                log.Add($"{defender.Name} is SURPRISED (Passive Perception {passivePerception} beaten by all stealth rolls).");
+            }
+            else
+            {
+                log.Add($"{defender.Name} is NOT surprised (Passive Perception {passivePerception}).");
+            }
+        }
+
+        return (surprised, log);
+    }
+
+    /// <summary>
     /// Begins a new combat encounter.
     /// Each participant rolls initiative (1d20 + Dexterity modifier) to determine turn order.
     /// Combatants are sorted in descending initiative order — the highest roll acts first.
     /// This marks the start of Round 1.
     /// </summary>
-    public void StartCombat(List<Creature> creatures)
+    /// <param name="creatures">All participants in the encounter.</param>
+    /// <param name="surprisedCreatures">
+    /// Optional set of creatures that are surprised.
+    /// Surprised creatures cannot move, take actions, or take reactions on their first turn.
+    /// </param>
+    public void StartCombat(List<Creature> creatures, HashSet<Creature>? surprisedCreatures = null)
     {
         _combatants.Clear();
         _combatants.AddRange(creatures);
@@ -79,6 +144,24 @@ public class CombatManager
             first.MovementRemaining = first.Speed;
             ProcessStartOfTurnEffects(first);
         }
+
+        if (surprisedCreatures != null)
+        {
+            // Apply the surprised condition
+            foreach (var creature in surprisedCreatures)
+            {
+                if (_combatants.Contains(creature))
+                {
+                    creature.IsSurprised = true;
+
+                    // Creatures that are surprised cannot do anything on their first turn
+                    creature.HasAction = false;
+                    creature.HasBonusAction = false;
+                    creature.HasReaction = false;
+                    creature.MovementRemaining = 0;
+                }
+            }
+        }
     }
     
     public void EndCombat()
@@ -99,7 +182,11 @@ public class CombatManager
     public bool NextTurn()
     {
         if (!_inCombat || _combatants.Count == 0) return false;
-        
+
+        // End the current combatant's turn: clear their surprised condition now
+        if (CurrentCombatant != null)
+            CurrentCombatant.IsSurprised = false;
+
         // Remove dead creatures
         _combatants.RemoveAll(c => !c.IsAlive());
         
@@ -126,13 +213,17 @@ public class CombatManager
             newRound = true;
         }
         
-        // Refresh the incoming combatant's resources at the start of their turn
+        // Refresh the incoming combatant's resources at the start of their turn.
+        // A surprised creature cannot move, act, or react on its first turn.
         if (CurrentCombatant != null)
         {
-            CurrentCombatant.HasAction = true;
-            CurrentCombatant.HasBonusAction = true;
-            CurrentCombatant.HasReaction = true;
-            CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
+            if (!CurrentCombatant.IsSurprised)
+            {
+                CurrentCombatant.HasAction = true;
+                CurrentCombatant.HasBonusAction = true;
+                CurrentCombatant.HasReaction = true;
+                CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
+            }
 
             // Process ongoing effects (poison, burning, etc.)
             ProcessStartOfTurnEffects(CurrentCombatant);
