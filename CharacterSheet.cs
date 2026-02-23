@@ -142,6 +142,7 @@ public class CharacterSheet
         var closeButtonRect = GetCloseButtonRect(viewport);
         spriteBatch.Draw(_pixel, closeButtonRect, new Color(140, 40, 40));
         DrawBorder(spriteBatch, closeButtonRect, Color.Black, 2);
+        RegisterTooltip(closeButtonRect, "Fermer la feuille de personnage (raccourci: C).");
 
         var text = "Quitter";
         var textSize = _font.MeasureString(text);
@@ -599,6 +600,7 @@ public class CharacterSheet
         var diceSize = _font.MeasureString(diceText);
         spriteBatch.DrawString(_font, diceText, new Vector2(x + (width - diceSize.X) / 2, y + 30), Color.Black);
         spriteBatch.DrawString(_font, "DÉS DE VIE", new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        RegisterTooltip(rect, $"Dés de vie: {diceText} (d{c.HitDiceType}). Utilisés pendant les repos courts.");
     }
 
     private void DrawDeathSavesBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -622,6 +624,7 @@ public class CharacterSheet
             DrawCircle(spriteBatch, cx, startY, circleSize, Color.Black, 1);
             if (i < c.DeathSaveFailures) spriteBatch.Draw(_pixel, new Rectangle(cx + 4, startY + 4, circleSize - 8, circleSize - 8), Color.Black);
         }
+        RegisterTooltip(rect, $"Jets de mort: {c.DeathSaveSuccesses} succès, {c.DeathSaveFailures} échecs.");
     }
 
     private int DrawSkillsBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
@@ -670,6 +673,10 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, label, new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             if (!string.IsNullOrEmpty(wrappedContent))
                 spriteBatch.DrawString(_font, wrappedContent, new Vector2(x + 10, y + 25), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
+            RegisterTooltip(rect, string.IsNullOrWhiteSpace(content)
+                ? $"{label}: aucune note renseignée."
+                : $"{label}: {content}");
         }
         return height;
     }
