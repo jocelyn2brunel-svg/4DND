@@ -198,8 +198,13 @@ public class CharacterSheet
 
     private void DrawHeaderField(SpriteBatch spriteBatch, string label, string value, int x, int y, int width)
     {
+        var fieldRect = new Rectangle(x, y, width, 26);
         spriteBatch.DrawString(_font, label, new Vector2(x, y), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         spriteBatch.DrawString(_font, value, new Vector2(x + 2, y + 10), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        RegisterTooltip(fieldRect, string.IsNullOrWhiteSpace(value)
+            ? $"{label}: champ à renseigner."
+            : $"{label}: {value}.");
         
         var lineRect = new Rectangle(x, y + 24, width, 1);
         spriteBatch.Draw(_pixel, lineRect, Color.Black * 0.3f);
@@ -228,12 +233,12 @@ public class CharacterSheet
         }
         
         currentY += 10;
-        DrawSmallBox(spriteBatch, "INSPIRATION", "", x, currentY, width / 2 - 5, 50);
-        DrawSmallBox(spriteBatch, "PROFICIENCY BONUS", FormatModifier(c.ProficiencyBonus), x + width / 2 + 5, currentY, width / 2 - 5, 50);
+        DrawSmallBox(spriteBatch, "INSPIRATION", "", x, currentY, width / 2 - 5, 50, "Inspiration: avantage sur un jet important quand le MJ l'accorde.");
+        DrawSmallBox(spriteBatch, "PROFICIENCY BONUS", FormatModifier(c.ProficiencyBonus), x + width / 2 + 5, currentY, width / 2 - 5, 50, $"Bonus de maîtrise actuel: {FormatModifier(c.ProficiencyBonus)}.");
         
         currentY += 60;
         int passivePerception = 10 + c.GetAbilityModifier(c.Wisdom) + (c.PerceptionProficiency ? c.ProficiencyBonus : 0);
-        DrawSmallBox(spriteBatch, "PASSIVE WISDOM (PERCEPTION)", passivePerception.ToString(), x, currentY, width, 40);
+        DrawSmallBox(spriteBatch, "PASSIVE WISDOM (PERCEPTION)", passivePerception.ToString(), x, currentY, width, 40, $"Perception passive = 10 + mod. Sagesse + maîtrise éventuelle = {passivePerception}.");
         
         currentY += 50;
         int remainingHeight = y + height - currentY - 10;
@@ -259,6 +264,7 @@ public class CharacterSheet
             foreach (var armor in c.ArmorProficiencies)
             {
                 spriteBatch.DrawString(_font, $"? {armor}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Maîtrise d'armure: {armor}.");
                 contentY += 14;
             }
             contentY += 5;
@@ -273,6 +279,7 @@ public class CharacterSheet
             foreach (var weapon in c.WeaponProficiencies)
             {
                 spriteBatch.DrawString(_font, $"? {weapon}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Maîtrise d'arme: {weapon}.");
                 contentY += 14;
             }
             contentY += 5;
@@ -283,8 +290,10 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, "Class Info:", new Vector2(x + 10, contentY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         contentY += 15;
         spriteBatch.DrawString(_font, $"? Hit Die: d{c.HitDiceType}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Dé de vie de classe: d{c.HitDiceType}.");
         contentY += 14;
         spriteBatch.DrawString(_font, $"? Primary Ability: {classData.PrimaryAbility}", new Vector2(x + 15, contentY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        RegisterTooltip(new Rectangle(x + 12, contentY - 2, width - 24, 14), $"Capacité principale de la classe: {classData.PrimaryAbility}.");
         contentY += 14;
     }
 
@@ -327,9 +336,9 @@ public class CharacterSheet
         int smallBoxSize = 60;
         
         int topBoxWidth = (width - 20) / 3;
-        DrawHexBox(spriteBatch, "ARMOR CLASS", c.ArmorClass.ToString(), x, currentY, topBoxWidth, smallBoxSize);
-        DrawCircleBox(spriteBatch, "INITIATIVE", FormatModifier(c.GetAbilityModifier(c.Dexterity)), x + topBoxWidth + 10, currentY, topBoxWidth, smallBoxSize);
-        DrawCircleBox(spriteBatch, "SPEED", $"{c.Speed}", x + topBoxWidth * 2 + 20, currentY, topBoxWidth, smallBoxSize);
+        DrawHexBox(spriteBatch, "ARMOR CLASS", c.ArmorClass.ToString(), x, currentY, topBoxWidth, smallBoxSize, $"Classe d'armure: {c.ArmorClass}. Plus elle est haute, plus vous êtes difficile à toucher.");
+        DrawCircleBox(spriteBatch, "INITIATIVE", FormatModifier(c.GetAbilityModifier(c.Dexterity)), x + topBoxWidth + 10, currentY, topBoxWidth, smallBoxSize, $"Initiative basée sur la Dextérité: {FormatModifier(c.GetAbilityModifier(c.Dexterity))}.");
+        DrawCircleBox(spriteBatch, "SPEED", $"{c.Speed}", x + topBoxWidth * 2 + 20, currentY, topBoxWidth, smallBoxSize, $"Vitesse de déplacement par tour: {c.Speed} ft.");
         
         currentY += smallBoxSize + 10;
         
@@ -419,6 +428,10 @@ public class CharacterSheet
             RegisterTooltip(weaponRect, BuildWeaponTooltip(weapon, atkBonus, damage));
             entryY += lineHeight;
         }
+        else
+        {
+            RegisterTooltip(new Rectangle(x + 6, headerY + 18, width - 12, lineHeight), "Aucune arme équipée. Équipez une arme pour afficher son bonus d'attaque et ses dégâts.");
+        }
         
         // Draw empty lines for additional attacks
         for (int i = 0; i < 8; i++)
@@ -497,7 +510,7 @@ public class CharacterSheet
         RegisterTooltip(new Rectangle(x + 8, y + height - 22, width - 16, 14), $"Richesse disponible: {c.GoldPieces} pièces d'or.");
     }
 
-    private void DrawHexBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height)
+    private void DrawHexBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height, string? tooltipText = null)
     {
         var rect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, rect, Color.White);
@@ -508,9 +521,14 @@ public class CharacterSheet
         
         var labelSize = _font.MeasureString(label);
         spriteBatch.DrawString(_font, label, new Vector2(x + (width - labelSize.X * 0.5f) / 2, y + height - 15), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+        if (!string.IsNullOrWhiteSpace(tooltipText))
+        {
+            RegisterTooltip(rect, tooltipText);
+        }
     }
 
-    private void DrawCircleBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height)
+    private void DrawCircleBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height, string? tooltipText = null)
     {
         var rect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, rect, Color.White);
@@ -521,6 +539,11 @@ public class CharacterSheet
         
         var labelSize = _font.MeasureString(label);
         spriteBatch.DrawString(_font, label, new Vector2(x + (width - labelSize.X * 0.5f) / 2, y + height - 15), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+        if (!string.IsNullOrWhiteSpace(tooltipText))
+        {
+            RegisterTooltip(rect, tooltipText);
+        }
     }
 
     private void DrawHPBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -546,6 +569,8 @@ public class CharacterSheet
         {
             spriteBatch.DrawString(_font, $"Temporary HP: {c.TempHP}", new Vector2(x + width - 100, y + 58), Color.Blue * 0.8f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
+
+        RegisterTooltip(rect, $"Points de vie: {c.CurrentHP}/{c.MaxHP}{(c.TempHP > 0 ? $", avec {c.TempHP} PV temporaires" : string.Empty)}.");
     }
 
     private void DrawHitDiceBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -566,6 +591,7 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, diceText, new Vector2(x + (width - diceSize.X) / 2, y + 30), Color.Black);
         
         spriteBatch.DrawString(_font, "HIT DICE", new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        RegisterTooltip(rect, $"Dés de vie restants: {c.HitDiceRemaining}/{c.HitDiceTotal} (d{c.HitDiceType}).");
     }
 
     private void DrawDeathSavesBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -586,6 +612,8 @@ public class CharacterSheet
             if (i < c.DeathSaveSuccesses)
                 spriteBatch.Draw(_pixel, new Rectangle(cx + 4, startY + 4, circleSize - 8, circleSize - 8), Color.Black);
         }
+
+        RegisterTooltip(new Rectangle(x + 8, y + 28, width - 16, 20), $"Succès aux jets de mort: {c.DeathSaveSuccesses}/3.");
         
         startY += 25;
         spriteBatch.DrawString(_font, "Failures", new Vector2(x + 10, startY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -596,6 +624,8 @@ public class CharacterSheet
             if (i < c.DeathSaveFailures)
                 spriteBatch.Draw(_pixel, new Rectangle(cx + 4, startY + 4, circleSize - 8, circleSize - 8), Color.Black);
         }
+
+        RegisterTooltip(new Rectangle(x + 8, y + 53, width - 16, 20), $"Échecs aux jets de mort: {c.DeathSaveFailures}/3.");
     }
 
     private void DrawSkillsBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -694,7 +724,7 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, _hoverTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 
-    private void DrawSmallBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height)
+    private void DrawSmallBox(SpriteBatch spriteBatch, string label, string value, int x, int y, int width, int height, string? tooltipText = null)
     {
         var rect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, rect, Color.White);
@@ -708,6 +738,11 @@ public class CharacterSheet
         
         var labelSize = _font.MeasureString(label);
         spriteBatch.DrawString(_font, label, new Vector2(x + (width - labelSize.X * 0.45f) / 2, y + height - 12), Color.Black, 0f, Vector2.Zero, 0.45f, SpriteEffects.None, 0f);
+
+        if (!string.IsNullOrWhiteSpace(tooltipText))
+        {
+            RegisterTooltip(rect, tooltipText);
+        }
     }
 
     private void DrawTextBox(SpriteBatch spriteBatch, string label, string content, int x, int y, int width, int height)
@@ -722,6 +757,8 @@ public class CharacterSheet
         {
             spriteBatch.DrawString(_font, content, new Vector2(x + 10, y + 25), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
+
+        RegisterTooltip(rect, $"Section de roleplay: {label.ToLowerInvariant()}.");
     }
 
     private void DrawCheckbox(SpriteBatch spriteBatch, int x, int y, int size, bool checked_)
