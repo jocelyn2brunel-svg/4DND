@@ -87,6 +87,7 @@ public class Game1 : Game
     private enum CombatAction { None, Move, Attack, EndTurn }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showCombatUI = false;
+    private const int CombatTopPanelHeight = 220;
     private MouseState _prevMouse;
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
@@ -1242,6 +1243,11 @@ public class Game1 : Game
         Vector3 screenPos = GraphicsDevice.Viewport.Project(new Vector3(creature.VisualX + offset.X, creature.VisualY + offset.Y, uiAnchorZ), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         if (screenPos.Z < 0 || screenPos.Z > 1) return;
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
+
+        // Avoid overlap between creature labels and the tactical top HUD.
+        if (_showCombatUI && _combatManager.InCombat && pos.Y <= CombatTopPanelHeight + 12)
+            return;
+
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, (int)(60 * (float)creature.CurrentHP / creature.MaxHP), 6), Color.Green);
         string name = $"{creature.Name} [Z{creature.Z}]" + (creature.IsFlying ? " [Vol]" : "");
@@ -2978,7 +2984,7 @@ public class Game1 : Game
         if (_showCombatUI && _combatManager.InCombat)
         {
             // Combat panel at top
-            int panelHeight = 220;
+            int panelHeight = CombatTopPanelHeight;
             var combatPanel = new Rectangle(0, 0, vp.Width, panelHeight);
             _spriteBatch.Draw(_pixel, combatPanel, Color.Black * 0.8f);
             
@@ -3214,6 +3220,9 @@ public class Game1 : Game
                 tooltipPos.X = mouse.X - tooltipSize.X - 15;
             if (tooltipPos.Y + tooltipSize.Y > vp.Height)
                 tooltipPos.Y = mouse.Y - tooltipSize.Y - 15;
+
+            if (_showCombatUI)
+                tooltipPos.Y = MathF.Max(CombatTopPanelHeight + 8, tooltipPos.Y);
             
             // Draw background
             _spriteBatch.Draw(_pixel, new Rectangle((int)tooltipPos.X - 5, (int)tooltipPos.Y - 3, (int)tooltipSize.X + 10, (int)tooltipSize.Y + 6), Color.Black * 0.9f);
