@@ -943,6 +943,55 @@ public class Game1 : Game
         }
     }
 
+    private void DrawPlayerMovementPerimeter()
+    {
+        if (!_combatManager.InCombat)
+            return;
+
+        var currentCombatant = _combatManager.CurrentCombatant;
+        if (currentCombatant == null || !currentCombatant.IsPlayer)
+            return;
+
+        var reachableTiles = _combatManager.GetReachablePositions(currentCombatant)
+            .Where(t => t.z == _currentViewLevel)
+            .Select(t => (t.x, t.y))
+            .ToHashSet();
+
+        if (reachableTiles.Count == 0)
+            return;
+
+        Color perimeterColor = new Color(0, 240, 255);
+        const float halfTile = 0.5f;
+        const float zOffset = 0.09f;
+
+        foreach (var tile in reachableTiles)
+        {
+            float z = _currentViewLevel + zOffset;
+            int x = tile.x;
+            int y = tile.y;
+
+            if (!reachableTiles.Contains((x, y + 1)))
+            {
+                Draw3DLine(new Vector3(x - halfTile, y + halfTile, z), new Vector3(x + halfTile, y + halfTile, z), perimeterColor);
+            }
+
+            if (!reachableTiles.Contains((x, y - 1)))
+            {
+                Draw3DLine(new Vector3(x + halfTile, y - halfTile, z), new Vector3(x - halfTile, y - halfTile, z), perimeterColor);
+            }
+
+            if (!reachableTiles.Contains((x + 1, y)))
+            {
+                Draw3DLine(new Vector3(x + halfTile, y + halfTile, z), new Vector3(x + halfTile, y - halfTile, z), perimeterColor);
+            }
+
+            if (!reachableTiles.Contains((x - 1, y)))
+            {
+                Draw3DLine(new Vector3(x - halfTile, y - halfTile, z), new Vector3(x - halfTile, y + halfTile, z), perimeterColor);
+            }
+        }
+    }
+
     private void DrawEnemySightLinesToPlayer()
     {
         if (_playerCreature == null || !_playerCreature.IsAlive())
@@ -2309,6 +2358,7 @@ public class Game1 : Game
 
             // Draw grid outlines with depth testing enabled so they are hidden by walls/objects
             Draw3DGridOutlines(_currentViewLevel);
+            DrawPlayerMovementPerimeter();
 
             DrawCreatureTileOutlines();
             Draw3DCreatures();
