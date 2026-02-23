@@ -3075,15 +3075,15 @@ public class Game1 : Game
                     }
                 }
                 
-                // Combat log
-                y = panelHeight - 100;
-                _spriteBatch.DrawString(_font, "Combat Log:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-                y += 20;
+                // Combat log (always below action controls)
+                int combatLogY = Math.Max(y + 8, panelHeight - 100);
+                _spriteBatch.DrawString(_font, "Combat Log:", new Vector2(10, combatLogY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                combatLogY += 20;
                 
                 for (int i = Math.Max(0, _combatLog.Count - 4); i < _combatLog.Count; i++)
                 {
-                    _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    y += 18;
+                    _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(10, combatLogY), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    combatLogY += 18;
                 }
 
                 _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, new Rectangle(0, 0, vp.Width, vp.Height));
