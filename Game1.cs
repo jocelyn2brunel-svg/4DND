@@ -858,7 +858,9 @@ public class Game1 : Game
             baseColor = ScaleColor(baseColor, 0.92f + mudNoise * 0.12f);
         }
 
-        if (z < zLevel) baseColor *= 0.3f;
+        // Keep upper/lower floor separation, but avoid darkening the ground floor (z=0)
+        // when changing view levels so the base floor remains readable.
+        if (z < zLevel && z != 0) baseColor *= 0.3f;
         if (_showVisionOverlay && _playerCreature != null)
         {
             bool isVisible = _visionSystem.IsVisible(x, y, z);
