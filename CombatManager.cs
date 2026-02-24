@@ -632,7 +632,9 @@ public class CombatManager
         bool hasAdvantage    = target.Conditions.HasCondition(Condition.Prone)        ||
                                target.Conditions.HasCondition(Condition.Paralyzed)    ||
                                target.Conditions.HasCondition(Condition.Unconscious)  ||
-                               target.IsSqueezingThrough;
+                               target.IsSqueezingThrough ||
+                               attacker.IsHidden ||           // Unseen attacker (hidden via stealth)
+                               attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition)
         bool hasDisadvantage = !attackerCanSee || attacker.IsSqueezingThrough;
 
         // Dodge: attacker has disadvantage if the dodging target can see the attacker
@@ -1156,7 +1158,8 @@ public class CombatManager
                            target.Conditions.HasCondition(Condition.Paralyzed) ||
                            target.Conditions.HasCondition(Condition.Unconscious) ||
                            target.IsSqueezingThrough ||  // Attack rolls against a squeezing creature have advantage
-                           attacker.IsHidden;            // Unseen attacker: attack rolls have advantage
+                           attacker.IsHidden ||           // Unseen attacker (hidden via stealth): attack rolls have advantage
+                           attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition): PHB "Unseen Attackers and Targets"
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough;  // Squeezing creature has disadvantage on attack rolls
 
