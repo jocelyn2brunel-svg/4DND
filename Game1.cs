@@ -2953,7 +2953,7 @@ public class Game1 : Game
 
                 if (_font != null)
                 {
-                    string label = IsExistingCharacterIndex(i) ? _characters[i].Name : "Create New";
+                    string label = IsExistingCharacterIndex(i) ? _characters[i].Name : "Create New Character";
                     var m = _font.MeasureString(label);
                     var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
                     var textCol = (i == _characterIndex) ? Color.Black : Color.White;
@@ -2971,23 +2971,6 @@ public class Game1 : Game
                         var deleteSize = _font.MeasureString(deleteText);
                         _spriteBatch.DrawString(_font, deleteText, new Vector2(deleteRect.X + (deleteRect.Width - deleteSize.X) / 2, deleteRect.Y + (deleteRect.Height - deleteSize.Y) / 2), Color.White);
                     }
-                }
-            }
-
-            // "Create New" option
-            {
-                int newIndex = _characters.Count;
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + newIndex * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
-                var col = (newIndex == _characterIndex) ? Color.LightGray : Color.Gray;
-                _spriteBatch.Draw(_pixel, itemRect, col);
-
-                if (_font != null)
-                {
-                    var label = "Create New Character";
-                    var m = _font.MeasureString(label);
-                    var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
-                    var textCol = (newIndex == _characterIndex) ? Color.Black : Color.White;
-                    _spriteBatch.DrawString(_font, label, p, textCol);
                 }
             }
 
