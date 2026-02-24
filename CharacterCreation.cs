@@ -636,6 +636,25 @@ public class CharacterCreation
             yOffset += 22;
             var weaponText = "  " + string.Join(", ", selectedClass.WeaponProficiencies);
             DrawWrappedText(spriteBatch, weaponText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
+            yOffset += 40;
+        }
+
+        // Tool Proficiencies
+        spriteBatch.DrawString(_font, "Tools:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        yOffset += 22;
+        var toolText = selectedClass.ToolProficiencies.Count > 0
+            ? "  " + string.Join(", ", selectedClass.ToolProficiencies)
+            : "  None";
+        DrawWrappedText(spriteBatch, toolText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
+        yOffset += 40;
+
+        // Skill Choices
+        if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
+        {
+            spriteBatch.DrawString(_font, "Skills:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            yOffset += 22;
+            var skillsText = $"  Choose {selectedClass.SkillChoicesCount} from " + string.Join(", ", selectedClass.SkillChoiceOptions);
+            DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
         }
     }
 

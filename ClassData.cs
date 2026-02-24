@@ -14,6 +14,9 @@ public class ClassData
     public List<string> SavingThrowProficiencies { get; set; } = new();
     public List<string> ArmorProficiencies { get; set; } = new();
     public List<string> WeaponProficiencies { get; set; } = new();
+    public List<string> ToolProficiencies { get; set; } = new();
+    public int SkillChoicesCount { get; set; } = 0;
+    public List<string> SkillChoiceOptions { get; set; } = new();
     public List<ClassLevelData> LevelProgression { get; set; } = new();
 
     public ClassLevelData GetLevelData(int level)
@@ -41,6 +44,17 @@ public class ClassData
             SavingThrowProficiencies = new List<string> { "Strength", "Constitution" },
             ArmorProficiencies = new List<string> { "Light armor", "Medium armor", "Shields" },
             WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" },
+            ToolProficiencies = new List<string>(),
+            SkillChoicesCount = 2,
+            SkillChoiceOptions = new List<string>
+            {
+                "Animal Handling",
+                "Athletics",
+                "Intimidation",
+                "Nature",
+                "Perception",
+                "Survival"
+            },
             LevelProgression = new List<ClassLevelData>
             {
                 new(1,  "Rage, Unarmored Defense",        2,  2),
