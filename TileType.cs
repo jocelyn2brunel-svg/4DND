@@ -8,5 +8,10 @@ public enum TileType
     Grass,
     DifficultTerrain,
     Climbable,
-    Wall
+    Wall,
+    Sand,
+    Snow,
+    Ice,
+    Mud,
+    Rock
 }

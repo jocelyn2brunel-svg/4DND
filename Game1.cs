@@ -149,33 +149,11 @@ public class Game1 : Game
     {
         if (z != 0) return TileType.Empty;
 
-        // Convert tactical coordinates to hex coordinates
-        (int q, int r) = Campaign.TacticalToHex(x, y);
-
-        // Deterministic terrain selection without allocating Random object every call.
-        // Simple hash of hex coordinates.
-        int h = q * 37 + r * 101;
-        h ^= (h >> 13);
-        h *= 0x5bd1e995;
-        h ^= (h >> 15);
-
-        int dominantType = Math.Abs(h % 100);
-
-        // Even/Odd hex color variation to make boundaries more visible
-        bool isEven = (q + r) % 2 == 0;
-
-        if (dominantType < 70) // 70% chance of primary terrain
-        {
-            return isEven ? TileType.Grass : TileType.Floor;
-        }
-        else if (dominantType < 90) // 20% chance of secondary terrain
-        {
-            return TileType.DifficultTerrain;
-        }
-        else // 10% chance of rare terrain (water)
-        {
-            return (q % 5 == 0 && r % 5 == 0) ? TileType.Water : TileType.Grass;
-        }
+        // Use the seed and party location from the current campaign
+        int seed = _currentCampaign?.Seed ?? 0;
+        float offsetX = _currentCampaign?.PartyX ?? 0;
+        float offsetY = _currentCampaign?.PartyY ?? 0;
+        return WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY);
     }
 
     protected override void LoadContent()
@@ -883,11 +861,16 @@ public class Game1 : Game
             TileType.DifficultTerrain => new Color(139, 69, 19),
             TileType.Wall => new Color(100, 100, 110),
             TileType.Water => Color.CornflowerBlue,
+            TileType.Sand => new Color(210, 180, 120),
+            TileType.Snow => new Color(240, 240, 250),
+            TileType.Ice => new Color(160, 200, 230),
+            TileType.Mud => new Color(60, 50, 40),
+            TileType.Rock => new Color(120, 120, 125),
             _ => Color.ForestGreen
         };
 
         // Deterministic tile-level variation to mimic texture diversity and reduce visible tiling.
-        if (type == TileType.Grass || type == TileType.Floor)
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock)
         {
             float dryness = Hash01(x, y, z, 11);
             float moisture = Hash01(x, y, z, 23);
@@ -931,7 +914,8 @@ public class Game1 : Game
         Color topRight = baseColor;
         Color topLeft = baseColor;
 
-        if (type == TileType.Grass || type == TileType.Floor || type == TileType.DifficultTerrain)
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.DifficultTerrain ||
+            type == TileType.Sand || type == TileType.Snow || type == TileType.Rock)
         {
             // Per-corner variation creates a subtle faux texture and breaks up repeated flat color blocks.
             bottomLeft = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 101) * 0.16f);
@@ -2041,12 +2025,34 @@ public class Game1 : Game
                 closeMapButtonRect.Contains(mouse.Position))
             {
                 _showCampaignMap = false;
+                if (_campaignMapViewer.TravelOccurred)
+                {
+                    _tacticalMap.Clear();
+                    _playerCreature.X = 0;
+                    _playerCreature.Y = 0;
+                    _playerCreature.Z = 0;
+                    _playerCreature.InterruptMovement();
+                    _cameraTarget = Vector3.Zero;
+                    UpdateVision();
+                    _campaignMapViewer.TravelOccurred = false;
+                }
             }
             
             // Close map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
             {
                 _showCampaignMap = false;
+                if (_campaignMapViewer.TravelOccurred)
+                {
+                    _tacticalMap.Clear();
+                    _playerCreature.X = 0;
+                    _playerCreature.Y = 0;
+                    _playerCreature.Z = 0;
+                    _playerCreature.InterruptMovement();
+                    _cameraTarget = Vector3.Zero;
+                    UpdateVision();
+                    _campaignMapViewer.TravelOccurred = false;
+                }
             }
             
             _prevKb = kb;

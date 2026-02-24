@@ -17,6 +17,8 @@ namespace _4DND
 
         public void Set(int x, int y, int z, T value) => _cells[(x, y, z)] = value;
 
+        public void Clear() => _cells.Clear();
+
         public T? Get(int x, int y, int z, T? defaultValue = default)
         {
             if (_cells.TryGetValue((x, y, z), out var v)) return v;
