@@ -56,6 +56,10 @@ public class Game1 : Game
     private List<Campaign> _campaigns = new();
     private int _campaignIndex = 0;
 
+    private enum PendingDeleteType { None, Character, Campaign }
+    private PendingDeleteType _pendingDeleteType = PendingDeleteType.None;
+    private int _pendingDeleteIndex = -1;
+
     private CharacterCreation _characterCreation = null!;
     private CharacterSheet _characterSheet = null!;
     private JournalUI _journalUI = null!;
@@ -96,6 +100,8 @@ public class Game1 : Game
     private MouseState _prevMouse;
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
+
+    private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
     public Game1()
     {
@@ -452,6 +458,89 @@ public class Game1 : Game
             System.Console.WriteLine("Failed to save campaigns: " + ex.Message);
         }
     }
+
+    private void RequestDeleteCharacter(int index)
+    {
+        if (!IsExistingCharacterIndex(index))
+            return;
+
+        _pendingDeleteType = PendingDeleteType.Character;
+        _pendingDeleteIndex = index;
+    }
+
+    private void RequestDeleteCampaign(int index)
+    {
+        if (index < 0 || index >= _campaigns.Count)
+            return;
+
+        _pendingDeleteType = PendingDeleteType.Campaign;
+        _pendingDeleteIndex = index;
+    }
+
+    private void ConfirmPendingDelete()
+    {
+        if (_pendingDeleteType == PendingDeleteType.Character)
+        {
+            if (IsExistingCharacterIndex(_pendingDeleteIndex))
+            {
+                _characters.RemoveAt(_pendingDeleteIndex);
+                SaveCharacters();
+                if (_characterIndex >= _characters.Count)
+                    _characterIndex = Math.Max(0, _characters.Count - 1);
+            }
+        }
+        else if (_pendingDeleteType == PendingDeleteType.Campaign)
+        {
+            if (_pendingDeleteIndex >= 0 && _pendingDeleteIndex < _campaigns.Count)
+            {
+                _campaigns.RemoveAt(_pendingDeleteIndex);
+                SaveCampaigns();
+                if (_campaignIndex >= _campaigns.Count)
+                    _campaignIndex = Math.Max(0, _campaigns.Count - 1);
+            }
+        }
+
+        CancelPendingDelete();
+    }
+
+    private void CancelPendingDelete()
+    {
+        _pendingDeleteType = PendingDeleteType.None;
+        _pendingDeleteIndex = -1;
+    }
+
+    private string GetPendingDeleteEntityName()
+    {
+        return _pendingDeleteType switch
+        {
+            PendingDeleteType.Character when IsExistingCharacterIndex(_pendingDeleteIndex) => _characters[_pendingDeleteIndex].Name,
+            PendingDeleteType.Campaign when _pendingDeleteIndex >= 0 && _pendingDeleteIndex < _campaigns.Count => _campaigns[_pendingDeleteIndex].Name,
+            _ => "this item"
+        };
+    }
+    private void GetDeleteConfirmationRects(Viewport vp, out Rectangle dialogRect, out Rectangle confirmRect, out Rectangle cancelRect)
+    {
+        int dialogWidth = 460;
+        int dialogHeight = 190;
+        dialogRect = new Rectangle((vp.Width - dialogWidth) / 2, (vp.Height - dialogHeight) / 2, dialogWidth, dialogHeight);
+        confirmRect = new Rectangle(dialogRect.X + 40, dialogRect.Bottom - 58, 170, 38);
+        cancelRect = new Rectangle(dialogRect.Right - 210, dialogRect.Bottom - 58, 170, 38);
+    }
+
+    private void HandlePendingDeleteMouseInput(MouseState mouse)
+    {
+        var vp = GraphicsDevice.Viewport;
+        GetDeleteConfirmationRects(vp, out _, out var confirmRect, out var cancelRect);
+
+        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+        {
+            if (confirmRect.Contains(mouse.Position))
+                ConfirmPendingDelete();
+            else if (cancelRect.Contains(mouse.Position))
+                CancelPendingDelete();
+        }
+    }
+
     
     private void UpdateCameraMatrices()
     {
@@ -1435,6 +1524,20 @@ public class Game1 : Game
         // CHARACTER SELECT
         if (_state == AppState.CharacterSelect)
         {
+            if (HasPendingDeleteConfirmation)
+            {
+                if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+                {
+                    CancelPendingDelete();
+                }
+                HandlePendingDeleteMouseInput(mouse);
+
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
             if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
             {
                 _state = AppState.MainMenu;
@@ -1449,17 +1552,6 @@ public class Game1 : Game
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
                 _characterIndex = Math.Min(_characters.Count, _characterIndex + 1);
             
-            if (kb.IsKeyDown(Keys.Delete) && !_prevKb.IsKeyDown(Keys.Delete))
-            {
-                if (IsExistingCharacterIndex(_characterIndex))
-                {
-                    _characters.RemoveAt(_characterIndex);
-                    SaveCharacters();
-                    if (_characterIndex >= _characters.Count)
-                        _characterIndex = Math.Max(0, _characters.Count - 1);
-                }
-            }
-
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
             {
                 if (IsExistingCharacterIndex(_characterIndex))
@@ -1525,10 +1617,7 @@ public class Game1 : Game
                 {
                     if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                     {
-                        _characters.RemoveAt(i);
-                        SaveCharacters();
-                        if (_characterIndex >= _characters.Count)
-                            _characterIndex = Math.Max(0, _characters.Count - 1);
+                        RequestDeleteCharacter(i);
                         clickedDelete = true;
                         break;
                     }
@@ -1627,6 +1716,20 @@ public class Game1 : Game
         // CAMPAIGN SELECT
         if (_state == AppState.CampaignSelect)
         {
+            if (HasPendingDeleteConfirmation)
+            {
+                if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+                {
+                    CancelPendingDelete();
+                }
+                HandlePendingDeleteMouseInput(mouse);
+
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
             if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
             {
                 _state = AppState.CharacterSelect;
@@ -1641,17 +1744,6 @@ public class Game1 : Game
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
                 _campaignIndex = Math.Min(_campaigns.Count, _campaignIndex + 1);
             
-            if (kb.IsKeyDown(Keys.Delete) && !_prevKb.IsKeyDown(Keys.Delete))
-            {
-                if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
-                {
-                    _campaigns.RemoveAt(_campaignIndex);
-                    SaveCampaigns();
-                    if (_campaignIndex >= _campaigns.Count)
-                        _campaignIndex = Math.Max(0, _campaigns.Count - 1);
-                }
-            }
-
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
             {
                 if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
@@ -1716,10 +1808,7 @@ public class Game1 : Game
                 {
                     if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                     {
-                        _campaigns.RemoveAt(i);
-                        SaveCampaigns();
-                        if (_campaignIndex >= _campaigns.Count)
-                            _campaignIndex = Math.Max(0, _campaigns.Count - 1);
+                        RequestDeleteCampaign(i);
                         clickedDelete = true;
                         break;
                     }
@@ -2906,6 +2995,8 @@ public class Game1 : Game
                 }
             }
 
+            DrawDeleteConfirmationDialog();
+
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
@@ -2943,7 +3034,7 @@ public class Game1 : Game
                 _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
 
                 // Hint at bottom
-                var hint = "Press Delete to remove character | Esc to go back";
+                var hint = "Click Delete button to remove character | Esc to go back";
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (menuWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
             }
@@ -2976,6 +3067,8 @@ public class Game1 : Game
                     }
                 }
             }
+
+            DrawDeleteConfirmationDialog();
 
             _spriteBatch.End();
             base.Draw(gameTime);
@@ -3023,7 +3116,7 @@ public class Game1 : Game
                 _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
 
                 // Hint at bottom
-                var hint = "Press Delete to remove campaign | Esc to go back";
+                var hint = "Click Delete button to remove campaign | Esc to go back";
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (menuWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
             }
@@ -3410,6 +3503,44 @@ public class Game1 : Game
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+
+    private void DrawDeleteConfirmationDialog()
+    {
+        if (!HasPendingDeleteConfirmation || _font == null)
+            return;
+
+        var vp = GraphicsDevice.Viewport;
+        GetDeleteConfirmationRects(vp, out var dialogRect, out var confirmRect, out var cancelRect);
+
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.6f);
+        _spriteBatch.Draw(_pixel, dialogRect, Color.DarkSlateGray);
+        DrawBorder(_spriteBatch, _pixel, dialogRect, Color.White * 0.6f, 2);
+
+        var entityType = _pendingDeleteType == PendingDeleteType.Character ? "character" : "campaign";
+        var title = "Confirm deletion";
+        var message = $"Delete {entityType} '{GetPendingDeleteEntityName()}'?";
+        var warning = "This action cannot be undone.";
+        var controls = "Click Delete to confirm, Esc = cancel";
+
+        _spriteBatch.DrawString(_font, title, new Vector2(dialogRect.X + 20, dialogRect.Y + 16), Color.White);
+        _spriteBatch.DrawString(_font, message, new Vector2(dialogRect.X + 20, dialogRect.Y + 58), Color.LightGray);
+        _spriteBatch.DrawString(_font, warning, new Vector2(dialogRect.X + 20, dialogRect.Y + 88), Color.OrangeRed);
+        _spriteBatch.DrawString(_font, controls, new Vector2(dialogRect.X + 20, dialogRect.Y + 116), Color.White * 0.8f);
+
+        var mousePos = Mouse.GetState().Position;
+        var confirmColor = confirmRect.Contains(mousePos) ? Color.DarkRed : Color.Red * 0.8f;
+        var cancelColor = cancelRect.Contains(mousePos) ? Color.DarkGray : Color.Gray * 0.9f;
+        _spriteBatch.Draw(_pixel, confirmRect, confirmColor);
+        _spriteBatch.Draw(_pixel, cancelRect, cancelColor);
+
+        const string confirmText = "Delete";
+        const string cancelText = "Cancel";
+        var confirmSize = _font.MeasureString(confirmText);
+        var cancelSize = _font.MeasureString(cancelText);
+
+        _spriteBatch.DrawString(_font, confirmText, new Vector2(confirmRect.X + (confirmRect.Width - confirmSize.X) / 2, confirmRect.Y + (confirmRect.Height - confirmSize.Y) / 2), Color.White);
+        _spriteBatch.DrawString(_font, cancelText, new Vector2(cancelRect.X + (cancelRect.Width - cancelSize.X) / 2, cancelRect.Y + (cancelRect.Height - cancelSize.Y) / 2), Color.White);
     }
 
     private void DrawBorder(SpriteBatch sb, Texture2D pixel, Rectangle rect, Color color, int thickness)
