@@ -307,6 +307,10 @@ public class CombatManager
     
     private void ProcessStartOfTurnEffects(Creature creature)
     {
+        // Flying Movement: a non-hovering flyer falls if it cannot move (PHB "Flying Movement").
+        // Check at the start of the turn covers conditions applied mid-turn (paralysis, grapple, etc.).
+        CheckFlyingFall(creature);
+
         // Process ongoing damage effects like poison, burning, etc.
         // This can be extended later for duration-based conditions
 
@@ -1391,11 +1395,67 @@ public class CombatManager
 
     /// <summary>
     /// Drops the creature prone. This is free and requires no movement or action.
+    /// Flying creatures that cannot hover fall to the ground instead (PHB "Flying Movement"):
+    /// a non-hovering flyer that is knocked prone loses the ability to stay aloft and falls.
     /// </summary>
     public void DropProne(Creature creature)
     {
+        if (creature.IsFlying && !creature.CanHover)
+        {
+            Fall(creature);
+            return;
+        }
+
         creature.Conditions = creature.Conditions.AddCondition(Condition.Prone);
         TurnMessages.Add($"{creature.Name} drops prone.");
+    }
+
+    /// <summary>
+    /// Causes a flying creature to fall to the ground, taking falling damage (1d6 per 10 ft)
+    /// and landing prone (PHB "Flying Movement").
+    /// Called when a non-hovering flyer is knocked prone or deprived of movement.
+    /// </summary>
+    private void Fall(Creature creature)
+    {
+        int feetFallen = creature.Z * 5;
+        creature.Z = 0;
+        creature.IsFlying = false;
+
+        TurnMessages.Add(feetFallen > 0
+            ? $"{creature.Name} falls {feetFallen} ft.!"
+            : $"{creature.Name} falls!");
+
+        if (feetFallen > 0)
+        {
+            int damage = creature.TakeFallDamage(feetFallen);
+            if (damage > 0)
+                TurnMessages.Add($"{creature.Name} takes {damage} bludgeoning damage from the fall.");
+        }
+
+        // Always land prone regardless of damage dealt
+        creature.Conditions = creature.Conditions.AddCondition(Condition.Prone);
+    }
+
+    /// <summary>
+    /// Checks whether a flying creature needs to fall because its speed has been reduced to 0
+    /// by a condition (Grappled, Paralyzed, Restrained, Stunned, Unconscious) or another effect.
+    /// Non-hovering flying creatures fall in these circumstances (PHB "Flying Movement").
+    /// Call this whenever a creature gains one of those conditions while airborne.
+    /// </summary>
+    public void CheckFlyingFall(Creature creature)
+    {
+        if (!creature.IsFlying || creature.CanHover)
+            return;
+
+        bool speedSuppressed = creature.Speed == 0 ||
+                               creature.Conditions.HasCondition(Condition.Grappled)    ||
+                               creature.Conditions.HasCondition(Condition.Paralyzed)   ||
+                               creature.Conditions.HasCondition(Condition.Restrained)  ||
+                               creature.Conditions.HasCondition(Condition.Stunned)     ||
+                               creature.Conditions.HasCondition(Condition.Unconscious);
+
+        if (speedSuppressed)
+            Fall(creature);
     }
 
     /// <summary>

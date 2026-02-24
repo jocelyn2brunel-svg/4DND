@@ -235,6 +235,11 @@ public class Creature
     public bool CanFly { get; set; } = false;
     public int FlySpeed { get; set; } = 0;
     public bool IsFlying { get; set; } = false;
+    /// <summary>
+    /// Whether this creature can hover in place (e.g. levitate, certain creatures).
+    /// Hovering creatures do not fall when knocked prone or deprived of movement.
+    /// </summary>
+    public bool CanHover { get; set; } = false;
 
     // Climbing speed (0 = no special climbing speed; movement costs double in climbing terrain)
     public int ClimbSpeed { get; set; } = 0;
