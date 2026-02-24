@@ -1589,7 +1589,8 @@ public class Game1 : Game
             }
 
             var vp = GraphicsDevice.Viewport;
-            int menuWidth = 480;
+            int menuWidth = 980;
+            int listWidth = 480;
             int itemHeight = 48;
             int padding = 12;
             int headerHeight = 110;
@@ -1614,7 +1615,7 @@ public class Game1 : Game
 
             for (int i = 0; i < _characters.Count; i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), listWidth - padding * 2, itemHeight);
                 var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
                 
                 if (deleteRect.Contains(mouse.Position))
@@ -1632,7 +1633,7 @@ public class Game1 : Game
             {
                 for (int i = 0; i < GetCharacterMenuItemCount(); i++)
                 {
-                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), listWidth - padding * 2, itemHeight);
                     if (itemRect.Contains(mouse.Position))
                     {
                         _characterIndex = i;
@@ -3011,7 +3012,8 @@ public class Game1 : Game
         {
             _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.85f);
 
-            int menuWidth = 480;
+            int menuWidth = 980;
+            int listWidth = 480;
             int itemHeight = 48;
             int padding = 12;
             int headerHeight = 110;
@@ -3040,12 +3042,12 @@ public class Game1 : Game
                 // Hint at bottom
                 var hint = "Click Delete button to remove character | Esc to go back";
                 var hintSize = _font.MeasureString(hint);
-                _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (menuWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
+                _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (listWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
             }
 
             for (int i = 0; i < GetCharacterMenuItemCount(); i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), listWidth - padding * 2, itemHeight);
                 var col = (i == _characterIndex) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, itemRect, col);
 
@@ -3070,6 +3072,21 @@ public class Game1 : Game
                         _spriteBatch.DrawString(_font, deleteText, new Vector2(deleteRect.X + (deleteRect.Width - deleteSize.X) / 2, deleteRect.Y + (deleteRect.Height - deleteSize.Y) / 2), Color.White);
                     }
                 }
+            }
+
+            var previewRect = new Rectangle(menuRect.X + listWidth + padding, menuRect.Y + 48, menuWidth - listWidth - padding * 2, menuHeight - 60);
+            _spriteBatch.Draw(_pixel, previewRect, Color.Black * 0.2f);
+
+            if (IsExistingCharacterIndex(_characterIndex) && _font != null)
+            {
+                DrawCharacterSelectionPreview(_spriteBatch, previewRect, _characters[_characterIndex]);
+            }
+            else if (_font != null)
+            {
+                var previewTitle = "Apercu du personnage";
+                _spriteBatch.DrawString(_font, previewTitle, new Vector2(previewRect.X + 14, previewRect.Y + 12), Color.Gold, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                var message = "Selectionne un personnage existant pour voir son profil rapide (classe, race, stats et survie).";
+                DrawWrappedText(message, previewRect.X + 14, previewRect.Y + 48, previewRect.Width - 28, Color.White * 0.9f, 0.65f);
             }
 
             DrawDeleteConfirmationDialog();
@@ -3509,6 +3526,71 @@ public class Game1 : Game
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+
+
+    private void DrawCharacterSelectionPreview(SpriteBatch sb, Rectangle previewRect, Character character)
+    {
+        DrawBorder(sb, _pixel, previewRect, Color.Gold * 0.35f, 2);
+
+        int x = previewRect.X + 14;
+        int y = previewRect.Y + 12;
+
+        sb.DrawString(_font, "Apercu du personnage", new Vector2(x, y), Color.Gold, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+        y += 34;
+
+        sb.DrawString(_font, character.Name, new Vector2(x, y), Color.White, 0f, Vector2.Zero, 0.95f, SpriteEffects.None, 0f);
+        y += 32;
+
+        string identity = $"Lvl {character.Level} {character.Race} {character.Class}";
+        sb.DrawString(_font, identity, new Vector2(x, y), Color.LightBlue, 0f, Vector2.Zero, 0.72f, SpriteEffects.None, 0f);
+        y += 32;
+
+        string combatLine = $"HP {character.CurrentHP}/{character.MaxHP} | AC {character.ArmorClass} | Speed {character.Speed}";
+        sb.DrawString(_font, combatLine, new Vector2(x, y), Color.LightGreen, 0f, Vector2.Zero, 0.68f, SpriteEffects.None, 0f);
+        y += 28;
+
+        sb.DrawString(_font, $"XP: {character.XP}", new Vector2(x, y), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        y += 28;
+
+        sb.DrawString(_font, "Caracteristiques:", new Vector2(x, y), Color.Orange, 0f, Vector2.Zero, 0.68f, SpriteEffects.None, 0f);
+        y += 26;
+
+        string[] stats =
+        {
+            $"STR {character.Strength} ({FormatModifier(character.GetAbilityModifier(character.Strength))})",
+            $"DEX {character.Dexterity} ({FormatModifier(character.GetAbilityModifier(character.Dexterity))})",
+            $"CON {character.Constitution} ({FormatModifier(character.GetAbilityModifier(character.Constitution))})",
+            $"INT {character.Intelligence} ({FormatModifier(character.GetAbilityModifier(character.Intelligence))})",
+            $"WIS {character.Wisdom} ({FormatModifier(character.GetAbilityModifier(character.Wisdom))})",
+            $"CHA {character.Charisma} ({FormatModifier(character.GetAbilityModifier(character.Charisma))})"
+        };
+
+        foreach (var stat in stats)
+        {
+            sb.DrawString(_font, stat, new Vector2(x + 8, y), Color.White, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
+            y += 22;
+        }
+
+        y += 6;
+        string survival = character.DarkvisionRange > 0
+            ? $"Vision nocturne: {character.DarkvisionRange} ft"
+            : "Vision nocturne: aucune";
+        sb.DrawString(_font, survival, new Vector2(x, y), Color.Yellow, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
+        y += 22;
+
+        if (character.HasSunlightSensitivity)
+        {
+            sb.DrawString(_font, "Sensibilite au soleil", new Vector2(x, y), Color.OrangeRed, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private static string FormatModifier(int modifier) => modifier >= 0 ? $"+{modifier}" : modifier.ToString();
+
+    private void DrawWrappedText(string text, int x, int y, int maxWidth, Color color, float scale)
+    {
+        string wrapped = WrapText(text, maxWidth);
+        _spriteBatch.DrawString(_font, wrapped, new Vector2(x, y), color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 
     private void DrawDeleteConfirmationDialog()
