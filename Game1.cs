@@ -2216,6 +2216,7 @@ public class Game1 : Game
             var combatRageButtonRect = GetCombatRageButtonRect(GraphicsDevice.Viewport);
             var combatDashButtonRect = GetCombatDashButtonRect(GraphicsDevice.Viewport);
             var combatDisengageButtonRect = GetCombatDisengageButtonRect(GraphicsDevice.Viewport);
+            var combatDodgeButtonRect = GetCombatDodgeButtonRect(GraphicsDevice.Viewport);
 
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
@@ -2256,6 +2257,12 @@ public class Game1 : Game
                         else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDisengageButtonRect.Contains(mouse.Position))
                         {
                             _combatManager.Disengage(currentCombatant);
+                            FlushTurnMessages();
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDodgeButtonRect.Contains(mouse.Position))
+                        {
+                            _combatManager.Dodge(currentCombatant);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
@@ -2828,6 +2835,12 @@ public class Game1 : Game
         return new Rectangle(dashRect.Right + 10, dashRect.Y, dashRect.Width, dashRect.Height);
     }
 
+    private Rectangle GetCombatDodgeButtonRect(Viewport viewport)
+    {
+        var disengageRect = GetCombatDisengageButtonRect(viewport);
+        return new Rectangle(disengageRect.Right + 10, disengageRect.Y, disengageRect.Width, disengageRect.Height);
+    }
+
     private Rectangle GetCombatRageButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
@@ -3006,7 +3019,8 @@ public class Game1 : Game
         if (_selectedAction == CombatAction.Move && currentCombatant.HasAction)
         {
             if (GetCombatDashButtonRect(viewport).Contains(mousePosition)
-                || GetCombatDisengageButtonRect(viewport).Contains(mousePosition))
+                || GetCombatDisengageButtonRect(viewport).Contains(mousePosition)
+                || GetCombatDodgeButtonRect(viewport).Contains(mousePosition))
                 return true;
         }
 
@@ -3483,6 +3497,11 @@ public class Game1 : Game
                                 currentCombatant.IsDisengaged ? "Disengaged" : "Disengage",
                                 currentCombatant.IsDisengaged ? Color.Gray : new Color(100, 130, 60),
                                 currentCombatant.IsDisengaged);
+                            DrawCombatActionButton(
+                                GetCombatDodgeButtonRect(vp),
+                                currentCombatant.IsDodging ? "Dodging" : "Dodge",
+                                currentCombatant.IsDodging ? Color.Gray : new Color(70, 115, 145),
+                                currentCombatant.IsDodging);
                         }
 
                         DrawCombatActionButton(
