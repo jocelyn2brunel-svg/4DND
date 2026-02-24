@@ -1215,7 +1215,7 @@ public class Game1 : Game
         foreach (var wp in waypoints)
         {
             Vector3 nextPoint = new Vector3(wp.X + offset.X, wp.Y + offset.Y, wp.Z + zOffset);
-            Draw3DLine(previousPoint, nextPoint, activePathColor);
+            DrawMovementPathSegment(previousPoint, nextPoint, activePathColor);
             previousPoint = nextPoint;
         }
 
@@ -1233,11 +1233,30 @@ public class Game1 : Game
                 {
                     var to = path[i];
                     Vector3 nextPoint = new Vector3(to.x + offset.X, to.y + offset.Y, to.z + zOffset);
-                    Draw3DLine(previousPoint, nextPoint, hoverPathColor);
+                    DrawMovementPathSegment(previousPoint, nextPoint, hoverPathColor);
                     previousPoint = nextPoint;
                 }
             }
         }
+    }
+
+    private void DrawMovementPathSegment(Vector3 start, Vector3 end, Color color)
+    {
+        const float thickness = 0.07f;
+
+        Vector2 planarDelta = new Vector2(end.X - start.X, end.Y - start.Y);
+        float length = planarDelta.Length();
+        if (length < 0.001f)
+            return;
+
+        float angle = MathF.Atan2(planarDelta.Y, planarDelta.X);
+        float z = (start.Z + end.Z) * 0.5f;
+
+        var world = Matrix.CreateScale(length + thickness, thickness, 1.0f)
+            * Matrix.CreateRotationZ(angle)
+            * Matrix.CreateTranslation((start.X + end.X) * 0.5f, (start.Y + end.Y) * 0.5f, z);
+
+        Draw3DQuad(world, color);
     }
 
     private void DrawEnemySightLinesToPlayer()
