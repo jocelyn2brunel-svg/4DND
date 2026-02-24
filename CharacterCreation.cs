@@ -9,7 +9,7 @@ namespace _4DND;
 public class CharacterCreation
 {
     private string _createName = string.Empty;
-    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: abilities, 4: final review
+    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: skills, 4: abilities, 5: final review
     private List<string> _races = Race.GetAllRaceNames();
     private readonly string[] _classes = new[] { "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard" };
     private int _raceIndex = 0;
@@ -51,7 +51,6 @@ public class CharacterCreation
     };
     private readonly Random _random = new();
     private readonly Dictionary<string, HashSet<string>> _selectedClassSkills = new();
-    private readonly Dictionary<string, int> _classSkillScrollOffsets = new();
 
     public CharacterCreation(SpriteFont font, Texture2D pixel)
     {
@@ -71,7 +70,6 @@ public class CharacterCreation
         _isRolling = false;
         _rollTimer = 0;
         _selectedClassSkills.Clear();
-        _classSkillScrollOffsets.Clear();
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character createdCharacter)
@@ -138,18 +136,18 @@ public class CharacterCreation
         // Next button
         if (canGoNext && IsMouseClicked(mouse, _prevMouse, nextRect))
         {
-            if (_createStep == 2) // Before going to abilities, roll them
+            if (_createStep == 3) // Before going to abilities, roll them
             {
                 RollAbilities();
-                _createStep = 3; // Advance to abilities step
+                _createStep = 4; // Advance to abilities step
             }
-            else if (_createStep == 3) // After abilities, go to final review
+            else if (_createStep == 4) // After abilities, go to final review
             {
-                _createStep = 4;
+                _createStep = 5;
                 _prevMouse = mouse;
                 return true;
             }
-            else if (_createStep == 4) // Final confirmation
+            else if (_createStep == 5) // Final confirmation
             {
                 createdCharacter = CreateCharacterFromData();
                 _prevMouse = mouse;
@@ -305,51 +303,36 @@ public class CharacterCreation
                     _classScrollOffset++;
             }
 
-            // Skill choice toggles for the selected class
+        }
+        // Step 3: Skill selection
+        else if (_createStep == 3)
+        {
             var selectedClass = ClassData.GetClass(_classes[_classIndex]);
             if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
             {
-                var detailsRect = new Rectangle(menuRectC.X + paddingC + 480, menuRectC.Y + titleH + 40, 480, 420);
-                var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
-                int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
-                int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
+                var skillPanelRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 70, menuRectC.Width - (paddingC * 2), 360);
+                int columns = 3;
+                int rows = Math.Max(1, (int)Math.Ceiling(selectedClass.SkillChoiceOptions.Count / (double)columns));
+                int columnWidth = (skillPanelRect.Width - 24) / columns;
+                int rowHeight = Math.Min(42, Math.Max(30, (skillPanelRect.Height - 24) / rows));
 
-                var skillGridRect = new Rectangle(detailsRect.X + 12, startY, (colWidth * 2) - 8, (rowHeight * 3) - 2);
-                if (skillGridRect.Contains(mouse.Position) && scrollDelta != 0)
+                for (int i = 0; i < selectedClass.SkillChoiceOptions.Count; i++)
                 {
-                    if (scrollDelta > 0)
-                        currentOffset = Math.Max(0, currentOffset - 1);
-                    else if (scrollDelta < 0)
-                        currentOffset = Math.Min(maxOffset, currentOffset + 1);
-
-                    _classSkillScrollOffsets[selectedClass.Name] = currentOffset;
-                }
-
-                for (int i = 0; i < optionsToDraw; i++)
-                {
-                    int skillIdx = currentOffset + i;
-                    if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
-                        break;
-
-                    string skill = selectedClass.SkillChoiceOptions[skillIdx];
-                    int col = i / 3;
-                    int row = i % 3;
-                    var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
+                    string skill = selectedClass.SkillChoiceOptions[i];
+                    int col = i % columns;
+                    int row = i / columns;
+                    var skillRect = new Rectangle(skillPanelRect.X + 12 + col * columnWidth, skillPanelRect.Y + 12 + row * rowHeight, columnWidth - 10, rowHeight - 6);
 
                     if (skillRect.Contains(mouse.Position))
-                    {
                         _tooltipText = $"Select class skill: {skill}";
-                    }
 
                     if (IsMouseClicked(mouse, _prevMouse, skillRect))
-                    {
                         ToggleSkillSelection(selectedClass.Name, skill, selectedClass.SkillChoicesCount);
-                    }
                 }
             }
         }
-        // Step 3: Ability rolls
-        else if (_createStep == 3)
+        // Step 4: Ability rolls
+        else if (_createStep == 4)
         {
             // Reroll button - position matches DrawAbilitiesStep
             var rerollRect = new Rectangle(menuRectC.X + menuWidthC / 2 - 80, menuRectC.Y + titleH + 250, 160, 40);
@@ -389,7 +372,7 @@ public class CharacterCreation
             var mouse = Mouse.GetState();
             
             // Title with step indicator
-            var title = $"Create Character - Step {_createStep + 1}/5";
+            var title = $"Create Character - Step {_createStep + 1}/6";
             var tsize = _font.MeasureString(title);
             spriteBatch.DrawString(_font, title, new Vector2(menuRectC.X + (menuWidthC - tsize.X) / 2, menuRectC.Y + 12), Color.Gold);
             
@@ -418,9 +401,12 @@ public class CharacterCreation
                     DrawClassStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 3:
-                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    DrawSkillStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 4:
+                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    break;
+                case 5:
                     DrawFinalReviewStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
             }
@@ -448,15 +434,15 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, barRect, Color.DarkGray * 0.5f);
         
         // Progress fill
-        float progress = (_createStep + 1) / 5f;
+        float progress = (_createStep + 1) / 6f;
         var fillRect = new Rectangle(barX, barY, (int)(barWidth * progress), barHeight);
         spriteBatch.Draw(_pixel, fillRect, Color.LightGreen);
         
         // Step labels
-        string[] stepLabels = { "Name", "Race", "Class", "Abilities", "Review" };
-        for (int i = 0; i < 5; i++)
+        string[] stepLabels = { "Name", "Race", "Class", "Skills", "Abilities", "Review" };
+        for (int i = 0; i < 6; i++)
         {
-            int stepX = barX + (barWidth * i / 4);
+            int stepX = barX + (barWidth * i / 5);
             var stepColor = i <= _createStep ? Color.Gold : Color.Gray;
             var stepLabel = stepLabels[i];
             var labelSize = _font.MeasureString(stepLabel);
@@ -702,61 +688,50 @@ public class CharacterCreation
             yOffset += 22;
             var skillsText = $"  Choose {selectedClass.SkillChoicesCount} from " + string.Join(", ", selectedClass.SkillChoiceOptions);
             DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
-
-            var selectedSkills = GetSelectedSkillsForClass(selectedClass);
-            var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
-            int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
-            int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
-            for (int i = 0; i < optionsToDraw; i++)
-            {
-                int skillIdx = currentOffset + i;
-                if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
-                    break;
-
-                string skill = selectedClass.SkillChoiceOptions[skillIdx];
-                bool isSelected = selectedSkills.Contains(skill);
-                int col = i / 3;
-                int row = i % 3;
-                var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
-                spriteBatch.Draw(_pixel, skillRect, isSelected ? Color.ForestGreen * 0.8f : Color.Black * 0.35f);
-                DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
-                var prefix = isSelected ? "[x]" : "[ ]";
-                spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 6, skillRect.Y + 2), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            }
-
-            if (maxOffset > 0)
-            {
-                var pageText = $"Skills {currentOffset + 1}-{Math.Min(currentOffset + optionsToDraw, selectedClass.SkillChoiceOptions.Count)} / {selectedClass.SkillChoiceOptions.Count} (mouse wheel)";
-                spriteBatch.DrawString(_font, pageText, new Vector2(detailsRect.X + 12, startY + (rowHeight * 3) + 4), Color.LightGray, 0f, Vector2.Zero, 0.45f, SpriteEffects.None, 0f);
-            }
+            yOffset += 60;
         }
     }
 
-    private (int startY, int rowHeight, int colWidth, int optionsToDraw) GetSkillChoiceLayout(ClassData classData, Rectangle detailsRect)
+    private void DrawSkillStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
-        int yOffset = detailsRect.Y + 12;
-        yOffset += 35; // class name
-        yOffset += 60; // description
-        yOffset += 25; // hit die
-        yOffset += 30; // primary ability
-        yOffset += 22 + classData.SavingThrowProficiencies.Count * 20 + 10; // saving throws + spacing
+        var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+        var instructionText = $"Select {selectedClass.SkillChoicesCount} class skill(s) for {selectedClass.Name}:";
+        spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
 
-        if (classData.ArmorProficiencies.Count > 0)
-            yOffset += 22 + 40;
+        var selectedSkills = GetSelectedSkillsForClass(selectedClass);
+        var statusColor = selectedSkills.Count == selectedClass.SkillChoicesCount ? Color.LightGreen : Color.Gold;
+        var statusText = $"Selected: {selectedSkills.Count}/{selectedClass.SkillChoicesCount}";
+        spriteBatch.DrawString(_font, statusText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 40), statusColor, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
 
-        if (classData.WeaponProficiencies.Count > 0)
-            yOffset += 22 + 40;
+        if (selectedClass.SkillChoicesCount <= 0 || selectedClass.SkillChoiceOptions.Count <= 0)
+        {
+            spriteBatch.DrawString(_font, "This class has no selectable skill choices.", new Vector2(menuRect.X + padding, menuRect.Y + titleH + 80), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            return;
+        }
 
-        yOffset += 22 + 40; // tools
-        yOffset += 22 + 55; // skills title + wrapped line block
+        var panelRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 70, menuRect.Width - (padding * 2), 360);
+        spriteBatch.Draw(_pixel, panelRect, Color.Gray * 0.55f);
+        DrawBorder(spriteBatch, panelRect, 2, Color.Gold * 0.4f);
 
-        int rowHeight = 26;
-        int colWidth = (detailsRect.Width - 30) / 2;
-        int optionsToDraw = Math.Min(6, classData.SkillChoiceOptions.Count);
+        int columns = 3;
+        int rows = Math.Max(1, (int)Math.Ceiling(selectedClass.SkillChoiceOptions.Count / (double)columns));
+        int columnWidth = (panelRect.Width - 24) / columns;
+        int rowHeight = Math.Min(42, Math.Max(30, (panelRect.Height - 24) / rows));
 
-        return (yOffset, rowHeight, colWidth, optionsToDraw);
+        for (int i = 0; i < selectedClass.SkillChoiceOptions.Count; i++)
+        {
+            string skill = selectedClass.SkillChoiceOptions[i];
+            bool isSelected = selectedSkills.Contains(skill);
+            int col = i % columns;
+            int row = i / columns;
+            var skillRect = new Rectangle(panelRect.X + 12 + col * columnWidth, panelRect.Y + 12 + row * rowHeight, columnWidth - 10, rowHeight - 6);
+            var bgColor = isSelected ? Color.ForestGreen * 0.85f : (skillRect.Contains(mouse.Position) ? Color.LightGray * 0.6f : Color.Black * 0.35f);
+            spriteBatch.Draw(_pixel, skillRect, bgColor);
+            DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
+            var prefix = isSelected ? "[x]" : "[ ]";
+            spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 8, skillRect.Y + 6), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+        }
     }
-
     private void DrawAbilitiesStep(SpriteBatch spriteBatch, GameTime gameTime, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
         var instructionText = "Your ability scores (4d6 drop lowest):";
@@ -965,7 +940,7 @@ public class CharacterCreation
             spriteBatch.Draw(_pixel, nextRect, nextColor);
             DrawBorder(spriteBatch, nextRect, 2, Color.LightGreen);
             
-            string nextText = _createStep == 4 ? "? Create!" : "Next ?";
+            string nextText = _createStep == 5 ? "? Create!" : "Next ?";
             var nextTextSize = _font.MeasureString(nextText);
             spriteBatch.DrawString(_font, nextText, new Vector2(nextRect.X + (nextRect.Width - nextTextSize.X * 0.7f) / 2, nextRect.Y + (nextRect.Height - nextTextSize.Y * 0.7f) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
@@ -1074,22 +1049,19 @@ public class CharacterCreation
 
     private bool CanProceedToNextStep()
     {
-        if (_createStep == 2)
-        {
-            var selectedClass = ClassData.GetClass(_classes[_classIndex]);
-            if (selectedClass.SkillChoicesCount <= 0)
-                return true;
-
-            return GetSelectedSkillsForClass(selectedClass).Count == selectedClass.SkillChoicesCount;
-        }
-
         return _createStep switch
         {
             0 => !string.IsNullOrWhiteSpace(_createName),
             1 => true,
-            2 => false,
-            3 => !_isRolling,
-            4 => true,
+            2 => true,
+            3 =>
+            {
+                var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+                return selectedClass.SkillChoicesCount <= 0 ||
+                       GetSelectedSkillsForClass(selectedClass).Count == selectedClass.SkillChoicesCount;
+            },
+            4 => !_isRolling,
+            5 => true,
             _ => false
         };
     }
@@ -1100,9 +1072,10 @@ public class CharacterCreation
         {
             0 => "Proceed to race selection",
             1 => "Proceed to class selection",
-            2 => "Choose class skills then roll ability scores",
-            3 => "Review your character",
-            4 => "Finalize and create character",
+            2 => "Proceed to class skill selection",
+            3 => "Roll ability scores",
+            4 => "Review your character",
+            5 => "Finalize and create character",
             _ => "Next"
         };
     }
@@ -1128,22 +1101,6 @@ public class CharacterCreation
         return new List<string>(selected);
     }
 
-    private int GetClassSkillScrollOffset(string className, int maxOffset)
-    {
-        if (!_classSkillScrollOffsets.TryGetValue(className, out var offset))
-        {
-            offset = 0;
-            _classSkillScrollOffsets[className] = 0;
-        }
-
-        if (offset > maxOffset)
-        {
-            offset = maxOffset;
-            _classSkillScrollOffsets[className] = offset;
-        }
-
-        return offset;
-    }
 
     private void ToggleSkillSelection(string className, string skill, int maxChoices)
     {
