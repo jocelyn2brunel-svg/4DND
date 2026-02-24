@@ -2268,60 +2268,6 @@ public class Game1 : Game
                 AddToCombatLog($"Viewing level {_currentViewLevel}");
             }
             
-            // Test: Make a strength check with X
-            if (kb.IsKeyDown(Keys.X) && !_prevKb.IsKeyDown(Keys.X) && _currentCharacter != null)
-            {
-                var check = _currentCharacter.MakeAbilityCheck("Strength", DndMath.DifficultyClass.Medium);
-                AddToCombatLog(check.GetSimpleMessage());
-                System.Console.WriteLine(check.GetDetailedMessage());
-            }
-            
-            // Test: Make a stealth check with Z
-            if (kb.IsKeyDown(Keys.Z) && !_prevKb.IsKeyDown(Keys.Z) && _currentCharacter != null)
-            {
-                var check = _currentCharacter.MakeSkillCheck("Stealth", DndMath.DifficultyClass.Hard);
-                AddToCombatLog(check.GetSimpleMessage());
-                System.Console.WriteLine(check.GetDetailedMessage());
-            }
-            
-            // Test: Make a saving throw with N
-            if (kb.IsKeyDown(Keys.N) && !_prevKb.IsKeyDown(Keys.N) && _currentCharacter != null)
-            {
-                var check = _currentCharacter.MakeSavingThrow("Dexterity", DndMath.DifficultyClass.Hard);
-                AddToCombatLog(check.GetSimpleMessage());
-                System.Console.WriteLine(check.GetDetailedMessage());
-            }
-            
-            // Toggle flying mode with Space (for flying creatures)
-            if (kb.IsKeyDown(Keys.Space) && !_prevKb.IsKeyDown(Keys.Space) && _playerCreature != null)
-            {
-                if (_playerCreature.CanFly)
-                {
-                    _playerCreature.IsFlying = !_playerCreature.IsFlying;
-                    AddToCombatLog(_playerCreature.IsFlying ? "Now flying!" : "Landing...");
-                }
-            }
-            
-            // Ascend/Descend with R/T (for flying creatures)
-            if (kb.IsKeyDown(Keys.R) && !_prevKb.IsKeyDown(Keys.R) && _playerCreature != null)
-            {
-                if (_playerCreature.CanFly && _playerCreature.IsFlying)
-                {
-                    _playerCreature.MoveTo(_playerCreature.X, _playerCreature.Y, _playerCreature.Z + 1);
-                    AddToCombatLog($"Ascending to level {_playerCreature.Z}");
-                    UpdateVision();
-                }
-            }
-            if (kb.IsKeyDown(Keys.T) && !_prevKb.IsKeyDown(Keys.T) && _playerCreature != null)
-            {
-                if (_playerCreature.CanFly && _playerCreature.IsFlying)
-                {
-                    int newZ = Math.Max(0, _playerCreature.Z - 1);
-                    _playerCreature.MoveTo(_playerCreature.X, _playerCreature.Y, newZ);
-                    AddToCombatLog($"Descending to level {newZ}");
-                    UpdateVision();
-                }
-            }
             
             // Toggle vision overlay with V
             if (kb.IsKeyDown(Keys.V) && !_prevKb.IsKeyDown(Keys.V))
@@ -2329,39 +2275,6 @@ public class Game1 : Game
                 _showVisionOverlay = !_showVisionOverlay;
             }
             
-            // Test: Toggle Blinded condition with B (for testing)
-            if (kb.IsKeyDown(Keys.B) && !_prevKb.IsKeyDown(Keys.B) && _playerCreature != null)
-            {
-                if (_playerCreature.Conditions.HasCondition(Condition.Blinded))
-                {
-                    _playerCreature.Conditions = _playerCreature.Conditions.RemoveCondition(Condition.Blinded);
-                    AddToCombatLog("Blindness removed!");
-                }
-                else
-                {
-                    _playerCreature.Conditions = _playerCreature.Conditions.AddCondition(Condition.Blinded);
-                    AddToCombatLog("You are blinded!");
-                }
-                UpdateVision();
-            }
-            
-            // Test: Create Fog Cloud with F
-            if (kb.IsKeyDown(Keys.F) && !_prevKb.IsKeyDown(Keys.F) && _playerCreature != null)
-            {
-                var fogCloud = AreaEffect.FogCloud(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
-                _visionSystem.AddAreaEffect(fogCloud);
-                AddToCombatLog("Fog Cloud created!");
-                UpdateVision();
-            }
-            
-            // Test: Create Darkness with K
-            if (kb.IsKeyDown(Keys.K) && !_prevKb.IsKeyDown(Keys.K) && _playerCreature != null)
-            {
-                var darkness = AreaEffect.Darkness(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
-                _visionSystem.AddAreaEffect(darkness);
-                AddToCombatLog("Darkness spell cast!");
-                UpdateVision();
-            }
             
             // Toggle combat UI with Tab
             if (kb.IsKeyDown(Keys.Tab) && !_prevKb.IsKeyDown(Keys.Tab))
@@ -2534,32 +2447,6 @@ public class Game1 : Game
                 if (currentCombatant != null && currentCombatant.IsPlayer)
                 {
                     // Player's turn
-                    if (kb.IsKeyDown(Keys.D1) && !_prevKb.IsKeyDown(Keys.D1))
-                    {
-                        _selectedAction = CombatAction.Move;
-                        _showBonusActionMenu = false;
-                    }
-                    if (kb.IsKeyDown(Keys.D2) && !_prevKb.IsKeyDown(Keys.D2))
-                    {
-                        _selectedAction = CombatAction.Attack;
-                        _showBonusActionMenu = false;
-                    }
-                    if (kb.IsKeyDown(Keys.D3) && !_prevKb.IsKeyDown(Keys.D3))
-                    {
-                        _showBonusActionMenu = !_showBonusActionMenu;
-                    }
-                    if (kb.IsKeyDown(Keys.D4) && !_prevKb.IsKeyDown(Keys.D4))
-                    {
-                        EndCurrentPlayerTurn(currentCombatant);
-                    }
-                    if (kb.IsKeyDown(Keys.D5) && !_prevKb.IsKeyDown(Keys.D5))
-                    {
-                        if (currentCombatant.HasAction)
-                        {
-                            _combatManager.Dash(currentCombatant);
-                            AddToCombatLog($"{currentCombatant.Name} use DASH (Shortcut).");
-                        }
-                    }
                     
                     // Handle attack action
                     if (_selectedAction == CombatAction.Attack)
@@ -3524,9 +3411,6 @@ public class Game1 : Game
                         }
 
                         var moveRect = GetCombatMoveButtonRect(vp);
-                        var shortcutsText = "Raccourcis: [1] Move  [2] Attack  [3] Bonus Act  [4] End Turn  [5] Dash";
-                        var shortcutsSize = _font.MeasureString(shortcutsText) * 0.65f;
-                        _spriteBatch.DrawString(_font, shortcutsText, new Vector2((vp.Width - shortcutsSize.X) / 2, moveRect.Y - 25), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
 
                         if (_selectedAction != CombatAction.None && _selectedAction != CombatAction.BonusAction)
                         {
@@ -3564,90 +3448,12 @@ public class Game1 : Game
 
                 _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, new Rectangle(0, 0, vp.Width, vp.Height));
                 
-                // Vision legend (right side)
-                if (_showVisionOverlay)
-                {
-                    int legendX = vp.Width - 280;
-                    int legendY = 70;
-                    
-                    _spriteBatch.DrawString(_font, "Vision Legend:", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-                    legendY += 25;
-                    
-                    // Bright light
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.White);
-                    _spriteBatch.DrawString(_font, "Bright Light", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    legendY += 25;
-                    
-                    // Dim light
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), new Color(128, 128, 128));
-                    _spriteBatch.DrawString(_font, "Dim Light (Lightly Obscured)", new Vector2(legendX + 25, legendY), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    legendY += 25;
-                    
-                    // Darkness with darkvision
-                    if (_playerCreature != null && _playerCreature.DarkvisionRange > 0)
-                    {
-                        _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), new Color(96, 96, 96));
-                        _spriteBatch.DrawString(_font, "Darkness (Darkvision, Grayscale)", new Vector2(legendX + 25, legendY), new Color(150, 150, 180), 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                        legendY += 25;
-                    }
-                    
-                    // Complete darkness
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.Black);
-                    _spriteBatch.DrawString(_font, "Darkness (Heavily Obscured)", new Vector2(legendX + 25, legendY), Color.DarkGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    legendY += 25;
-
-                    // Difficult terrain
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.Sienna);
-                    _spriteBatch.DrawString(_font, "Difficult Terrain (2x Cost)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    legendY += 25;
-
-                    // Wall
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 20, 20), Color.DarkSlateGray);
-                    _spriteBatch.DrawString(_font, "Wall (Blocks Move/Vision)", new Vector2(legendX + 25, legendY), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    legendY += 35;
-                    
-                    // Creature indicators (top of unit)
-                    _spriteBatch.DrawString(_font, "Creature Indicators (top of unit):", new Vector2(legendX, legendY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-                    legendY += 20;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Gold);
-                    _spriteBatch.DrawString(_font, "Truesight (See All)", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Cyan);
-                    _spriteBatch.DrawString(_font, "Blindsight", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 5, 5), Color.Orange);
-                    _spriteBatch.DrawString(_font, "Tremorsense", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Purple);
-                    _spriteBatch.DrawString(_font, "Superior Darkvision 120ft", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Yellow);
-                    _spriteBatch.DrawString(_font, "Darkvision 60ft", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 20;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Orange);
-                    _spriteBatch.DrawString(_font, "Sunlight Sensitivity", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                    
-                    _spriteBatch.Draw(_pixel, new Rectangle(legendX, legendY, 4, 4), Color.Red);
-                    _spriteBatch.DrawString(_font, "Has Condition", new Vector2(legendX + 10, legendY - 3), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                    legendY += 18;
-                }
                 
                 // Bottom screen hints (moved from top panel)
                 var hint = "Press Tab to toggle combat UI | ESC for menu | PageUp/Down: Change level";
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, vp.Height - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 
-                // Test keybinding
-                var testHint = "Test: [B]linded [F]og [K]Darkness | [Space]Fly [R]Up [T]Down | [X]STR [Z]Stealth [N]Save";
-                var testHintSize = _font.MeasureString(testHint);
-                _spriteBatch.DrawString(_font, testHint, new Vector2(vp.Width - testHintSize.X - 10, vp.Height - 50), Color.Yellow * 0.6f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 
                 // Display current view level
                 var levelHint = $"View Level: Z{_currentViewLevel}";
