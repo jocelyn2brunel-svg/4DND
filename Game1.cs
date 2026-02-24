@@ -1178,7 +1178,7 @@ public class Game1 : Game
         }
     }
 
-    private void DrawHoveredMovementPath((int x, int y)? hoveredTile)
+    private void DrawHoveredMovementPath((int x, int y, int z)? hoveredTile)
     {
         if (!hoveredTile.HasValue)
             return;
@@ -1188,11 +1188,11 @@ public class Game1 : Game
 
         int targetX = hoveredTile.Value.x;
         int targetY = hoveredTile.Value.y;
-        int targetZ = _currentViewLevel;
+        int targetZ = hoveredTile.Value.z;
 
         // Path trace for flight is tricky, only show if on same level as target for now
         // unless the creature is currently flying.
-        if (!_playerCreature.IsFlying && _playerCreature.Z != _currentViewLevel)
+        if (!_playerCreature.IsFlying && _playerCreature.Z != targetZ)
             return;
 
         const float zOffset = 0.12f;
@@ -1403,33 +1403,48 @@ public class Game1 : Game
         _spriteBatch.DrawString(_font, name, new Vector2(pos.X - size.X / 2, pos.Y - 38), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
     }
 
-    private (int x, int y)? GetHoveredTile()
+    private (int x, int y, int z)? GetHoveredTile()
     {
         var mouse = Mouse.GetState();
         Vector3 near = GraphicsDevice.Viewport.Unproject(new Vector3(mouse.X, mouse.Y, 0f), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         Vector3 far = GraphicsDevice.Viewport.Unproject(new Vector3(mouse.X, mouse.Y, 1f), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
         Vector3 dir = Vector3.Normalize(far - near);
         Ray ray = new Ray(near, dir);
-        Plane plane = new Plane(Vector3.UnitZ, -_currentViewLevel);
-        float? d = ray.Intersects(plane);
 
-        if (!d.HasValue) return null;
-
-        int hx = (int)Math.Round(near.X + dir.X * d.Value);
-        int hy = (int)Math.Round(near.Y + dir.Y * d.Value);
-        int hz = _currentViewLevel;
-
-        var tileType = _tacticalMap.Get(hx, hy, hz);
-
-        // Walls are never selectable for movement/hover.
-        if (tileType == TileType.Wall) return null;
-
-        // If player has the ability to fly, they can select Empty tiles (air).
-        // Otherwise, they can only select "solid" tiles (anything except Empty and Wall).
         bool canFly = _playerCreature?.CanFly == true;
-        if (tileType == TileType.Empty && !canFly) return null;
 
-        return (hx, hy);
+        // Iterate from the current view level down to ground (z=0).
+        // This implements "piercing" through empty space for non-flying units.
+        for (int hz = _currentViewLevel; hz >= 0; hz--)
+        {
+            Plane plane = new Plane(Vector3.UnitZ, -hz);
+            float? d = ray.Intersects(plane);
+            if (!d.HasValue) continue;
+
+            int hx = (int)Math.Round(near.X + dir.X * d.Value);
+            int hy = (int)Math.Round(near.Y + dir.Y * d.Value);
+            var tileType = _tacticalMap.Get(hx, hy, hz);
+
+            // Walls are never selectable and block selection of anything below them.
+            if (tileType == TileType.Wall) return null;
+
+            // Found a solid tile.
+            if (tileType != TileType.Empty)
+            {
+                return (hx, hy, hz);
+            }
+
+            // It's an Empty tile.
+            // If the unit can fly, they can select the "air" at the current view level.
+            if (hz == _currentViewLevel && canFly)
+            {
+                return (hx, hy, hz);
+            }
+
+            // Otherwise, continue piercing through to lower levels.
+        }
+
+        return null;
     }
 
     private void SaveCampaign()
@@ -2335,7 +2350,7 @@ public class Game1 : Game
                 Creature target = null;
                 if (hovered.HasValue)
                 {
-                    target = _combatManager.GetCreatureAt(hovered.Value.x, hovered.Value.y, _currentViewLevel);
+                    target = _combatManager.GetCreatureAt(hovered.Value.x, hovered.Value.y, hovered.Value.z);
                 }
 
                 if (target != null && !target.IsPlayer && target.IsAlive())
@@ -2389,7 +2404,7 @@ public class Game1 : Game
                     {
                         int tx = hovered.Value.x;
                         int ty = hovered.Value.y;
-                        int tz = _currentViewLevel;
+                        int tz = hovered.Value.z;
 
                         var tileType = _tacticalMap.Get(tx, ty, tz);
                         if (tileType != TileType.Wall && tileType != TileType.Empty)
@@ -2462,7 +2477,8 @@ public class Game1 : Game
                             {
                                 int tx = hovered.Value.x;
                                 int ty = hovered.Value.y;
-                                var target = _combatManager.GetCreatureAt(tx, ty, _currentViewLevel);
+                                int tz = hovered.Value.z;
+                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
                                 if (target != null && !target.IsPlayer && currentCombatant.HasAction)
                                 {
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
@@ -2501,8 +2517,9 @@ public class Game1 : Game
                             {
                                 int tx = hovered.Value.x;
                                 int ty = hovered.Value.y;
+                                int tz = hovered.Value.z;
                                 // Check if tile is empty and within movement range
-                                if (_combatManager.GetCreatureAt(tx, ty, _currentViewLevel) == null)
+                                if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                                 {
                                     // Determine effective start position for new movement (finish current tile first)
                                     int startX = currentCombatant.X;
@@ -2527,7 +2544,7 @@ public class Game1 : Game
                                     currentCombatant.Y = startY;
                                     currentCombatant.Z = startZ;
 
-                                    bool canMove = _combatManager.CanMove(currentCombatant, tx, ty, _currentViewLevel);
+                                    bool canMove = _combatManager.CanMove(currentCombatant, tx, ty, tz);
 
                                     // Restore logical position
                                     currentCombatant.X = actualX;
@@ -2542,7 +2559,7 @@ public class Game1 : Game
                                         int prevZ = currentCombatant.Z;
                                         int prevMove = currentCombatant.MovementRemaining;
 
-                                        _combatManager.Move(currentCombatant, tx, ty, _currentViewLevel);
+                                        _combatManager.Move(currentCombatant, tx, ty, tz);
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog($"{currentCombatant.Name} moved to ({currentCombatant.X}, {currentCombatant.Y}, {currentCombatant.Z}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
@@ -2933,6 +2950,7 @@ public class Game1 : Game
 
         int? hoveredX = null;
         int? hoveredY = null;
+        int? hoveredZ = null;
 
         if (_state == AppState.Playing && !_showCharacterSheet && !_showCampaignMap)
         {
@@ -2953,7 +2971,8 @@ public class Game1 : Game
             {
                 hoveredX = hovered.Value.x;
                 hoveredY = hovered.Value.y;
-                Draw3DTileOutline(hoveredX.Value, hoveredY.Value, _currentViewLevel, Color.Yellow);
+                hoveredZ = hovered.Value.z;
+                Draw3DTileOutline(hoveredX.Value, hoveredY.Value, hoveredZ.Value, Color.Yellow);
             }
             Draw3DLine(Vector3.Zero, new Vector3(5, 0, 0), Color.Red);
             Draw3DLine(Vector3.Zero, new Vector3(0, 5, 0), Color.Lime);
@@ -3470,11 +3489,11 @@ public class Game1 : Game
         }
         
         // Tile tooltip (outside combat panel)
-        if (_font != null && hoveredX.HasValue && hoveredY.HasValue && _combatManager.InCombat && _showVisionOverlay)
+        if (_font != null && hoveredX.HasValue && hoveredY.HasValue && hoveredZ.HasValue && _combatManager.InCombat && _showVisionOverlay)
         {
             int tx = hoveredX.Value;
             int ty = hoveredY.Value;
-            int tz = _currentViewLevel;
+            int tz = hoveredZ.Value;
             
             var tileType = _tacticalMap.Get(tx, ty, tz);
             var lightLevel = _visionSystem.GetLightLevel(tx, ty, tz);
