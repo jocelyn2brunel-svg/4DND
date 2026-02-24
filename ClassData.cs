@@ -12,6 +12,19 @@ public record ClassLevelData(int Level, string Features, int Rages, int RageDama
 /// </summary>
 public record BardLevelData(int Level, string Features, int BardicInspirationDice, int CantripsKnown, int SpellsKnown, int[] SpellSlots);
 
+/// <summary>
+/// Determines how a class accesses its spells.
+/// Known-spell casters (Bard, Sorcerer, Warlock, Ranger) always have their learned spells available to cast.
+/// Prepared-spell casters (Cleric, Druid, Paladin, Wizard) must choose which spells to prepare after a long rest;
+/// the number they can prepare depends on their level and spellcasting ability modifier.
+/// </summary>
+public enum SpellcastingType
+{
+    None,       // Non-casters (Barbarian, Fighter, Monk, etc.)
+    Known,      // Bard, Sorcerer, Warlock, Ranger: spells known are always available to cast
+    Prepared    // Cleric, Druid, Paladin, Wizard: must prepare a subset of known spells each day
+}
+
 public class ClassData
 {
     public string Name { get; set; } = "";
@@ -26,6 +39,10 @@ public class ClassData
     public List<string> SkillChoiceOptions { get; set; } = new();
     public List<ClassLevelData> LevelProgression { get; set; } = new();
     public List<BardLevelData> BardLevelProgression { get; set; } = new();
+    /// <summary>How this class accesses its spells (None for non-casters, Known for Bard/Sorcerer/Warlock/Ranger, Prepared for Cleric/Druid/Paladin/Wizard).</summary>
+    public SpellcastingType SpellcastingType { get; set; } = SpellcastingType.None;
+    /// <summary>The ability score used for spellcasting ("Intelligence", "Wisdom", or "Charisma"). Empty for non-casters.</summary>
+    public string SpellcastingAbility { get; set; } = "";
 
     public ClassLevelData GetLevelData(int level)
     {
@@ -39,6 +56,21 @@ public class ClassData
         foreach (var entry in BardLevelProgression)
             if (entry.Level == level) return entry;
         return null;
+    }
+
+    /// <summary>
+    /// Returns the maximum number of non-cantrip spells this class can have prepared at the given character level.
+    /// For most Prepared casters the cap is the spellcasting ability modifier plus character level;
+    /// for Paladins it is the modifier plus half the character level (rounded down). Minimum is always 1.
+    /// Returns 0 for non-Prepared casters.
+    /// </summary>
+    public int GetMaxPreparedSpells(int level, int spellcastingAbilityModifier)
+    {
+        if (SpellcastingType != SpellcastingType.Prepared) return 0;
+        int max = Name == "Paladin"
+            ? spellcastingAbilityModifier + (level / 2)
+            : spellcastingAbilityModifier + level;
+        return Math.Max(1, max);
     }
 
     private static readonly Dictionary<string, ClassData> _classDatabase = new();
@@ -136,9 +168,11 @@ public class ClassData
                 new(18, "Magical Secrets",                             12, 4, 22, new[] { 4, 3, 3, 3, 3, 1, 1, 1, 1 }),
                 new(19, "Ability Score Improvement",                   12, 4, 22, new[] { 4, 3, 3, 3, 3, 2, 1, 1, 1 }),
                 new(20, "Superior Inspiration",                        12, 4, 22, new[] { 4, 3, 3, 3, 3, 2, 2, 1, 1 }),
-            }
+            },
+            SpellcastingType = SpellcastingType.Known,
+            SpellcastingAbility = "Charisma"
         };
-        
+
         _classDatabase["Cleric"] = new ClassData
         {
             Name = "Cleric",
@@ -147,9 +181,11 @@ public class ClassData
             PrimaryAbility = "Wisdom",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
             ArmorProficiencies = new List<string> { "Light armor", "Medium armor", "Shields" },
-            WeaponProficiencies = new List<string> { "Simple weapons" }
+            WeaponProficiencies = new List<string> { "Simple weapons" },
+            SpellcastingType = SpellcastingType.Prepared,
+            SpellcastingAbility = "Wisdom"
         };
-        
+
         _classDatabase["Druid"] = new ClassData
         {
             Name = "Druid",
@@ -158,9 +194,11 @@ public class ClassData
             PrimaryAbility = "Wisdom",
             SavingThrowProficiencies = new List<string> { "Intelligence", "Wisdom" },
             ArmorProficiencies = new List<string> { "Light armor (nonmetal)", "Medium armor (nonmetal)", "Shields (nonmetal)" },
-            WeaponProficiencies = new List<string> { "Clubs", "Daggers", "Darts", "Javelins", "Maces", "Quarterstaffs", "Scimitars", "Sickles", "Slings", "Spears" }
+            WeaponProficiencies = new List<string> { "Clubs", "Daggers", "Darts", "Javelins", "Maces", "Quarterstaffs", "Scimitars", "Sickles", "Slings", "Spears" },
+            SpellcastingType = SpellcastingType.Prepared,
+            SpellcastingAbility = "Wisdom"
         };
-        
+
         _classDatabase["Fighter"] = new ClassData
         {
             Name = "Fighter",
@@ -191,9 +229,11 @@ public class ClassData
             PrimaryAbility = "Strength and Charisma",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
             ArmorProficiencies = new List<string> { "All armor", "Shields" },
-            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" }
+            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" },
+            SpellcastingType = SpellcastingType.Prepared,
+            SpellcastingAbility = "Charisma"
         };
-        
+
         _classDatabase["Ranger"] = new ClassData
         {
             Name = "Ranger",
@@ -202,9 +242,11 @@ public class ClassData
             PrimaryAbility = "Dexterity and Wisdom",
             SavingThrowProficiencies = new List<string> { "Strength", "Dexterity" },
             ArmorProficiencies = new List<string> { "Light armor", "Medium armor", "Shields" },
-            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" }
+            WeaponProficiencies = new List<string> { "Simple weapons", "Martial weapons" },
+            SpellcastingType = SpellcastingType.Known,
+            SpellcastingAbility = "Wisdom"
         };
-        
+
         _classDatabase["Rogue"] = new ClassData
         {
             Name = "Rogue",
@@ -224,9 +266,11 @@ public class ClassData
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Constitution", "Charisma" },
             ArmorProficiencies = new List<string>(),
-            WeaponProficiencies = new List<string> { "Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows" }
+            WeaponProficiencies = new List<string> { "Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows" },
+            SpellcastingType = SpellcastingType.Known,
+            SpellcastingAbility = "Charisma"
         };
-        
+
         _classDatabase["Warlock"] = new ClassData
         {
             Name = "Warlock",
@@ -235,9 +279,11 @@ public class ClassData
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
             ArmorProficiencies = new List<string> { "Light armor" },
-            WeaponProficiencies = new List<string> { "Simple weapons" }
+            WeaponProficiencies = new List<string> { "Simple weapons" },
+            SpellcastingType = SpellcastingType.Known,
+            SpellcastingAbility = "Charisma"
         };
-        
+
         _classDatabase["Wizard"] = new ClassData
         {
             Name = "Wizard",
@@ -246,9 +292,11 @@ public class ClassData
             PrimaryAbility = "Intelligence",
             SavingThrowProficiencies = new List<string> { "Intelligence", "Wisdom" },
             ArmorProficiencies = new List<string>(),
-            WeaponProficiencies = new List<string> { "Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows" }
+            WeaponProficiencies = new List<string> { "Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows" },
+            SpellcastingType = SpellcastingType.Prepared,
+            SpellcastingAbility = "Intelligence"
         };
-        
+
         // Aliases
         _classDatabase["Warrior"] = _classDatabase["Fighter"];
         _classDatabase["Mage"] = _classDatabase["Wizard"];

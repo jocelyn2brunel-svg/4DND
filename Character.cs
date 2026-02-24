@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace _4DND;
 
@@ -102,6 +103,32 @@ public class Character
     public int CantripsKnown { get; set; } = 0;
     /// <summary>Number of spells the bard knows (excluding cantrips).</summary>
     public int SpellsKnown { get; set; } = 0;
+    /// <summary>Spells the character has learned (for Known-spell classes such as Bard and Sorcerer). Cantrips should be included here.</summary>
+    public List<Spell> KnownSpells { get; set; } = new();
+    /// <summary>Spells currently prepared (for Prepared-spell classes such as Cleric and Wizard). Cantrips need not be listed here.</summary>
+    public List<Spell> PreparedSpells { get; set; } = new();
+    /// <summary>True if this character's class uses the spell preparation system (Cleric, Druid, Paladin, Wizard).</summary>
+    public bool UsesSpellPreparation => ClassData.GetClass(Class).SpellcastingType == SpellcastingType.Prepared;
+    /// <summary>
+    /// Maximum number of non-cantrip spells this character can have prepared at once.
+    /// Equals the spellcasting ability modifier plus the character's level (or half level for Paladin), minimum 1.
+    /// Returns 0 for classes that do not use spell preparation.
+    /// </summary>
+    public int MaxPreparedSpells
+    {
+        get
+        {
+            var classData = ClassData.GetClass(Class);
+            int mod = classData.SpellcastingAbility switch
+            {
+                "Intelligence" => GetAbilityModifier(Intelligence),
+                "Wisdom"       => GetAbilityModifier(Wisdom),
+                "Charisma"     => GetAbilityModifier(Charisma),
+                _              => 0
+            };
+            return classData.GetMaxPreparedSpells(Level, mod);
+        }
+    }
 
     // Survival / Nourishment
     /// <summary>Current exhaustion level (0 = none, 1–5 = cumulative penalties, 6 = death).</summary>
@@ -245,6 +272,50 @@ public class Character
         if (spellLevel < 0 || spellLevel > 9) return false;
         if (Level < Spell.MinimumCharacterLevel(spellLevel)) return false;
         return SpellSlotsRemaining[spellLevel - 1] > 0;
+    }
+
+    /// <summary>
+    /// Returns true if this character can cast the given spell.
+    /// Cantrips are always available. Leveled spells require a remaining slot of that level
+    /// and must be known (for Known-spell classes) or prepared (for Prepared-spell classes).
+    /// </summary>
+    public bool CanCastSpell(Spell spell)
+    {
+        if (spell.IsCantrip) return true;
+        if (!CanCastSpellLevel(spell.Level)) return false;
+        var classData = ClassData.GetClass(Class);
+        return classData.SpellcastingType switch
+        {
+            SpellcastingType.Known    => KnownSpells.Any(s => s.Name == spell.Name),
+            SpellcastingType.Prepared => PreparedSpells.Any(s => s.Name == spell.Name),
+            _                         => false
+        };
+    }
+
+    /// <summary>
+    /// Prepares a spell for a Prepared-spell caster. Cantrips require no preparation.
+    /// Returns false if the class does not use preparation, the spell is already prepared,
+    /// or the maximum number of prepared spells has been reached.
+    /// </summary>
+    public bool PrepareSpell(Spell spell)
+    {
+        if (!UsesSpellPreparation || spell.IsCantrip) return false;
+        if (PreparedSpells.Any(s => s.Name == spell.Name)) return false;
+        if (PreparedSpells.Count >= MaxPreparedSpells) return false;
+        PreparedSpells.Add(spell);
+        return true;
+    }
+
+    /// <summary>
+    /// Removes a spell from the prepared list.
+    /// Returns false if the spell was not prepared.
+    /// </summary>
+    public bool UnprepareSpell(Spell spell)
+    {
+        var existing = PreparedSpells.FirstOrDefault(s => s.Name == spell.Name);
+        if (existing == null) return false;
+        PreparedSpells.Remove(existing);
+        return true;
     }
 
     public bool IsProficientWithArmor(string armorType)
