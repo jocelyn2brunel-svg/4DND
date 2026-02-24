@@ -2034,7 +2034,9 @@ public class Game1 : Game
         }
 
         // Normal gameplay and pause menu handling
-        if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+        // Let gameplay overlays (character sheet/journal) consume Escape first.
+        bool isGameplayOverlayOpen = _state == AppState.Playing && (_showCharacterSheet || _showJournal);
+        if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape) && !isGameplayOverlayOpen)
         {
             _isMenuOpen = !_isMenuOpen;
             if (_isMenuOpen) _menuIndex = 0;
@@ -2161,6 +2163,11 @@ public class Game1 : Game
 
             if (_showJournal)
             {
+                if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+                {
+                    _showJournal = false;
+                }
+
                 var closeJournalButtonRect = _journalUI.GetCloseButtonRect(GraphicsDevice.Viewport);
                 if (mouseClickedThisFrame &&
                     closeJournalButtonRect.Contains(mouse.Position))
