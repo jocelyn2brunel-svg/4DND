@@ -1496,11 +1496,12 @@ public class Game1 : Game
             int menuWidth = 480;
             int itemHeight = 48;
             int padding = 12;
-            int titleHeight = 80;
-            int menuHeight = titleHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding;
+            int headerHeight = 110;
+            int footerHeight = 32;
+            int menuHeight = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
-            var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+            var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + 48, 110, 30);
             if (backRect.Contains(mouse.Position))
             {
                 if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -1517,7 +1518,7 @@ public class Game1 : Game
 
             for (int i = 0; i < _characters.Count; i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
                 
                 if (deleteRect.Contains(mouse.Position))
@@ -1538,7 +1539,7 @@ public class Game1 : Game
             {
                 for (int i = 0; i < GetCharacterMenuItemCount(); i++)
                 {
-                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                     if (itemRect.Contains(mouse.Position))
                     {
                         _characterIndex = i;
@@ -1686,11 +1687,12 @@ public class Game1 : Game
             int menuWidth = 480;
             int itemHeight = 48;
             int padding = 12;
-            int titleHeight = 80;
-            int menuHeight = titleHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + 40;
+            int headerHeight = 110;
+            int footerHeight = 40;
+            int menuHeight = headerHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + footerHeight;
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
-            var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+            var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + 48, 110, 30);
             if (backRect.Contains(mouse.Position))
             {
                 if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -1707,7 +1709,7 @@ public class Game1 : Game
 
             for (int i = 0; i < _campaigns.Count; i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
                 
                 if (deleteRect.Contains(mouse.Position))
@@ -1728,7 +1730,7 @@ public class Game1 : Game
             {
                 for (int i = 0; i <= _campaigns.Count; i++)
                 {
-                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                     if (itemRect.Contains(mouse.Position))
                     {
                         _campaignIndex = i;
@@ -2917,8 +2919,9 @@ public class Game1 : Game
             int menuWidth = 480;
             int itemHeight = 48;
             int padding = 12;
-            int titleHeight = 80;
-            int menuHeight = titleHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding;
+            int headerHeight = 110;
+            int footerHeight = 32;
+            int menuHeight = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
             _spriteBatch.Draw(_pixel, menuRect, Color.DarkSlateGray * 0.95f);
@@ -2931,7 +2934,7 @@ public class Game1 : Game
                 _spriteBatch.DrawString(_font, title, pos, Color.White);
 
                 // Back button
-                var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+                var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + 48, 110, 30);
                 var mouse = Mouse.GetState();
                 var backColor = backRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, backRect, backColor);
@@ -2947,7 +2950,7 @@ public class Game1 : Game
 
             for (int i = 0; i < GetCharacterMenuItemCount(); i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var col = (i == _characterIndex) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, itemRect, col);
 
@@ -2996,8 +2999,9 @@ public class Game1 : Game
             int menuWidth = 480;
             int itemHeight = 48;
             int padding = 12;
-            int titleHeight = 80;
-            int menuHeight = titleHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + 40;
+            int headerHeight = 110;
+            int footerHeight = 40;
+            int menuHeight = headerHeight + Math.Max(1, _campaigns.Count + 1) * (itemHeight + padding) + padding + footerHeight;
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
             _spriteBatch.Draw(_pixel, menuRect, Color.DarkSlateGray * 0.95f);
@@ -3010,7 +3014,7 @@ public class Game1 : Game
                 _spriteBatch.DrawString(_font, title, pos, Color.White);
                 
                 // Back button
-                var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + padding, 80, 30);
+                var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + 48, 110, 30);
                 var mouse = Mouse.GetState();
                 var backColor = backRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, backRect, backColor);
@@ -3026,7 +3030,7 @@ public class Game1 : Game
 
             for (int i = 0; i < _campaigns.Count; i++)
             {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var col = (i == _campaignIndex) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, itemRect, col);
 
@@ -3053,7 +3057,7 @@ public class Game1 : Game
             // "Create New" option
             {
                 int newIndex = _campaigns.Count;
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + newIndex * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + newIndex * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var col = (newIndex == _campaignIndex) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, itemRect, col);
 
