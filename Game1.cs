@@ -2878,8 +2878,9 @@ public class Game1 : Game
             {
                 string title = "4DND";
                 var titleSize = _font.MeasureString(title);
-                var titlePos = new Vector2(menuRect.X + (menuWidth - titleSize.X) / 2, menuRect.Y + 12);
-                _spriteBatch.DrawString(_font, title, titlePos, Color.White, 0f, Vector2.Zero, 2f, SpriteEffects.None, 0f);
+                const float titleScale = 2f;
+                var titlePos = new Vector2(menuRect.X + (menuWidth - titleSize.X * titleScale) / 2, menuRect.Y + 12);
+                _spriteBatch.DrawString(_font, title, titlePos, Color.White, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
             }
             else
             {
