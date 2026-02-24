@@ -755,9 +755,6 @@ public class Game1 : Game
                 TileType type = _tacticalMap.Get(x, y, 0);
                 if (type == TileType.Empty) continue;
 
-                // Ground grass should stay on the base level only and not bleed into upper-floor views.
-                if (type == TileType.Grass && zLevel > 0) continue;
-
                 Color color = GetTileColor(type, x, y, 0, zLevel);
                 if (color.A == 0) continue;
 
@@ -786,9 +783,6 @@ public class Game1 : Game
             if (cz == 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) continue;
 
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
-
-            // Ground grass should stay on the base level only and not bleed into upper-floor views.
-            if (cell.Value == TileType.Grass && (cz != 0 || zLevel > 0)) continue;
 
             Color color = GetTileColor(cell.Value, cx, cy, cz, zLevel);
             if (color.A == 0) continue;
