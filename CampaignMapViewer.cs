@@ -23,6 +23,7 @@ namespace _4DND
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
+        public bool TravelOccurred { get; set; } = false;
         
         public CampaignMapViewer(SpriteFont font, Texture2D pixel)
         {
@@ -33,6 +34,9 @@ namespace _4DND
         public void Update(Campaign campaign, MouseState mouse, KeyboardState kb, KeyboardState prevKb)
         {
             if (campaign == null) return;
+
+            var vp = new Rectangle(0, 0, 1280, 720); // Default if device not accessible here, but we should use passed one if possible
+            // We'll use a simplified check or pass the viewport if needed
             
             // Pan camera with WASD
             float panSpeed = 5f;
@@ -76,9 +80,39 @@ namespace _4DND
             // Click to select location
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
-                // Convert mouse to world coordinates
-                // (This is simplified - in real game would need proper screen-to-world transform)
+                // Selection logic - find location near mouse
                 _selectedLocation = null;
+                var center = new Vector2(1280 / 2f, 720 / 2f); // Assuming default 720p for logic
+
+                foreach (var loc in campaign.AllLocations)
+                {
+                    if (!loc.IsDiscovered) continue;
+
+                    float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
+                    var pos = HexToScreen(loc.X / scaleDivisor, loc.Y / scaleDivisor, center);
+
+                    if (Vector2.Distance(mouse.Position.ToVector2(), pos) < 30 * _zoom)
+                    {
+                        _selectedLocation = loc;
+                        break;
+                    }
+                }
+
+                // Handle Travel button click if a location is selected
+                if (_selectedLocation != null)
+                {
+                    var panelRect = new Rectangle(10, 10, 350, 250); // Match DrawInfoPanel
+                    var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 150, 30);
+                    if (travelBtn.Contains(mouse.Position))
+                    {
+                        // Travel to selected location
+                        // Convert axial to cartesian miles
+                        campaign.PartyX = (float)Math.Sqrt(3) * (_selectedLocation.X + _selectedLocation.Y / 2f);
+                        campaign.PartyY = 1.5f * _selectedLocation.Y;
+                        TravelOccurred = true;
+                        System.Console.WriteLine($"Traveled to {_selectedLocation.Name} at ({campaign.PartyX:F1}, {campaign.PartyY:F1}) miles");
+                    }
+                }
             }
 
             // Toggle adventure details with J
@@ -101,7 +135,7 @@ namespace _4DND
             sb.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.9f);
             
             // Draw grid
-            DrawGrid(sb, center);
+            DrawGrid(sb, center, campaign);
             
             // Draw regions at current scale
             var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
@@ -116,6 +150,9 @@ namespace _4DND
             {
                 DrawLocation(sb, center, location, campaign.CurrentScale);
             }
+
+            // Draw Party Marker
+            DrawPartyMarker(sb, center, campaign);
             
             // Draw info panel
             DrawInfoPanel(sb, vp, campaign);
@@ -245,26 +282,72 @@ namespace _4DND
             };
         }
         
-        private void DrawGrid(SpriteBatch sb, Vector2 center)
+        private void DrawGrid(SpriteBatch sb, Vector2 center, Campaign campaign)
         {
-            // Simple hex grid visualization
-            int gridRange = 25;
+            // Calculate which hexes are visible based on camera offset
+            float size = _tileSize * _zoom;
+            float focusX = -_cameraOffset.X;
+            float focusY = -_cameraOffset.Y;
             
-            for (int q = -gridRange; q <= gridRange; q++)
-            {
-                int r1 = Math.Max(-gridRange, -q - gridRange);
-                int r2 = Math.Min(gridRange, -q + gridRange);
+            // Reverse of axial to cartesian conversion
+            float r_focus = focusY / (1.5f * size);
+            float q_focus = (focusX / (size * (float)Math.Sqrt(3))) - r_focus / 2f;
 
-                for (int r = r1; r <= r2; r++)
+            int iq_focus = (int)Math.Round(q_focus);
+            int ir_focus = (int)Math.Round(r_focus);
+
+            // Grid range depends on zoom and screen size
+            int gridRangeQ = (int)(center.X / (size * (float)Math.Sqrt(3))) + 2;
+            int gridRangeR = (int)(center.Y / (size * 1.5f)) + 2;
+
+            int hexSizeInMiles = Campaign.GetHexSize(campaign.CurrentScale);
+
+            for (int q = iq_focus - gridRangeQ; q <= iq_focus + gridRangeQ; q++)
+            {
+                for (int r = ir_focus - gridRangeR; r <= ir_focus + gridRangeR; r++)
                 {
                     var pos = HexToScreen(q, r, center);
                     
-                    // Fill center + outline so tiles remain visible on dark backgrounds
-                    int centerSize = Math.Max(2, (int)(_tileSize * _zoom * 0.18f));
-                    sb.Draw(_pixel, new Rectangle((int)pos.X - centerSize / 2, (int)pos.Y - centerSize / 2, centerSize, centerSize), Color.SlateGray * 0.35f);
-                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.LightSlateGray * 0.5f);
+                    // Determine biome at this hex
+                    // We need Cartesian miles for WorldGenerator
+                    // axial (q, r) to cartesian (x, y):
+                    // x = sqrt(3) * (q + r/2)
+                    // y = 1.5 * r
+                    // This is in "hex units". Multiply by hexSizeInMiles to get miles.
+                    float hq = q;
+                    float hr = r;
+                    float x_miles = (float)Math.Sqrt(3) * (hq + hr / 2f) * hexSizeInMiles;
+                    float y_miles = 1.5f * hr * hexSizeInMiles;
+
+                    BiomeType biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
+                    Color biomeColor = WorldGenerator.GetBiomeColor(biome);
+
+                    // Fill hexagon with biome color
+                    DrawHexagonFill(sb, pos, _tileSize * _zoom, biomeColor * 0.6f);
+
+                    // Draw outline
+                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.Black * 0.2f);
                 }
             }
+        }
+
+        private void DrawHexagonFill(SpriteBatch sb, Vector2 center, float size, Color color)
+        {
+            // Approximate hexagon fill with three rectangles to minimize overlap artifacts with alpha
+            // and better fit the hexagonal shape.
+
+            // Central rectangle
+            int cw = (int)(size * 1.732f);
+            int ch = (int)(size);
+            sb.Draw(_pixel, new Rectangle((int)center.X - cw / 2, (int)center.Y - ch / 2, cw, ch), color);
+
+            // Top rectangle
+            int tw = (int)(size * 0.866f);
+            int th = (int)(size * 0.5f);
+            sb.Draw(_pixel, new Rectangle((int)center.X - tw / 2, (int)center.Y - (int)(size), tw, th), color);
+
+            // Bottom rectangle
+            sb.Draw(_pixel, new Rectangle((int)center.X - tw / 2, (int)center.Y + (int)(size * 0.5f), tw, th), color);
         }
         
         private void DrawRegion(SpriteBatch sb, Vector2 center, Region region, MapScale currentScale)
@@ -384,7 +467,7 @@ namespace _4DND
         
         private void DrawInfoPanel(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
-            var panelRect = new Rectangle(10, 10, 350, 200);
+            var panelRect = new Rectangle(10, 10, 350, 250);
             sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
             DrawBorder(sb, panelRect, Color.Gold, 2);
             
@@ -431,9 +514,41 @@ namespace _4DND
             if (_selectedLocation != null)
             {
                 y += 18;
-                sb.DrawString(_font, $"Description: {_selectedLocation.Description}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, $"Selected: {_selectedLocation.Name}", new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                y += 18;
+
+                // Travel Button
+                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 150, 30);
+                var mouse = Mouse.GetState();
+                bool isHovered = travelBtn.Contains(mouse.Position);
+                sb.Draw(_pixel, travelBtn, isHovered ? Color.DarkGreen : Color.Green);
+                sb.DrawString(_font, "Voyager ici", new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
 
+        }
+
+        private void DrawPartyMarker(SpriteBatch sb, Vector2 center, Campaign campaign)
+        {
+            // Convert cartesian miles back to axial for HexToScreen
+            // q = x / sqrt(3) - y / 3
+            // r = 2/3 * y
+            float x = campaign.PartyX;
+            float y = campaign.PartyY;
+            float r = (2f/3f) * y;
+            float q = x / (float)Math.Sqrt(3) - y / 3f;
+
+            float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
+            var pos = HexToScreen(q / scaleDivisor, r / scaleDivisor, center);
+
+            // Draw a party icon (circle with a cross)
+            int size = (int)(24 * _zoom);
+            sb.Draw(_pixel, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), Color.White);
+            sb.Draw(_pixel, new Rectangle((int)pos.X - size/2 + 2, (int)pos.Y - size/2 + 2, size - 4, size - 4), Color.Red);
+
+            if (_font != null)
+            {
+                sb.DrawString(_font, "GROUPE", pos + new Vector2(-20, -30 * _zoom), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            }
         }
         
         private Vector2 HexToScreen(float q, float r, Vector2 center)

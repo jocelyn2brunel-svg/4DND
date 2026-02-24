@@ -152,7 +152,12 @@ namespace _4DND
         
         // Party information
         public List<string> PartyMembers { get; set; } = new(); // Character names
-        
+
+        // World generation
+        public int Seed { get; set; }
+        public float PartyX { get; set; }
+        public float PartyY { get; set; }
+
         // Campaign notes and lore
         public List<string> CampaignNotes { get; set; } = new();
         public Dictionary<string, string> Lore { get; set; } = new();
@@ -221,7 +226,8 @@ namespace _4DND
                 CreatedDate = DateTime.Now,
                 LastPlayedDate = DateTime.Now,
                 SessionCount = 0,
-                CurrentScale = MapScale.Province // Start at province scale (local)
+                CurrentScale = MapScale.Province, // Start at province scale (local)
+                Seed = new Random().Next()
             };
             
             // Create home base (starting at origin)

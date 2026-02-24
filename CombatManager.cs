@@ -991,7 +991,7 @@ public class CombatManager
         if (TacticalMap != null)
         {
             var tileType = TacticalMap.Get(to.X, to.Y, to.Z);
-            if (tileType == TileType.DifficultTerrain)
+            if (tileType == TileType.DifficultTerrain || tileType == TileType.Mud || tileType == TileType.Snow || tileType == TileType.Ice)
                 baseCost += stepCost;
             // Swimming without a swim speed costs 1 extra foot per foot (PHB "Climbing, Swimming, and Crawling")
             else if (tileType == TileType.Water && creature.SwimSpeed == 0)
