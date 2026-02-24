@@ -93,7 +93,7 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, Dash, BonusAction, EndTurn }
+    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
@@ -2240,6 +2240,7 @@ public class Game1 : Game
             var rotateRightButtonRect = GetRotateRightButtonRect(GraphicsDevice.Viewport);
             var combatMoveButtonRect = GetCombatMoveButtonRect(GraphicsDevice.Viewport);
             var combatAttackButtonRect = GetCombatAttackButtonRect(GraphicsDevice.Viewport);
+            var combatCastSpellButtonRect = GetCombatCastSpellButtonRect(GraphicsDevice.Viewport);
             var combatBonusActionButtonRect = GetCombatBonusActionButtonRect(GraphicsDevice.Viewport);
             var combatEndTurnButtonRect = GetCombatEndTurnButtonRect(GraphicsDevice.Viewport);
             var combatRageButtonRect = GetCombatRageButtonRect(GraphicsDevice.Viewport);
@@ -2304,6 +2305,12 @@ public class Game1 : Game
                         else if (combatAttackButtonRect.Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Attack;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter?.Class))
+                        {
+                            _selectedAction = CombatAction.CastSpell;
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
@@ -2559,8 +2566,48 @@ public class Game1 : Game
                                     AddToCombatLog(result.GetMessage());
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
-                                    
+
                                     // Check if combat ended
+                                    if (!_combatManager.InCombat)
+                                    {
+                                        AddToCombatLog("Combat ended!");
+                                        _showCombatUI = false;
+                                        if (_playerCreature != null && _currentCharacter != null)
+                                        {
+                                            _playerCreature.UpdateCharacter(_currentCharacter);
+                                            SaveCharacters();
+                                        }
+                                    }
+                                }
+                                else if (target != null && !currentCombatant.HasAction)
+                                {
+                                    AddToCombatLog("No action available!");
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle cast spell action
+                    if (_selectedAction == CombatAction.CastSpell)
+                    {
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
+                        {
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
+                            {
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
+                                int tz = hovered.Value.z;
+                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
+                                if (target != null && !target.IsPlayer && currentCombatant.HasAction && _currentCharacter != null)
+                                {
+                                    int spellAttackBonus = GetSpellcastingAbilityModifier(_currentCharacter) + _currentCharacter.ProficiencyBonus;
+                                    string damageDice = GetCantripDamageDice(_currentCharacter.Level);
+                                    var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, "Force", _visionSystem);
+                                    AddToCombatLog(result.GetMessage());
+                                    _diceRollAnimation.Start(result.AttackRoll);
+                                    _selectedAction = CombatAction.Move;
+
                                     if (!_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
@@ -2838,7 +2885,7 @@ public class Game1 : Game
         const int buttonWidth = 130;
         const int buttonHeight = 36;
         const int spacing = 10;
-        int totalWidth = (buttonWidth * 4) + (spacing * 3);
+        int totalWidth = (buttonWidth * 5) + (spacing * 4);
         int startX = (viewport.Width - totalWidth) / 2;
         int y = viewport.Height - buttonHeight - 20;
         return new Rectangle(startX, y, buttonWidth, buttonHeight);
@@ -2852,12 +2899,20 @@ public class Game1 : Game
         return new Rectangle(moveRect.Right + spacing, moveRect.Y, buttonWidth, moveRect.Height);
     }
 
-    private Rectangle GetCombatBonusActionButtonRect(Viewport viewport)
+    private Rectangle GetCombatCastSpellButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
         const int spacing = 10;
         var attackRect = GetCombatAttackButtonRect(viewport);
         return new Rectangle(attackRect.Right + spacing, attackRect.Y, buttonWidth, attackRect.Height);
+    }
+
+    private Rectangle GetCombatBonusActionButtonRect(Viewport viewport)
+    {
+        const int buttonWidth = 130;
+        const int spacing = 10;
+        var castSpellRect = GetCombatCastSpellButtonRect(viewport);
+        return new Rectangle(castSpellRect.Right + spacing, castSpellRect.Y, buttonWidth, castSpellRect.Height);
     }
 
     private Rectangle GetCombatEndTurnButtonRect(Viewport viewport)
@@ -3069,6 +3124,7 @@ public class Game1 : Game
 
         if (GetCombatMoveButtonRect(viewport).Contains(mousePosition)
             || GetCombatAttackButtonRect(viewport).Contains(mousePosition)
+            || GetCombatCastSpellButtonRect(viewport).Contains(mousePosition)
             || GetCombatBonusActionButtonRect(viewport).Contains(mousePosition)
             || GetCombatEndTurnButtonRect(viewport).Contains(mousePosition))
             return true;
@@ -3577,6 +3633,14 @@ public class Game1 : Game
                             "Attack",
                             new Color(130, 70, 50),
                             _selectedAction == CombatAction.Attack);
+
+                        bool canCastSpell = IsSpellcasterClass(_currentCharacter?.Class);
+                        DrawCombatActionButton(
+                            GetCombatCastSpellButtonRect(vp),
+                            "Cast Spell",
+                            canCastSpell ? new Color(75, 50, 130) : Color.DarkGray,
+                            _selectedAction == CombatAction.CastSpell);
+
                         DrawCombatActionButton(
                             GetCombatBonusActionButtonRect(vp),
                             "Bonus Action",
@@ -3615,6 +3679,7 @@ public class Game1 : Game
                             {
                                 CombatAction.Move => "Click on an empty tile to move",
                                 CombatAction.Attack => "Click on an enemy to attack",
+                                CombatAction.CastSpell => "Click on an enemy to cast a spell",
                                 _ => ""
                             };
                             var actionTextSize = _font.MeasureString(actionText) * 0.8f;
@@ -3901,6 +3966,23 @@ public class Game1 : Game
         }
         return result + currentLine;
     }
+
+    private static bool IsSpellcasterClass(string className) =>
+        className is "Bard" or "Cleric" or "Druid" or "Paladin" or "Ranger" or "Sorcerer" or "Warlock" or "Wizard";
+
+    private static int GetSpellcastingAbilityModifier(Character character)
+    {
+        int score = character.Class switch
+        {
+            "Wizard" => character.Intelligence,
+            "Cleric" or "Druid" or "Ranger" => character.Wisdom,
+            _ => character.Charisma
+        };
+        return character.GetAbilityModifier(score);
+    }
+
+    private static string GetCantripDamageDice(int level) =>
+        level >= 17 ? "4d10" : level >= 11 ? "3d10" : level >= 5 ? "2d10" : "1d10";
 
     private string BuildEnemyExamineText(Creature creature)
     {

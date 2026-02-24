@@ -1227,10 +1227,84 @@ public class CombatManager
 
             attacker.HasAttackedThisRound = true;
         }
-        
+
         return result;
     }
-    
+
+    /// <summary>
+    /// Makes a spell attack roll (ranged spell attack) following D&amp;D 5e rules.
+    /// Uses the provided spell attack bonus and damage dice instead of the creature's weapon stats.
+    /// </summary>
+    public AttackResult MakeSpellAttack(Creature attacker, Creature target, int spellAttackBonus, string damageDice, string damageType = "Force", VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult
+        {
+            Attacker = attacker,
+            Target = target
+        };
+
+        if (!attacker.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        attacker.HasAction = false;
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = attacker.IsHidden;
+        bool hasDisadvantage = !attackerCanSee;
+
+        attacker.IsHidden = false;
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        if (visionSystem != null && attacker.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
+            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            "Spell Attack",
+            spellAttackBonus,
+            target.ArmorClass,
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0
+        );
+
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            result.Damage = RollDamage(damageDice, 0, result.IsCritical);
+            result.DamageType = damageType;
+            target.TakeDamage(result.Damage, result.DamageType);
+            attacker.HasAttackedThisRound = true;
+        }
+
+        return result;
+    }
+
     public int RollD20()
     {
         return _random.Next(1, 21);
