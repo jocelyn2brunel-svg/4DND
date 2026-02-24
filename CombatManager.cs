@@ -721,8 +721,11 @@ public class CombatManager
 
     private IEnumerable<TacticalMapNode> GetNeighbors(Creature creature, TacticalMapNode node)
     {
-        int minDz = creature.CanFly ? -1 : 0;
-        int maxDz = creature.CanFly ? 1 : 0;
+        // Flying creatures and climbing/swimming creatures can all move in the vertical axis.
+        // CanOccupySpace filters out Empty (air) tiles for non-flyers, so only accessible
+        // tiles at a different Z level (e.g. Climbable) are ever yielded for non-flyers.
+        int minDz = -1;
+        int maxDz = 1;
 
         for (int dx = -1; dx <= 1; dx++)
         {
@@ -789,9 +792,27 @@ public class CombatManager
         // diagonalStepsTaken tracks how many diagonals have been taken so far this turn.
         bool isDiagonal = IsDiagonalStep(from, to);
         int baseCost = isDiagonal && diagonalStepsTaken % 2 == 1 ? 10 : 5;
+        // Keep the original step cost so every "1 extra foot per foot" condition adds additively:
+        // prone + difficult terrain = 5 + 5 + 5 = 15 ft (3×), not 5 → 10 → 20 ft (4×).
+        int stepCost = baseCost;
 
-        if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
-            baseCost *= 2;
+        if (TacticalMap != null)
+        {
+            var tileType = TacticalMap.Get(to.X, to.Y, to.Z);
+            if (tileType == TileType.DifficultTerrain)
+                baseCost += stepCost;
+            // Swimming without a swim speed costs 1 extra foot per foot (PHB "Climbing, Swimming, and Crawling")
+            else if (tileType == TileType.Water && creature.SwimSpeed == 0)
+                baseCost += stepCost;
+            // Climbing without a climb speed costs 1 extra foot per foot
+            else if (tileType == TileType.Climbable && creature.ClimbSpeed == 0)
+                baseCost += stepCost;
+        }
+
+        // Prone creatures must crawl: 1 extra foot per foot (PHB "Climbing, Swimming, and Crawling").
+        // Stacks additively with terrain costs (e.g. prone + difficult terrain = 3× base).
+        if (creature.Conditions.HasCondition(Condition.Prone))
+            baseCost += stepCost;
 
         // Another creature's space counts as difficult terrain (PHB "Moving Around Other Creatures").
         // Apply only when transiting through the space, not when squeezing (already doubled below).

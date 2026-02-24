@@ -235,7 +235,13 @@ public class Creature
     public bool CanFly { get; set; } = false;
     public int FlySpeed { get; set; } = 0;
     public bool IsFlying { get; set; } = false;
-    
+
+    // Climbing speed (0 = no special climbing speed; movement costs double in climbing terrain)
+    public int ClimbSpeed { get; set; } = 0;
+
+    // Swimming speed (0 = no special swimming speed; movement costs double in water)
+    public int SwimSpeed { get; set; } = 0;
+
     // Stats
     public int MaxHP { get; set; }
     public int CurrentHP { get; set; }

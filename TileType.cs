@@ -7,5 +7,6 @@ public enum TileType
     Floor,
     Grass,
     DifficultTerrain,
+    Climbable,
     Wall
 }
