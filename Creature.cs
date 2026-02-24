@@ -248,6 +248,7 @@ public class Creature
     public int SwimSpeed { get; set; } = 0;
 
     // Stats
+    public int Level { get; set; } = 1;
     public int MaxHP { get; set; }
     public int CurrentHP { get; set; }
     public int ArmorClass { get; set; }
@@ -334,7 +335,7 @@ public class Creature
         get
         {
             int wisdomMod = GetAbilityModifier(Wisdom);
-            int profBonus = IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
+            int profBonus = DndMath.GetProficiencyBonus(Level);
             int keenBonus = HasKeenSenses ? 5 : 0; // PHB p.175: advantage on perception = +5 to passive
             return 10 + wisdomMod + (PerceptionProficiency ? profBonus : 0) + keenBonus;
         }
@@ -1033,6 +1034,7 @@ public class Creature
             VisualX = x,
             VisualY = y,
             VisualZ = z,
+            Level = character.Level,
             MaxHP = character.MaxHP,
             CurrentHP = character.CurrentHP,
             ArmorClass = character.ArmorClass,

@@ -1593,7 +1593,7 @@ public class CombatManager
             creature.HasAction = false;
 
         int dexMod = DndMath.GetAbilityModifier(creature.Dexterity);
-        int profBonus = creature.IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
+        int profBonus = DndMath.GetProficiencyBonus(creature.Level);
         int stealthBonus = dexMod + (creature.StealthProficiency ? profBonus : 0);
         int roll = _random.Next(1, 21);
         int stealthResult = roll + stealthBonus;
