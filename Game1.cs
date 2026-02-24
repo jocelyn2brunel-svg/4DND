@@ -1267,19 +1267,22 @@ public class Game1 : Game
 
     private void Draw3DTileOutline(int x, int y, int z, Color color, int width = 1, int height = 1)
     {
-        const float halfTile = 0.5f;
-        const float elevation = 0.07f;
+        const float thickness = 0.07f;
+        const float elevation = 0.091f;
         float zPos = z + elevation;
 
-        Vector3 topLeft = new Vector3(x - halfTile, y - halfTile, zPos);
-        Vector3 topRight = new Vector3(x + width - halfTile, y - halfTile, zPos);
-        Vector3 bottomRight = new Vector3(x + width - halfTile, y + height - halfTile, zPos);
-        Vector3 bottomLeft = new Vector3(x - halfTile, y + height - halfTile, zPos);
+        float left = x - 0.5f;
+        float right = left + width;
+        float top = y - 0.5f;
+        float bottom = top + height;
+        float horizontalLength = width + thickness;
+        float verticalLength = height + thickness;
 
-        Draw3DLine(topLeft, topRight, color);
-        Draw3DLine(topRight, bottomRight, color);
-        Draw3DLine(bottomRight, bottomLeft, color);
-        Draw3DLine(bottomLeft, topLeft, color);
+        // Match movement perimeter outline thickness for consistent visual language.
+        Draw3DQuad(Matrix.CreateScale(horizontalLength, thickness, 1.0f) * Matrix.CreateTranslation((left + right) * 0.5f, top, zPos), color);
+        Draw3DQuad(Matrix.CreateScale(horizontalLength, thickness, 1.0f) * Matrix.CreateTranslation((left + right) * 0.5f, bottom, zPos), color);
+        Draw3DQuad(Matrix.CreateScale(thickness, verticalLength, 1.0f) * Matrix.CreateTranslation(left, (top + bottom) * 0.5f, zPos), color);
+        Draw3DQuad(Matrix.CreateScale(thickness, verticalLength, 1.0f) * Matrix.CreateTranslation(right, (top + bottom) * 0.5f, zPos), color);
     }
 
     private void Draw3DCreature(Creature creature)
