@@ -565,6 +565,12 @@ public class CombatManager
             if (hostile.Conditions.HasCondition(Condition.Incapacitated)) continue;
             if (hostile.Conditions.HasCondition(Condition.Unconscious)) continue;
 
+            // PHB "Opportunity Attacks": you can only react to a creature you can see.
+            bool hostileCanSeeMover = visionSystem != null
+                ? visionSystem.CanSee(hostile, mover)
+                : !hostile.IsBlinded() && !mover.Conditions.HasCondition(Condition.Invisible);
+            if (!hostileCanSeeMover) continue;
+
             bool inRangeBefore = IsInMeleeRangeAt(mover.Size, from.X, from.Y, from.Z, hostile);
             bool inRangeAfter  = IsInMeleeRangeAt(mover.Size, to.X,   to.Y,   to.Z,   hostile);
 
