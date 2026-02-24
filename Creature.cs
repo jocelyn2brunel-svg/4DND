@@ -346,6 +346,9 @@ public class Creature
     /// <summary>Damage types this creature isimmune to (takes 0 damage).</summary>
     public HashSet<DamageType> DamageImmunities { get; set; } = new();
 
+    /// <summary>Damage types this creature is resistant to (takes half damage).</summary>
+    public HashSet<DamageType> DamageResistances { get; set; } = new();
+
     /// <summary>Damage types this creature is vulnerable to (takes double damage).</summary>
     public HashSet<DamageType> DamageVulnerabilities { get; set; } = new();
 
@@ -531,13 +534,16 @@ public class Creature
         if (damageType != DamageType.None && DamageImmunities.Contains(damageType))
             return;
 
-        // Vulnerability: double damage
+        // Resistance: half damage (PHB "Damage Resistance").
+        // Multiple sources of resistance still count as only one instance.
+        bool hasResistance = damageType != DamageType.None && DamageResistances.Contains(damageType);
+        bool hasRageResistance = IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing);
+        if (hasResistance || hasRageResistance)
+            amount /= 2;
+
+        // Vulnerability: double damage (PHB "Damage Vulnerability").
         if (damageType != DamageType.None && DamageVulnerabilities.Contains(damageType))
             amount *= 2;
-
-        // Barbarian Rage resistance: Resistance to bludgeoning, piercing, and slashing damage.
-        if (IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing))
-            amount /= 2;
 
         // Temporary Hit Points absorb damage first (PHB "Temporary Hit Points").
         // Damage depletes TempHP first; any leftover carries over to normal hit points.
