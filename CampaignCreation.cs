@@ -126,6 +126,9 @@ namespace _4DND
             _selectedMiddleIndex = 0;
             _selectedEndingIndex = 0;
             _isTyping = false;
+            // Debounce mouse input when entering the creation screen so the click
+            // used to open it doesn't immediately select a mode.
+            _prevMouse = Mouse.GetState();
         }
         
         /// <summary>
