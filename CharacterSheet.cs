@@ -33,9 +33,11 @@ public class CharacterSheet
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
     private Rectangle _grappleActionRect;
+    private Rectangle _shoveActionRect;
 
     public bool PlayLuteRequested { get; set; }
     public bool GrappleRequested { get; set; }
+    public bool ShoveRequested { get; set; }
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -102,6 +104,11 @@ public class CharacterSheet
             if (!_showItemContextMenu && _grappleActionRect.Contains(_mousePosition))
             {
                 GrappleRequested = true;
+            }
+
+            if (!_showItemContextMenu && _shoveActionRect.Contains(_mousePosition))
+            {
+                ShoveRequested = true;
             }
 
             if (_showItemContextMenu)
@@ -674,7 +681,7 @@ public class CharacterSheet
         int entryHeight = 20;
         int headerHeight = 45;
         int offhandCount = c.InventoryData.OffhandWeapon != null ? 1 : 0;
-        int entryCount = Math.Max(4, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 3);
+        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 4);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -754,6 +761,16 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, FormatModifier(grappleBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString("Contested (Ath/Acr)"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             RegisterTooltip(_grappleActionRect, $"Lutte: jet de Force (Athlétisme) {FormatModifier(grappleBonus)} contré par Force (Athlétisme) ou Dextérité (Acrobaties) de la cible.\nCible à portée de mêlée, taille max: une catégorie de plus que vous.\nNécessite une main libre. Succès: cible agrippée (vitesse 0).\n[Clic gauche pour lancer]");
+            entryY += entryHeight;
+
+            int shoveBonus = c.GetSkillBonus("Athletics", out _);
+            _shoveActionRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+            if (_shoveActionRect.Contains(_mousePosition))
+                spriteBatch.Draw(_pixel, _shoveActionRect, new Color(180, 210, 255, 120));
+            spriteBatch.DrawString(_font, "Shove", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, FormatModifier(shoveBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, SafeString("Prone or Push 5ft"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            RegisterTooltip(_shoveActionRect, $"Bousculade: jet de Force (Athlétisme) {FormatModifier(shoveBonus)} contré par Force (Athlétisme) ou Dextérité (Acrobaties) de la cible.\nCible à portée de mêlée, taille max: une catégorie de plus que vous.\nSuccès: cible renversée (à terre) OU repoussée de 5 ft.\n[Clic gauche pour lancer]");
         }
         
         return height;
