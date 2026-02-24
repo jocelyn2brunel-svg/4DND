@@ -251,12 +251,20 @@ public class Character
     {
         if (WeaponProficiencies == null) return false;
 
+        var item = ItemDatabase.GetItem(weaponName);
         foreach (var prof in WeaponProficiencies)
         {
-            if (prof.Equals(weaponName, StringComparison.OrdinalIgnoreCase) ||
-                prof.Equals("Simple weapons", StringComparison.OrdinalIgnoreCase) ||
-                prof.Equals("Martial weapons", StringComparison.OrdinalIgnoreCase))
+            if (prof.Equals(weaponName, StringComparison.OrdinalIgnoreCase))
                 return true;
+            if (item != null)
+            {
+                if (item.WeaponCategory == WeaponType.Simple &&
+                    prof.Equals("Simple weapons", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (item.WeaponCategory == WeaponType.Martial &&
+                    prof.Equals("Martial weapons", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
         }
         return false;
     }

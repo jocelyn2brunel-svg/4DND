@@ -677,13 +677,30 @@ public class CharacterSheet
             if (c.InventoryData.EquippedWeapon != null)
             {
                 string weapon = c.InventoryData.EquippedWeapon;
-                int atkBonus = c.GetAbilityModifier(c.Strength) + c.ProficiencyBonus;
+                var weaponItem = ItemDatabase.GetItem(weapon);
+                int abilityMod = weaponItem != null && weaponItem.IsFinesse
+                    ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
+                    : weaponItem != null && weaponItem.IsRanged
+                        ? c.GetAbilityModifier(c.Dexterity)
+                        : c.GetAbilityModifier(c.Strength);
+                int profBonus = c.IsProficientWithWeapon(weapon) ? c.ProficiencyBonus : 0;
+                int atkBonus = abilityMod + profBonus;
                 string damage = GetWeaponDamage(weapon);
                 spriteBatch.DrawString(_font, SafeString(weapon), new Vector2(nameCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(_font, FormatModifier(atkBonus), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(_font, SafeString(damage), new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), BuildWeaponTooltip(weapon, atkBonus, damage));
+                entryY += entryHeight;
             }
+
+            // Unarmed strike is always available (D&D 5E PHB, Melee Attacks)
+            int strMod = c.GetAbilityModifier(c.Strength);
+            int unarmedBonus = strMod + c.ProficiencyBonus;
+            string unarmedDamage = $"1{FormatModifier(strMod)} Bludgeoning";
+            spriteBatch.DrawString(_font, "Unarmed Strike", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, FormatModifier(unarmedBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, SafeString(unarmedDamage), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), $"Frappe à mains nues: bonus {FormatModifier(unarmedBonus)}, dégâts 1{FormatModifier(strMod)} contondants, portée 5 ft.");
         }
         
         return height;
@@ -1040,7 +1057,7 @@ public class CharacterSheet
     private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage) {
         var item = ItemDatabase.GetItem(weaponName);
         if (item == null) return weaponName;
-        string rangeInfo = item.IsRanged ? $"Portée: {item.Range}/{(item.LongRange > 0 ? item.LongRange : item.Range * 3)} ft." : "Attaque de mêlée.";
+        string rangeInfo = item.IsRanged ? $"Portée: {item.Range}/{(item.LongRange > 0 ? item.LongRange : item.Range * 3)} ft." : "Portée de mêlée: 5 ft.";
         return $"{weaponName} (équipée)\nBonus: {FormatModifier(attackBonus)}\nDégâts: {damage}\n{rangeInfo}";
     }
 
