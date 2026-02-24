@@ -1083,12 +1083,19 @@ public class Game1 : Game
 
     private void Draw3DTile(int x, int y, int z, Color color)
     {
-        _basicEffect.World = Matrix.CreateTranslation(x, y, z);
+        Draw3DQuad(Matrix.CreateTranslation(x, y, z), color, true);
+    }
+
+    private void Draw3DQuad(Matrix world, Color color, bool lighting = false)
+    {
+        _basicEffect.World = world;
         _basicEffect.DiffuseColor = color.ToVector3();
         _basicEffect.Alpha = color.A / 255f;
+        _basicEffect.LightingEnabled = lighting;
         GraphicsDevice.SetVertexBuffer(_tileVertexBuffer);
         GraphicsDevice.Indices = _tileIndexBuffer;
         foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 2); }
+        _basicEffect.LightingEnabled = true;
     }
 
     private void Draw3DCreatures()
@@ -1148,34 +1155,34 @@ public class Game1 : Game
         if (reachableTiles.Count == 0)
             return;
 
-        Color perimeterColor = new Color(0, 240, 255);
-        const float halfTile = 0.5f;
-        const float zOffset = 0.09f;
+        Color perimeterColor = Color.LimeGreen;
+        const float thickness = 0.07f;
+        const float zOffset = 0.091f; // Slightly higher than grid to avoid z-fighting
+        float z = _currentViewLevel + zOffset;
 
         foreach (var tile in reachableTiles)
         {
-            float z = _currentViewLevel + zOffset;
             int x = tile.x;
             int y = tile.y;
 
             if (!reachableTiles.Contains((x, y + 1)))
             {
-                Draw3DLine(new Vector3(x - halfTile, y + halfTile, z), new Vector3(x + halfTile, y + halfTile, z), perimeterColor);
+                Draw3DQuad(Matrix.CreateScale(1.0f + thickness, thickness, 1.0f) * Matrix.CreateTranslation(x, y + 0.5f, z), perimeterColor);
             }
 
             if (!reachableTiles.Contains((x, y - 1)))
             {
-                Draw3DLine(new Vector3(x + halfTile, y - halfTile, z), new Vector3(x - halfTile, y - halfTile, z), perimeterColor);
+                Draw3DQuad(Matrix.CreateScale(1.0f + thickness, thickness, 1.0f) * Matrix.CreateTranslation(x, y - 0.5f, z), perimeterColor);
             }
 
             if (!reachableTiles.Contains((x + 1, y)))
             {
-                Draw3DLine(new Vector3(x + halfTile, y + halfTile, z), new Vector3(x + halfTile, y - halfTile, z), perimeterColor);
+                Draw3DQuad(Matrix.CreateScale(thickness, 1.0f + thickness, 1.0f) * Matrix.CreateTranslation(x + 0.5f, y, z), perimeterColor);
             }
 
             if (!reachableTiles.Contains((x - 1, y)))
             {
-                Draw3DLine(new Vector3(x - halfTile, y - halfTile, z), new Vector3(x - halfTile, y + halfTile, z), perimeterColor);
+                Draw3DQuad(Matrix.CreateScale(thickness, 1.0f + thickness, 1.0f) * Matrix.CreateTranslation(x - 0.5f, y, z), perimeterColor);
             }
         }
     }
@@ -1201,7 +1208,7 @@ public class Game1 : Game
         var offset = SizeHelper.GetCenterOffset(_playerCreature.Size);
         Vector3 previousPoint = new Vector3(_playerCreature.VisualX + offset.X, _playerCreature.VisualY + offset.Y, _playerCreature.VisualZ + zOffset);
 
-        Color activePathColor = new Color(0, 240, 255); // Blue for current movement
+        Color activePathColor = Color.LimeGreen; // Green for current movement
 
         // 1. Draw through remaining waypoints (current movement in progress)
         var waypoints = _playerCreature.GetRemainingWaypoints();
@@ -1219,7 +1226,7 @@ public class Game1 : Game
             if (path != null && path.Count >= 2)
             {
                 Color hoverPathColor = (_combatManager.InCombat && !_combatManager.CanMove(_playerCreature, targetX, targetY, targetZ))
-                    ? new Color(255, 165, 0) // Orange if out of movement
+                    ? Color.Orange // Orange if out of movement
                     : activePathColor;
 
                 for (int i = 1; i < path.Count; i++)
@@ -3355,7 +3362,7 @@ public class Game1 : Game
                     var actionColor = currentCombatant.HasAction ? Color.Green : Color.DarkGray;
                     var bonusColor = currentCombatant.HasBonusAction ? Color.Green : Color.DarkGray;
                     var reactionColor = currentCombatant.HasReaction ? Color.Green : Color.DarkGray;
-                    var movementColor = currentCombatant.MovementRemaining > 0 ? Color.Cyan : Color.DarkGray;
+                    var movementColor = currentCombatant.MovementRemaining > 0 ? Color.LimeGreen : Color.DarkGray;
                     
                     _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, SafeString(actionIcon), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
