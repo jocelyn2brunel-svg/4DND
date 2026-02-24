@@ -504,10 +504,10 @@ public class Creature
     public int BardicInspirationUsesRemaining { get; set; } = 0;
     /// <summary>Maximum Bardic Inspiration uses (= Charisma modifier, minimum 1).</summary>
     public int BardicInspirationMax { get; set; } = 0;
-    /// <summary>Remaining spell slots per level (index 0 = 1st-level slots).</summary>
-    public int[] SpellSlotsRemaining { get; set; } = new int[5];
-    /// <summary>Maximum spell slots per level at the bard's current level.</summary>
-    public int[] SpellSlotsMax { get; set; } = new int[5];
+    /// <summary>Remaining spell slots per level (index 0 = 1st-level slots … index 8 = 9th-level slots).</summary>
+    public int[] SpellSlotsRemaining { get; set; } = new int[9];
+    /// <summary>Maximum spell slots per level (indices 0–8 for spell levels 1–9).</summary>
+    public int[] SpellSlotsMax { get; set; } = new int[9];
 
     // Survival / Nourishment
     /// <summary>Current exhaustion level (0 = none, 1–5 = cumulative penalties, 6 = death).</summary>

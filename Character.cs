@@ -94,10 +94,10 @@ public class Character
     public int BardicInspirationUsesRemaining { get; set; } = 0;
     /// <summary>Maximum number of Bardic Inspiration uses (= Charisma modifier, minimum 1).</summary>
     public int BardicInspirationMax { get; set; } = 0;
-    /// <summary>Remaining spell slots indexed by spell level (index 0 = 1st level, etc.).</summary>
-    public int[] SpellSlotsRemaining { get; set; } = new int[5];
-    /// <summary>Maximum spell slots per level at current character level.</summary>
-    public int[] SpellSlotsMax { get; set; } = new int[5];
+    /// <summary>Remaining spell slots indexed by spell level (index 0 = 1st-level slots … index 8 = 9th-level slots).</summary>
+    public int[] SpellSlotsRemaining { get; set; } = new int[9];
+    /// <summary>Maximum spell slots per level at current character level (indices 0–8 for spell levels 1–9).</summary>
+    public int[] SpellSlotsMax { get; set; } = new int[9];
     /// <summary>Number of cantrips the bard knows.</summary>
     public int CantripsKnown { get; set; } = 0;
     /// <summary>Number of spells the bard knows (excluding cantrips).</summary>
@@ -233,7 +233,20 @@ public class Character
             _ => 0
         };
     }
-    
+
+    /// <summary>
+    /// Returns true if this character can cast a spell of the given level.
+    /// Cantrips (level 0) are always available. For levelled spells, the character
+    /// must meet the minimum character level and have a remaining slot of that level.
+    /// </summary>
+    public bool CanCastSpellLevel(int spellLevel)
+    {
+        if (spellLevel == 0) return true;
+        if (spellLevel < 0 || spellLevel > 9) return false;
+        if (Level < Spell.MinimumCharacterLevel(spellLevel)) return false;
+        return SpellSlotsRemaining[spellLevel - 1] > 0;
+    }
+
     public bool IsProficientWithArmor(string armorType)
     {
         if (ArmorProficiencies == null) return false;

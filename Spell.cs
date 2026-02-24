@@ -70,8 +70,31 @@ public enum SpellEffect
 public class Spell
 {
     public string Name { get; set; } = "";
+    /// <summary>Spell level from 0 (cantrip) to 9.</summary>
     public int Level { get; set; }
+    /// <summary>True for cantrips (level 0), which require no spell slot and can be cast at will.</summary>
+    public bool IsCantrip => Level == 0;
     public string School { get; set; } = "";
+
+    /// <summary>
+    /// Returns the minimum character level required to cast a spell of the given level,
+    /// as per D&amp;D 5e rules. Spell level and character level do not correspond directly:
+    /// a 9th-level spell requires a character of at least 17th level, not 9th.
+    /// </summary>
+    public static int MinimumCharacterLevel(int spellLevel) => spellLevel switch
+    {
+        0 => 1,
+        1 => 1,
+        2 => 3,
+        3 => 5,
+        4 => 7,
+        5 => 9,
+        6 => 11,
+        7 => 13,
+        8 => 15,
+        9 => 17,
+        _ => throw new ArgumentOutOfRangeException(nameof(spellLevel), "Spell level must be between 0 and 9.")
+    };
     public bool RequiresConcentration { get; set; }
     public int Range { get; set; } // In feet
     public int Duration { get; set; } // In rounds, 0 = instantaneous
