@@ -1240,6 +1240,125 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Makes a ranged weapon attack following D&amp;D 5e ranged attack rules.
+    /// <para><b>Range:</b> Cannot attack beyond long range. Attack rolls have disadvantage
+    /// when the target is beyond normal range but within long range.</para>
+    /// <para><b>Ranged Attacks in Close Combat:</b> Attack rolls have disadvantage if the
+    /// attacker is within 5 feet of a hostile creature that can see them and isn't incapacitated.</para>
+    /// </summary>
+    /// <param name="attacker">The attacking creature.</param>
+    /// <param name="target">The target creature.</param>
+    /// <param name="visionSystem">Optional vision system for line-of-sight checks.</param>
+    public AttackResult MakeRangedAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult
+        {
+            Attacker = attacker,
+            Target = target
+        };
+
+        if (!attacker.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
+        int normalRange = attacker.NormalRange;
+        int longRange = attacker.LongRange > 0 ? attacker.LongRange : normalRange;
+
+        // Cannot attack beyond long range
+        if (normalRange > 0 && distanceFeet > longRange)
+        {
+            result.IsHit = false;
+            TurnMessages.Add($"{attacker.Name} cannot attack {target.Name} — target is beyond long range ({distanceFeet} ft. / max {longRange} ft.).");
+            return result;
+        }
+
+        attacker.HasAction = false;
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage    = attacker.IsHidden;
+        bool hasDisadvantage = !attackerCanSee;
+
+        attacker.IsHidden = false;
+
+        // Help action: a friendly creature distracted this target, granting advantage on this attack.
+        if (target.IsBeingHelped)
+        {
+            hasAdvantage = true;
+            target.IsBeingHelped = false;
+        }
+
+        // Beyond normal range: attack roll has disadvantage (PHB "Range")
+        if (normalRange > 0 && distanceFeet > normalRange)
+            hasDisadvantage = true;
+
+        // Ranged attacks in close combat: disadvantage if a hostile within 5 ft. can see the attacker
+        // and isn't incapacitated (PHB "Ranged Attacks in Close Combat")
+        bool hostileAdjacent = _combatants.Any(c =>
+            c != attacker &&
+            c.IsPlayer != attacker.IsPlayer &&
+            c.IsAlive() &&
+            !c.Conditions.HasCondition(Condition.Incapacitated) &&
+            CalculateDistance(c.X, c.Y, c.Z, attacker.X, attacker.Y, attacker.Z) <= 1 &&
+            (visionSystem != null
+                ? visionSystem.CanSee(c, attacker)
+                : !c.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible)));
+
+        if (hostileAdjacent)
+            hasDisadvantage = true;
+
+        if (visionSystem != null && attacker.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
+            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        if (attacker.HasPackTactics)
+        {
+            bool allyNearTarget = _combatants.Any(c =>
+                c != attacker &&
+                c.IsPlayer == attacker.IsPlayer &&
+                c.IsAlive() &&
+                !c.Conditions.HasCondition(Condition.Incapacitated) &&
+                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+            if (allyNearTarget) hasAdvantage = true;
+        }
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attacker.AttackBonus,
+            target.ArmorClass,
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0);
+
+        result.AttackRoll       = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit       = attackCheck.Total;
+        result.HasAdvantage     = attackCheck.HasAdvantage;
+        result.HasDisadvantage  = attackCheck.HasDisadvantage;
+        result.IsCritical       = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
+        result.IsHit            = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
+            result.DamageType = attacker.CurrentDamageType;
+            target.TakeDamage(result.Damage, result.DamageType);
+            attacker.HasAttackedThisRound = true;
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Makes a spell attack roll (ranged spell attack) following D&amp;D 5e rules.
     /// Uses the provided spell attack bonus and damage dice instead of the creature's weapon stats.
     /// </summary>
@@ -1290,6 +1409,21 @@ public class CombatManager
             if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
+
+        // Ranged attacks in close combat: disadvantage if a hostile within 5 ft. can see the attacker
+        // and isn't incapacitated (PHB "Ranged Attacks in Close Combat")
+        bool spellHostileAdjacent = _combatants.Any(c =>
+            c != attacker &&
+            c.IsPlayer != attacker.IsPlayer &&
+            c.IsAlive() &&
+            !c.Conditions.HasCondition(Condition.Incapacitated) &&
+            CalculateDistance(c.X, c.Y, c.Z, attacker.X, attacker.Y, attacker.Z) <= 1 &&
+            (visionSystem != null
+                ? visionSystem.CanSee(c, attacker)
+                : !c.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible)));
+
+        if (spellHostileAdjacent)
+            hasDisadvantage = true;
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             "Spell Attack",

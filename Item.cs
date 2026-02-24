@@ -43,7 +43,8 @@ public class Item
     public bool IsVersatile { get; set; }
     public string VersatileDamageDice { get; set; } = "";
     public bool IsRanged { get; set; }
-    public int Range { get; set; }
+    public int Range { get; set; }      // Normal range in feet
+    public int LongRange { get; set; }  // Maximum range in feet (0 = Range * 3 for most weapons)
     
     // Armor properties
     public ArmorType ArmorCategory { get; set; }

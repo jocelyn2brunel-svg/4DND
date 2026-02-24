@@ -288,6 +288,19 @@ public class Creature
     public int DamageBonus { get; set; } = 0;
     public string CurrentDamageType { get; set; } = "Bludgeoning";
     public bool IsMeleeAttack { get; set; } = true;
+
+    /// <summary>
+    /// Normal range for ranged attacks, in feet. 0 means no ranged attack.
+    /// Attack rolls against targets beyond normal range (but within long range) have disadvantage.
+    /// </summary>
+    public int NormalRange { get; set; } = 0;
+
+    /// <summary>
+    /// Maximum (long) range for ranged attacks, in feet.
+    /// 0 means equal to NormalRange (single-range attack, e.g. a spell).
+    /// Attacks beyond this range are impossible.
+    /// </summary>
+    public int LongRange { get; set; } = 0;
     
     // Vision properties
     public int DarkvisionRange { get; set; } = 0;  // In feet

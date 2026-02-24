@@ -1040,7 +1040,7 @@ public class CharacterSheet
     private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage) {
         var item = ItemDatabase.GetItem(weaponName);
         if (item == null) return weaponName;
-        string rangeInfo = item.IsRanged ? $"Portée: {item.Range}/{item.Range * 3} ft." : "Attaque de mêlée.";
+        string rangeInfo = item.IsRanged ? $"Portée: {item.Range}/{(item.LongRange > 0 ? item.LongRange : item.Range * 3)} ft." : "Attaque de mêlée.";
         return $"{weaponName} (équipée)\nBonus: {FormatModifier(attackBonus)}\nDégâts: {damage}\n{rangeInfo}";
     }
 
