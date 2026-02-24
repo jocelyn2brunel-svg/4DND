@@ -1390,6 +1390,34 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Drops the creature prone. This is free and requires no movement or action.
+    /// </summary>
+    public void DropProne(Creature creature)
+    {
+        creature.Conditions = creature.Conditions.AddCondition(Condition.Prone);
+        TurnMessages.Add($"{creature.Name} drops prone.");
+    }
+
+    /// <summary>
+    /// Stands up from prone, spending movement equal to half the creature's speed.
+    /// Cannot stand up if movement remaining is less than half speed, or if speed is 0.
+    /// </summary>
+    /// <returns>True if the creature stood up; false if it lacks the movement to do so.</returns>
+    public bool StandUp(Creature creature)
+    {
+        if (!creature.Conditions.HasCondition(Condition.Prone))
+            return false;
+
+        if (creature.Speed == 0 || creature.MovementRemaining < creature.Speed / 2)
+            return false;
+
+        creature.MovementRemaining -= creature.Speed / 2;
+        creature.Conditions = creature.Conditions.RemoveCondition(Condition.Prone);
+        TurnMessages.Add($"{creature.Name} stands up. ({creature.Speed / 2}ft movement spent)");
+        return true;
+    }
+
+    /// <summary>
     /// Takes the Disengage action: the creature's movement no longer provokes opportunity
     /// attacks for the rest of the current turn.
     /// Nimble Escape allows taking this as a bonus action (<paramref name="isBonusAction"/> = true).
