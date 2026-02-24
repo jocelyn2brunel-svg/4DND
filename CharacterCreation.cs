@@ -1016,7 +1016,7 @@ public class CharacterCreation
             spriteBatch.Draw(_pixel, nextRect, nextColor);
             DrawBorder(spriteBatch, nextRect, 2, Color.LightGreen);
             
-            string nextText = _createStep == 4 ? "? Create!" : "Next ?";
+            string nextText = _createStep == 4 ? "? Create!" : "Next >";
             var nextTextSize = _font.MeasureString(nextText);
             spriteBatch.DrawString(_font, nextText, new Vector2(nextRect.X + (nextRect.Width - nextTextSize.X * 0.7f) / 2, nextRect.Y + (nextRect.Height - nextTextSize.Y * 0.7f) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
@@ -1025,7 +1025,7 @@ public class CharacterCreation
             // Disabled next button
             spriteBatch.Draw(_pixel, nextRect, Color.DarkGray * 0.5f);
             DrawBorder(spriteBatch, nextRect, 2, Color.Gray * 0.3f);
-            var nextText = "Next ?";
+            var nextText = "Next >";
             var nextTextSize = _font.MeasureString(nextText);
             spriteBatch.DrawString(_font, nextText, new Vector2(nextRect.X + (nextRect.Width - nextTextSize.X * 0.7f) / 2, nextRect.Y + (nextRect.Height - nextTextSize.Y * 0.7f) / 2), Color.Gray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
