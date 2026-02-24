@@ -2145,6 +2145,11 @@ public class Game1 : Game
 
             if (_showCharacterSheet)
             {
+                if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
+                {
+                    _showCharacterSheet = false;
+                }
+
                 var closeSheetButtonRect = _characterSheet.GetCloseButtonRect(GraphicsDevice.Viewport);
                 if (mouseClickedThisFrame &&
                     closeSheetButtonRect.Contains(mouse.Position))
