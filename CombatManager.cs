@@ -623,6 +623,14 @@ public class CombatManager
             return result;
         }
 
+        // Total cover: cannot be targeted directly (PHB "Cover")
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted by the opportunity attack.");
+            return result;
+        }
+
         attacker.HasReaction = false;
 
         bool attackerCanSee = visionSystem != null
@@ -666,7 +674,7 @@ public class CombatManager
         }
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
-            attacker.AttackName, attacker.AttackBonus, target.ArmorClass,
+            attacker.AttackName, attacker.AttackBonus, target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
             hasAdvantage, hasDisadvantage, circumstantialBonus: 0);
 
         result.AttackRoll       = attackCheck.DieRoll;
@@ -1138,7 +1146,15 @@ public class CombatManager
             result.IsHit = false;
             return result;
         }
-        
+
+        // Total cover: cannot be targeted directly (PHB "Cover")
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
+            return result;
+        }
+
         // Consume the action
         attacker.HasAction = false;
         
@@ -1211,12 +1227,12 @@ public class CombatManager
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
             attacker.AttackBonus,
-            target.ArmorClass,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
             hasAdvantage,
             hasDisadvantage,
             circumstantialBonus: 0
         );
-        
+
         // Store roll information in result
         result.AttackRoll = attackCheck.DieRoll;
         result.TotalAttackBonus = attackCheck.BaseModifier;
@@ -1266,6 +1282,14 @@ public class CombatManager
         if (!attacker.HasBonusAction)
         {
             result.IsHit = false;
+            return result;
+        }
+
+        // Total cover: cannot be targeted directly (PHB "Cover")
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
             return result;
         }
 
@@ -1322,7 +1346,7 @@ public class CombatManager
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
             attacker.AttackBonus,
-            target.ArmorClass,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
             hasAdvantage,
             hasDisadvantage,
             circumstantialBonus: 0
@@ -1390,6 +1414,14 @@ public class CombatManager
             return result;
         }
 
+        // Total cover: cannot be targeted directly (PHB "Cover")
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
+            return result;
+        }
+
         attacker.HasAction = false;
 
         bool attackerCanSee = visionSystem != null
@@ -1448,7 +1480,7 @@ public class CombatManager
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
             attacker.AttackBonus,
-            target.ArmorClass,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
             hasAdvantage,
             hasDisadvantage,
             circumstantialBonus: 0);

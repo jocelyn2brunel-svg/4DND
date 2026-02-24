@@ -109,6 +109,18 @@ namespace _4DND
         }
 
         /// <summary>
+        /// Returns the AC and Dexterity saving throw bonus granted by the given degree of cover (PHB "Cover").
+        /// Half cover grants +2; three-quarters cover grants +5; total cover grants no numeric bonus
+        /// (it prevents targeting entirely, handled at the attack level).
+        /// </summary>
+        public static int GetCoverBonus(CoverType cover) => cover switch
+        {
+            CoverType.Half => 2,
+            CoverType.ThreeQuarters => 5,
+            _ => 0
+        };
+
+        /// <summary>
         /// XP required to reach each level (D&D 5e Character Advancement table, PHB p.15).
         /// Index = level (1-based), value = total XP needed to reach that level.
         /// </summary>

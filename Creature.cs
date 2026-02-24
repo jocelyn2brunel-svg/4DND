@@ -5,6 +5,18 @@ using Microsoft.Xna.Framework;
 
 namespace _4DND;
 
+/// <summary>
+/// The degree of cover a creature benefits from (PHB "Cover").
+/// Only the most protective degree applies; bonuses are not added together.
+/// </summary>
+public enum CoverType
+{
+    None,
+    Half,           // +2 bonus to AC and Dexterity saving throws
+    ThreeQuarters,  // +5 bonus to AC and Dexterity saving throws
+    Total           // Cannot be targeted directly by an attack or a spell
+}
+
 public enum CreatureType
 {
     Player,
@@ -254,6 +266,13 @@ public class Creature
     public int ArmorClass { get; set; }
     public int Speed { get; set; } = 30;
     public int XPReward { get; set; } = 0;
+
+    /// <summary>
+    /// The degree of cover this creature currently benefits from (PHB "Cover").
+    /// Half cover grants +2 to AC and Dex saves; three-quarters grants +5;
+    /// total cover prevents direct targeting by attacks and spells.
+    /// </summary>
+    public CoverType Cover { get; set; } = CoverType.None;
     
     // Ability Scores
     public int Strength { get; set; } = 10;
