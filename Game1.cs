@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -92,7 +92,7 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, BonusAction, EndTurn }
+    private enum CombatAction { None, Move, Attack, Dash, BonusAction, EndTurn }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
@@ -3354,9 +3354,9 @@ public class Game1 : Game
                     y += 25;
                     
                     // Action economy display
-                    var actionIcon = currentCombatant.HasAction ? "[✓]" : "[X]";
-                    var bonusIcon = currentCombatant.HasBonusAction ? "[✓]" : "[X]";
-                    var reactionIcon = currentCombatant.HasReaction ? "[✓]" : "[X]";
+                    var actionIcon = currentCombatant.HasAction ? "[?]" : "[X]";
+                    var bonusIcon = currentCombatant.HasBonusAction ? "[?]" : "[X]";
+                    var reactionIcon = currentCombatant.HasReaction ? "[?]" : "[X]";
                     var movementText = $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft";
                     
                     var actionColor = currentCombatant.HasAction ? Color.Green : Color.DarkGray;

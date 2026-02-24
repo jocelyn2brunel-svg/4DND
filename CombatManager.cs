@@ -347,6 +347,54 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Returns an integer rank for a creature size, used to compute size difference.
+    /// </summary>
+    private static int GetSizeIndex(CreatureSize size) => size switch
+    {
+        CreatureSize.Tiny => 0,
+        CreatureSize.Small => 1,
+        CreatureSize.Medium => 2,
+        CreatureSize.Large => 3,
+        CreatureSize.Huge => 4,
+        CreatureSize.Gargantuan => 5,
+        _ => 2
+    };
+
+    /// <summary>
+    /// Determines whether <paramref name="mover"/> can pass <em>through</em> the tile at (x, y, z)
+    /// during movement (transit only — creatures can never end their move in another's space).
+    /// <para>
+    /// Rules (PHB "Moving Around Other Creatures"):
+    /// <list type="bullet">
+    /// <item>You can always move through a nonhostile creature's space.</item>
+    /// <item>You can move through a hostile creature's space only if the hostile creature
+    ///       is at least two sizes larger or smaller than you.</item>
+    /// <item>In all cases the occupied space counts as difficult terrain.</item>
+    /// </list>
+    /// </para>
+    /// </summary>
+    private bool CanPassThrough(Creature mover, int x, int y, int z)
+    {
+        if (TacticalMap == null) return true;
+
+        var tileType = TacticalMap.Get(x, y, z);
+        if (tileType == TileType.Wall || tileType == TileType.Empty)
+            return false;
+
+        var occupant = GetCreatureAt(x, y, z);
+        if (occupant == null || occupant == mover)
+            return true;
+
+        // Nonhostile (same side) — always passable
+        if (occupant.IsPlayer == mover.IsPlayer)
+            return true;
+
+        // Hostile — only passable when size difference is at least 2
+        int sizeDiff = Math.Abs(GetSizeIndex(mover.Size) - GetSizeIndex(occupant.Size));
+        return sizeDiff >= 2;
+    }
+
+    /// <summary>
     /// Check if a creature of given size can occupy the space starting at (x, y, z).
     /// Large+ creatures need multiple tiles to be available.
     /// Returns whether the creature can fit normally or by squeezing, and sets isSqueeze accordingly.
@@ -680,7 +728,12 @@ public class CombatManager
                     int ny = node.Y + dy;
                     int nz = node.Z + dz;
 
-                    if (!CanOccupySpace(creature.Size, nx, ny, nz, creature))
+                    // A tile is a valid neighbor if the creature can either occupy it (land there)
+                    // or at least pass through it (transit). The pathfinder uses this for routing;
+                    // CanMove / FindPath still enforce that the final destination must be occupiable.
+                    bool canOccupy = CanOccupySpace(creature.Size, nx, ny, nz, creature);
+                    bool canTransit = !canOccupy && CanPassThrough(creature, nx, ny, nz);
+                    if (!canOccupy && !canTransit)
                         continue;
                     if (!IsDiagonalMoveAllowed(node.X, node.Y, node.Z, nx, ny, nz))
                         continue;
@@ -729,6 +782,12 @@ public class CombatManager
         int baseCost = isDiagonal && diagonalStepsTaken % 2 == 1 ? 10 : 5;
 
         if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
+            baseCost *= 2;
+
+        // Another creature's space counts as difficult terrain (PHB "Moving Around Other Creatures").
+        // Apply only when transiting through the space, not when squeezing (already doubled below).
+        var occupant = GetCreatureAt(to.X, to.Y, to.Z);
+        if (occupant != null && occupant != creature && !WouldRequireSqueeze(creature, to.X, to.Y, to.Z))
             baseCost *= 2;
 
         // If squeezing is required, double the movement cost
@@ -1120,6 +1179,23 @@ public class CombatManager
             creature.RagesRemaining--;
 
         TurnMessages.Add($"{creature.Name} enters a RAGE!");
+    }
+
+    /// <summary>
+    /// Takes the Dash action: the creature expends its action to gain extra movement
+    /// equal to its Speed for the current turn (after any modifiers).
+    /// </summary>
+    /// <param name="creature">The creature taking the Dash action.</param>
+    /// <returns>True if the Dash was successfully taken; false if no action is available.</returns>
+    public bool Dash(Creature creature)
+    {
+        if (!creature.HasAction)
+            return false;
+
+        creature.HasAction = false;
+        creature.MovementRemaining += creature.Speed;
+        TurnMessages.Add($"{creature.Name} uses Dash! (+{creature.Speed}ft movement)");
+        return true;
     }
 
     private void EndRage(Creature creature)
