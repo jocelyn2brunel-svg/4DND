@@ -378,7 +378,10 @@ public class CombatManager
         if (TacticalMap == null) return true;
 
         var tileType = TacticalMap.Get(x, y, z);
-        if (tileType == TileType.Wall || tileType == TileType.Empty)
+
+        // Walls are never passable.
+        // Empty tiles are only passable if the creature can fly.
+        if (tileType == TileType.Wall || (tileType == TileType.Empty && !mover.CanFly))
             return false;
 
         var occupant = GetCreatureAt(x, y, z);
@@ -414,7 +417,13 @@ public class CombatManager
                 int checkY = y + dy;
 
                 var tileType = TacticalMap.Get(checkX, checkY, z);
-                if (tileType == TileType.Wall || tileType == TileType.Empty)
+                bool canFly = movingCreature?.CanFly == true;
+
+                // Walls are never occupiable.
+                // Empty tiles are only occupiable if the creature can fly.
+                bool isBlocked = tileType == TileType.Wall || (tileType == TileType.Empty && !canFly);
+
+                if (isBlocked)
                 {
                     // Normal fit failed — try squeezing (one size smaller) if allowed
                     if (allowSqueeze)

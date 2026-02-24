@@ -1412,7 +1412,24 @@ public class Game1 : Game
         Ray ray = new Ray(near, dir);
         Plane plane = new Plane(Vector3.UnitZ, -_currentViewLevel);
         float? d = ray.Intersects(plane);
-        return d.HasValue ? ((int)Math.Round(near.X + dir.X * d.Value), (int)Math.Round(near.Y + dir.Y * d.Value)) : null;
+
+        if (!d.HasValue) return null;
+
+        int hx = (int)Math.Round(near.X + dir.X * d.Value);
+        int hy = (int)Math.Round(near.Y + dir.Y * d.Value);
+        int hz = _currentViewLevel;
+
+        var tileType = _tacticalMap.Get(hx, hy, hz);
+
+        // Walls are never selectable for movement/hover.
+        if (tileType == TileType.Wall) return null;
+
+        // If player has the ability to fly, they can select Empty tiles (air).
+        // Otherwise, they can only select "solid" tiles (anything except Empty and Wall).
+        bool canFly = _playerCreature?.CanFly == true;
+        if (tileType == TileType.Empty && !canFly) return null;
+
+        return (hx, hy);
     }
 
     private void SaveCampaign()
