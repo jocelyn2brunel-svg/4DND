@@ -521,10 +521,14 @@ public class Game1 : Game
     private void GetDeleteConfirmationRects(Viewport vp, out Rectangle dialogRect, out Rectangle confirmRect, out Rectangle cancelRect)
     {
         int dialogWidth = 460;
-        int dialogHeight = 190;
+        int dialogHeight = 230;
+        const int buttonWidth = 170;
+        const int buttonHeight = 42;
+        const int horizontalPadding = 40;
+        const int bottomPadding = 24;
         dialogRect = new Rectangle((vp.Width - dialogWidth) / 2, (vp.Height - dialogHeight) / 2, dialogWidth, dialogHeight);
-        confirmRect = new Rectangle(dialogRect.X + 40, dialogRect.Bottom - 58, 170, 38);
-        cancelRect = new Rectangle(dialogRect.Right - 210, dialogRect.Bottom - 58, 170, 38);
+        confirmRect = new Rectangle(dialogRect.X + horizontalPadding, dialogRect.Bottom - bottomPadding - buttonHeight, buttonWidth, buttonHeight);
+        cancelRect = new Rectangle(dialogRect.Right - horizontalPadding - buttonWidth, dialogRect.Bottom - bottomPadding - buttonHeight, buttonWidth, buttonHeight);
     }
 
     private void HandlePendingDeleteMouseInput(MouseState mouse)
@@ -3523,10 +3527,19 @@ public class Game1 : Game
         var warning = "This action cannot be undone.";
         var controls = "Click Delete to confirm, Esc = cancel";
 
-        _spriteBatch.DrawString(_font, title, new Vector2(dialogRect.X + 20, dialogRect.Y + 16), Color.White);
-        _spriteBatch.DrawString(_font, message, new Vector2(dialogRect.X + 20, dialogRect.Y + 58), Color.LightGray);
-        _spriteBatch.DrawString(_font, warning, new Vector2(dialogRect.X + 20, dialogRect.Y + 88), Color.OrangeRed);
-        _spriteBatch.DrawString(_font, controls, new Vector2(dialogRect.X + 20, dialogRect.Y + 116), Color.White * 0.8f);
+        const int textPaddingX = 20;
+        const int textTopPadding = 16;
+        const int sectionSpacing = 8;
+        float lineHeight = _font.LineSpacing;
+        float titleY = dialogRect.Y + textTopPadding;
+        float messageY = titleY + lineHeight + 12;
+        float warningY = messageY + lineHeight + sectionSpacing;
+        float controlsY = warningY + lineHeight + sectionSpacing;
+
+        _spriteBatch.DrawString(_font, title, new Vector2(dialogRect.X + textPaddingX, titleY), Color.White);
+        _spriteBatch.DrawString(_font, message, new Vector2(dialogRect.X + textPaddingX, messageY), Color.LightGray);
+        _spriteBatch.DrawString(_font, warning, new Vector2(dialogRect.X + textPaddingX, warningY), Color.OrangeRed);
+        _spriteBatch.DrawString(_font, controls, new Vector2(dialogRect.X + textPaddingX, controlsY), Color.White * 0.8f);
 
         var mousePos = Mouse.GetState().Position;
         var confirmColor = confirmRect.Contains(mousePos) ? Color.DarkRed : Color.Red * 0.8f;
