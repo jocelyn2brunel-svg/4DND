@@ -281,11 +281,12 @@ public class Creature
     public bool HasTrueSight { get; set; } = false;
     public int TrueSightRange { get; set; } = 0;
     public bool HasSunlightSensitivity { get; set; } = false;
+    public bool HasPackTactics { get; set; } = false;
     
     // Conditions
     public Condition Conditions { get; set; } = Condition.None;
 
-    /// <summary>Damage types this creature is immune to (takes 0 damage).</summary>
+    /// <summary>Damage types this creature isimmune to (takes 0 damage).</summary>
     public HashSet<string> DamageImmunities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Damage types this creature is vulnerable to (takes double damage).</summary>
@@ -706,6 +707,7 @@ public class Creature
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasSunlightSensitivity = true,
+            HasPackTactics = true,
             XPReward = 25,  // CR 1/8
             DisplayColor = Color.Brown,
             IsPlayer = false

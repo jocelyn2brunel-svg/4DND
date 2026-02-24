@@ -916,6 +916,20 @@ public class CombatManager
                 hasDisadvantage = true;
             }
         }
+
+        // Pack Tactics: advantage if a non-incapacitated ally is within 5 ft. of the target
+        if (attacker.HasPackTactics)
+        {
+            bool allyNearTarget = _combatants.Any(c =>
+                c != attacker &&
+                c.IsPlayer == attacker.IsPlayer &&
+                c.IsAlive() &&
+                !c.Conditions.HasCondition(Condition.Incapacitated) &&
+                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+
+            if (allyNearTarget)
+                hasAdvantage = true;
+        }
         
         // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
