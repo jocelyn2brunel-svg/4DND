@@ -396,6 +396,16 @@ public class Creature
     /// <summary>Maximum spell slots per level at the bard's current level.</summary>
     public int[] SpellSlotsMax { get; set; } = new int[5];
 
+    // Survival / Nourishment
+    /// <summary>Current exhaustion level (0 = none, 1–5 = cumulative penalties, 6 = death).</summary>
+    public int ExhaustionLevel { get; set; } = 0;
+    /// <summary>Accumulated days (or fractional days) without adequate food. Resets to 0 after a full-ration day.</summary>
+    public float DaysWithoutFood { get; set; } = 0f;
+    /// <summary>Pounds of food consumed today (needs 1 lb/day for a full ration).</summary>
+    public float FoodConsumedToday { get; set; } = 0f;
+    /// <summary>Gallons of water consumed today (needs 1 gal/day; 2 in hot weather).</summary>
+    public float WaterConsumedToday { get; set; } = 0f;
+
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
 
     public bool IsAlive() => CurrentHP > 0;
@@ -454,7 +464,132 @@ public class Creature
 
         return damage;
     }
-    
+
+    /// <summary>
+    /// Increases the exhaustion level by <paramref name="levels"/> (capped at 6).
+    /// At level 6 the creature dies.
+    /// </summary>
+    public void GainExhaustionLevel(int levels = 1)
+    {
+        ExhaustionLevel = Math.Clamp(ExhaustionLevel + levels, 0, 6);
+        if (ExhaustionLevel >= 1)
+            Conditions = Conditions.AddCondition(Condition.Exhaustion);
+        if (ExhaustionLevel >= 6)
+            CurrentHP = 0;
+    }
+
+    /// <summary>
+    /// Decreases the exhaustion level by <paramref name="levels"/> (minimum 0).
+    /// Removes the Exhaustion condition when the level reaches 0.
+    /// </summary>
+    public void ReduceExhaustionLevel(int levels = 1)
+    {
+        ExhaustionLevel = Math.Clamp(ExhaustionLevel - levels, 0, 6);
+        if (ExhaustionLevel == 0)
+            Conditions = Conditions.RemoveCondition(Condition.Exhaustion);
+    }
+
+    /// <summary>
+    /// Records that the creature ate <paramref name="pounds"/> of food today.
+    /// </summary>
+    public void ConsumeFood(float pounds)
+    {
+        FoodConsumedToday += pounds;
+    }
+
+    /// <summary>
+    /// Records that the creature drank <paramref name="gallons"/> of water today.
+    /// </summary>
+    public void ConsumeWater(float gallons)
+    {
+        WaterConsumedToday += gallons;
+    }
+
+    /// <summary>
+    /// Resets the daily food and water counters. Call at the start of each new in-game day.
+    /// </summary>
+    public void ResetDailyNourishment()
+    {
+        FoodConsumedToday = 0f;
+        WaterConsumedToday = 0f;
+    }
+
+    /// <summary>
+    /// Processes food and water needs at the end of a day and applies exhaustion as per PHB rules.
+    /// <para>Food: needs 1 lb/day. Half ration (≥ 0.5 lb) counts as half a day without food.
+    /// After 3 + CON modifier consecutive days (minimum 1) without food, gains 1 exhaustion level per extra day.</para>
+    /// <para>Water: needs 1 gal/day (2 in hot weather). Drinking less than half causes automatic
+    /// exhaustion; drinking half to full requires a DC 15 CON save or gain exhaustion.
+    /// Already-exhausted creatures gain 2 levels instead of 1.</para>
+    /// </summary>
+    /// <param name="isHotWeather">Whether the weather is hot (doubles the water requirement).</param>
+    /// <param name="rng">Random number generator for the water saving throw.</param>
+    /// <returns>
+    /// A tuple with <c>FoodExhaustionGained</c>, <c>WaterExhaustionGained</c>,
+    /// <c>WaterSaveRequired</c>, and <c>WaterSaveSucceeded</c>.
+    /// </returns>
+    public (int FoodExhaustionGained, int WaterExhaustionGained, bool WaterSaveRequired, bool WaterSaveSucceeded)
+        ProcessEndOfDayNourishment(bool isHotWeather, Random rng)
+    {
+        int foodExhaustion = ProcessFoodNourishment();
+        var (waterExhaustion, saveRequired, saveSucceeded) = ProcessWaterNourishment(isHotWeather, rng);
+        return (foodExhaustion, waterExhaustion, saveRequired, saveSucceeded);
+    }
+
+    private int ProcessFoodNourishment()
+    {
+        const float fullRation = 1.0f;
+        const float halfRation = 0.5f;
+
+        if (FoodConsumedToday >= fullRation)
+        {
+            DaysWithoutFood = 0f;
+            return 0;
+        }
+
+        DaysWithoutFood += FoodConsumedToday >= halfRation ? 0.5f : 1.0f;
+
+        int limit = Math.Max(1, 3 + GetAbilityModifier(Constitution));
+        if (DaysWithoutFood > limit)
+        {
+            GainExhaustionLevel(1);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private (int ExhaustionGained, bool SaveRequired, bool SaveSucceeded) ProcessWaterNourishment(bool isHotWeather, Random rng)
+    {
+        float required = isHotWeather ? 2.0f : 1.0f;
+        float halfRequired = required / 2f;
+
+        if (WaterConsumedToday >= required)
+            return (0, false, false);
+
+        int levelsToGain = ExhaustionLevel >= 1 ? 2 : 1;
+
+        if (WaterConsumedToday < halfRequired)
+        {
+            // Less than half the required amount: automatic exhaustion
+            GainExhaustionLevel(levelsToGain);
+            return (levelsToGain, false, false);
+        }
+
+        // Half to full required: DC 15 Constitution saving throw
+        int profBonus = ConstitutionSaveProficiency ? (IsPlayer ? DndMath.GetProficiencyBonus(1) : 2) : 0;
+        int roll = rng.Next(1, 21) + GetAbilityModifier(Constitution) + profBonus;
+        bool saved = DndMath.MeetsDC(roll, 15);
+
+        if (!saved)
+        {
+            GainExhaustionLevel(levelsToGain);
+            return (levelsToGain, true, false);
+        }
+
+        return (0, true, true);
+    }
+
     /// <summary>
     /// Updates the visual position to smoothly move towards the target grid position
     /// </summary>
@@ -885,6 +1020,14 @@ public class Creature
         // Apply race-specific vision traits
         creature.HasSuperiorDarkvision = raceData.HasSuperiorDarkvision;
         creature.HasSunlightSensitivity = raceData.HasSunlightSensitivity;
+
+        // Apply nourishment state
+        creature.ExhaustionLevel = character.ExhaustionLevel;
+        creature.DaysWithoutFood = character.DaysWithoutFood;
+        creature.FoodConsumedToday = character.FoodConsumedToday;
+        creature.WaterConsumedToday = character.WaterConsumedToday;
+        if (creature.ExhaustionLevel > 0)
+            creature.Conditions = creature.Conditions.AddCondition(Condition.Exhaustion);
         
         // Set attack based on equipped weapon
         if (character.InventoryData.EquippedWeapon != null)
@@ -938,6 +1081,10 @@ public class Creature
     {
         character.CurrentHP = CurrentHP;
         character.RagesRemaining = RagesRemaining;
+        character.ExhaustionLevel = ExhaustionLevel;
+        character.DaysWithoutFood = DaysWithoutFood;
+        character.FoodConsumedToday = FoodConsumedToday;
+        character.WaterConsumedToday = WaterConsumedToday;
 
         if (character.Class == "Bard")
         {

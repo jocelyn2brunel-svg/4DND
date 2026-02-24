@@ -96,7 +96,17 @@ public class Character
     public int CantripsKnown { get; set; } = 0;
     /// <summary>Number of spells the bard knows (excluding cantrips).</summary>
     public int SpellsKnown { get; set; } = 0;
-    
+
+    // Survival / Nourishment
+    /// <summary>Current exhaustion level (0 = none, 1–5 = cumulative penalties, 6 = death).</summary>
+    public int ExhaustionLevel { get; set; } = 0;
+    /// <summary>Accumulated days (or fractional days) without adequate food. Resets to 0 after a full-ration day.</summary>
+    public float DaysWithoutFood { get; set; } = 0f;
+    /// <summary>Pounds of food consumed today (needs 1 lb/day for a full ration).</summary>
+    public float FoodConsumedToday { get; set; } = 0f;
+    /// <summary>Gallons of water consumed today (needs 1 gal/day; 2 in hot weather).</summary>
+    public float WaterConsumedToday { get; set; } = 0f;
+
     // Derived properties
     public int ProficiencyBonus => DndMath.GetProficiencyBonus(Level);
     
