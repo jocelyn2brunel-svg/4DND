@@ -2981,6 +2981,40 @@ public class Game1 : Game
             buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.8f) / 2);
         _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
     }
+
+    private bool IsMouseOverCombatUi(Point mousePosition, Viewport viewport)
+    {
+        if (!_showCombatUI || !_combatManager.InCombat)
+            return false;
+
+        if (mousePosition.Y <= _combatTopPanelHeight)
+            return true;
+
+        if (_combatLogWindowRect.Contains(mousePosition))
+            return true;
+
+        var currentCombatant = _combatManager.GetCurrentCombatant();
+        if (currentCombatant == null || !currentCombatant.IsPlayer)
+            return false;
+
+        if (GetCombatMoveButtonRect(viewport).Contains(mousePosition)
+            || GetCombatAttackButtonRect(viewport).Contains(mousePosition)
+            || GetCombatBonusActionButtonRect(viewport).Contains(mousePosition)
+            || GetCombatEndTurnButtonRect(viewport).Contains(mousePosition))
+            return true;
+
+        if (_selectedAction == CombatAction.Move && currentCombatant.HasAction)
+        {
+            if (GetCombatDashButtonRect(viewport).Contains(mousePosition)
+                || GetCombatDisengageButtonRect(viewport).Contains(mousePosition))
+                return true;
+        }
+
+        if (_showBonusActionMenu && GetCombatRageButtonRect(viewport).Contains(mousePosition))
+            return true;
+
+        return false;
+    }
     
 
     protected override void Draw(GameTime gameTime)
@@ -3534,7 +3568,14 @@ public class Game1 : Game
         }
         
         // Tile tooltip (outside combat panel)
-        if (_font != null && hoveredX.HasValue && hoveredY.HasValue && hoveredZ.HasValue && _combatManager.InCombat && _showVisionOverlay)
+        var tooltipMouse = Mouse.GetState();
+        if (_font != null
+            && hoveredX.HasValue
+            && hoveredY.HasValue
+            && hoveredZ.HasValue
+            && _combatManager.InCombat
+            && _showVisionOverlay
+            && !IsMouseOverCombatUi(tooltipMouse.Position, vp))
         {
             int tx = hoveredX.Value;
             int ty = hoveredY.Value;
@@ -3555,14 +3596,13 @@ public class Game1 : Game
             }
             
             var tooltipSize = _font.MeasureString(tooltip);
-            var mouse = Mouse.GetState();
-            var tooltipPos = new Vector2(mouse.X + 15, mouse.Y + 15);
+            var tooltipPos = new Vector2(tooltipMouse.X + 15, tooltipMouse.Y + 15);
             
             // Make sure tooltip stays on screen
             if (tooltipPos.X + tooltipSize.X > vp.Width)
-                tooltipPos.X = mouse.X - tooltipSize.X - 15;
+                tooltipPos.X = tooltipMouse.X - tooltipSize.X - 15;
             if (tooltipPos.Y + tooltipSize.Y > vp.Height)
-                tooltipPos.Y = mouse.Y - tooltipSize.Y - 15;
+                tooltipPos.Y = tooltipMouse.Y - tooltipSize.Y - 15;
 
             if (_showCombatUI)
                 tooltipPos.Y = MathF.Max(_combatTopPanelHeight + 8, tooltipPos.Y);
