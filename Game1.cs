@@ -435,6 +435,7 @@ public class Game1 : Game
             {
                 var json = File.ReadAllText(path);
                 _characters = JsonSerializer.Deserialize<List<Character>>(json) ?? new List<Character>();
+                MigrateCharacterData(_characters);
             }
             else
             {
@@ -445,6 +446,24 @@ public class Game1 : Game
         {
             System.Console.WriteLine("Failed to load characters: " + ex.Message);
             _characters = new List<Character>();
+        }
+    }
+
+    private static void MigrateCharacterData(List<Character> characters)
+    {
+        foreach (var character in characters)
+        {
+            // Migration for older saves created before barbarian rages were persisted/initialized correctly.
+            // Restrict to fresh level-1-style saves to avoid refilling legitimately spent resources.
+            if (character.Class == "Barbarian" && character.XP == 0 && character.RagesRemaining == 0)
+            {
+                var barbarianData = ClassData.GetClass("Barbarian");
+                var levelData = barbarianData?.GetLevelData(character.Level);
+                if (levelData != null && levelData.Rages > 0)
+                {
+                    character.RagesRemaining = levelData.Rages;
+                }
+            }
         }
     }
     
