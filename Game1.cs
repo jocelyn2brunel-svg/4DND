@@ -3190,6 +3190,8 @@ public class Game1 : Game
                 DrawSummarySection("ENDING", selCampaign.AdventureEnding, summaryRect.X + 20, ref sy, summaryWidth - 40);
             }
 
+            DrawDeleteConfirmationDialog();
+
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
