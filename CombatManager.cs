@@ -1606,29 +1606,54 @@ public class CombatManager
         return _random.Next(1, 21);
     }
     
-    public int RollDamage(string damageDice, int bonus, bool isCritical)
+    /// <summary>
+    /// Rolls weapon damage, applying critical hit rules (PHB "Critical Hits").
+    /// On a critical hit all damage dice — including any extra dice from features such as
+    /// Sneak Attack or Divine Smite — are rolled twice; modifiers are added only once.
+    /// </summary>
+    /// <param name="damageDice">Weapon dice notation, e.g. "1d6" or "2d4".</param>
+    /// <param name="bonus">Flat modifier added once regardless of critical hit status.</param>
+    /// <param name="isCritical">True when a natural 20 was rolled on the attack roll.</param>
+    /// <param name="extraDamageDice">
+    /// Optional extra dice that are also doubled on a critical hit (e.g. Sneak Attack "2d6",
+    /// Divine Smite "2d8"). Pass null or empty string when no extra dice apply.
+    /// </param>
+    public int RollDamage(string damageDice, int bonus, bool isCritical, string? extraDamageDice = null)
     {
         int total = bonus;
         int rolls = isCritical ? 2 : 1;
-        
-        // Parse dice string (e.g., "1d6", "2d4")
+
+        // Roll the main weapon dice (always doubled on a crit)
         if (int.TryParse(damageDice, out int fixedDamage))
         {
-            return fixedDamage + bonus;
+            // Fixed-value weapon damage: no dice to double, just add the value
+            total += fixedDamage;
         }
-        
-        var parts = damageDice.Split('d');
-        if (parts.Length != 2) return total;
-        
-        if (int.TryParse(parts[0], out int numDice) && int.TryParse(parts[1], out int diceType))
+        else
         {
-            // Roll the dice
-            for (int i = 0; i < numDice * rolls; i++)
+            var parts = damageDice.Split('d');
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], out int numDice) &&
+                int.TryParse(parts[1], out int diceType))
             {
-                total += RollD(diceType);
+                for (int i = 0; i < numDice * rolls; i++)
+                    total += RollD(diceType);
             }
         }
-        
+
+        // Roll extra damage dice — also doubled on a critical hit (PHB "Critical Hits")
+        if (!string.IsNullOrEmpty(extraDamageDice))
+        {
+            var extraParts = extraDamageDice.Split('d');
+            if (extraParts.Length == 2 &&
+                int.TryParse(extraParts[0], out int extraNum) &&
+                int.TryParse(extraParts[1], out int extraType))
+            {
+                for (int i = 0; i < extraNum * rolls; i++)
+                    total += RollD(extraType);
+            }
+        }
+
         return total;
     }
 
