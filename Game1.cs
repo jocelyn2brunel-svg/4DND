@@ -93,7 +93,7 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help }
+    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
@@ -2333,6 +2333,12 @@ public class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
+                        else if (_selectedAction == CombatAction.Attack && currentCombatant.HasAction && GetCombatGrappleButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        {
+                            _selectedAction = CombatAction.Grapple;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
                         else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter?.Class))
                         {
                             _selectedAction = CombatAction.CastSpell;
@@ -2613,6 +2619,56 @@ public class Game1 : Game
                                             SaveCharacters();
                                         }
                                     }
+                                }
+                                else if (target != null && !currentCombatant.HasAction)
+                                {
+                                    AddToCombatLog("No action available!");
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle grapple action
+                    if (_selectedAction == CombatAction.Grapple)
+                    {
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
+                        {
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
+                            {
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
+                                int tz = hovered.Value.z;
+                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
+                                if (target != null && !target.IsPlayer && currentCombatant.HasAction && _currentCharacter != null)
+                                {
+                                    int attackerRoll = Dice.Roll(20);
+                                    int attackerBonus = _currentCharacter.GetSkillBonus("Athletics", out _);
+                                    int attackerTotal = attackerRoll + attackerBonus;
+
+                                    int defenderRoll = Dice.Roll(20);
+                                    int defStrMod = target.GetAbilityModifier(target.Strength);
+                                    int defDexMod = target.GetAbilityModifier(target.Dexterity);
+                                    int defenderBonus = Math.Max(defStrMod, defDexMod);
+                                    int defenderTotal = defenderRoll + defenderBonus;
+
+                                    string atkSign = attackerBonus >= 0 ? $"+{attackerBonus}" : $"{attackerBonus}";
+                                    string defSign = defenderBonus >= 0 ? $"+{defenderBonus}" : $"{defenderBonus}";
+                                    AddToCombatLog($"Grapple: {currentCombatant.Name} {attackerRoll}{atkSign}={attackerTotal} vs {target.Name} {defenderRoll}{defSign}={defenderTotal}");
+
+                                    if (attackerTotal >= defenderTotal)
+                                    {
+                                        target.Conditions = target.Conditions.AddCondition(Condition.Grappled);
+                                        AddToCombatLog($"{target.Name} is GRAPPLED! (Speed=0)");
+                                    }
+                                    else
+                                    {
+                                        AddToCombatLog($"{target.Name} resists the grapple!");
+                                    }
+
+                                    currentCombatant.HasAction = false;
+                                    _diceRollAnimation.Start(attackerRoll);
+                                    _selectedAction = CombatAction.Move;
                                 }
                                 else if (target != null && !currentCombatant.HasAction)
                                 {
@@ -2994,6 +3050,12 @@ public class Game1 : Game
     {
         var moveRect = GetCombatMoveButtonRect(viewport);
         return new Rectangle(moveRect.X, moveRect.Y - moveRect.Height - 5, moveRect.Width, moveRect.Height);
+    }
+
+    private Rectangle GetCombatGrappleButtonRect(Viewport viewport)
+    {
+        var attackRect = GetCombatAttackButtonRect(viewport);
+        return new Rectangle(attackRect.X, attackRect.Y - attackRect.Height - 5, attackRect.Width, attackRect.Height);
     }
 
     private Rectangle GetCombatDisengageButtonRect(Viewport viewport)
@@ -3695,6 +3757,15 @@ public class Game1 : Game
                             new Color(130, 70, 50),
                             _selectedAction == CombatAction.Attack);
 
+                        if (_selectedAction == CombatAction.Attack && currentCombatant.HasAction)
+                        {
+                            DrawCombatActionButton(
+                                GetCombatGrappleButtonRect(vp),
+                                "Grapple",
+                                new Color(100, 60, 130),
+                                _selectedAction == CombatAction.Grapple);
+                        }
+
                         bool canCastSpell = IsSpellcasterClass(_currentCharacter?.Class);
                         DrawCombatActionButton(
                             GetCombatCastSpellButtonRect(vp),
@@ -3740,6 +3811,7 @@ public class Game1 : Game
                             {
                                 CombatAction.Move => "Click on an empty tile to move",
                                 CombatAction.Attack => "Click on an enemy to attack",
+                                CombatAction.Grapple => "Click on an adjacent enemy to grapple",
                                 CombatAction.CastSpell => "Click on an enemy to cast a spell",
                                 CombatAction.Help => "Click on an adjacent enemy to distract (Help action)",
                                 _ => ""
