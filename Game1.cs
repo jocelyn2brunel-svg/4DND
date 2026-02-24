@@ -2355,7 +2355,7 @@ public class Game1 : Game
                             EndCurrentPlayerTurn(currentCombatant);
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_showBonusActionMenu && combatRageButtonRect.Contains(mouse.Position))
+                        else if (_showBonusActionMenu && _currentCharacter?.Class == "Barbarian" && combatRageButtonRect.Contains(mouse.Position))
                         {
                             if (currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian")
                             {
@@ -3786,12 +3786,16 @@ public class Game1 : Game
 
                         if (_showBonusActionMenu)
                         {
-                            bool canRage = currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian";
-                            DrawCombatActionButton(
-                                GetCombatRageButtonRect(vp),
-                                $"Rage ({currentCombatant.RagesRemaining})",
-                                canRage ? Color.DarkRed : Color.Gray,
-                                false);
+                            bool isBarbarian = _currentCharacter?.Class == "Barbarian";
+                            if (isBarbarian)
+                            {
+                                bool canRage = currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging;
+                                DrawCombatActionButton(
+                                    GetCombatRageButtonRect(vp),
+                                    $"Rage ({currentCombatant.RagesRemaining})",
+                                    canRage ? Color.DarkRed : Color.Gray,
+                                    false);
+                            }
 
                             if (currentCombatant.HasNimbleEscape)
                             {
