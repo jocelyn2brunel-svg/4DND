@@ -14,6 +14,7 @@ public class CharacterSheet
     private Texture2D _pixel;
     private float _scrollOffset = 0f;
     private int _prevScrollValue = 0;
+    private bool _isScrollInitialized;
     private const int Margin = 20;
     private const int ScrollbarWidth = 20;
     private const int CloseButtonWidth = 120;
@@ -45,9 +46,10 @@ public class CharacterSheet
         bool hasCharacterChanges = false;
         _mousePosition = mouse.Position;
 
-        if (_prevScrollValue == 0)
+        if (!_isScrollInitialized)
         {
             _prevScrollValue = mouse.ScrollWheelValue;
+            _isScrollInitialized = true;
             return false;
         }
         
@@ -176,6 +178,7 @@ public class CharacterSheet
     {
         _scrollOffset = 0f;
         _prevScrollValue = 0;
+        _isScrollInitialized = false;
     }
 
     public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character, Campaign? campaign = null)
