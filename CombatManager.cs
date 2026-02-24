@@ -162,6 +162,7 @@ public class CombatManager
             first.MovementRemaining = first.Speed;
             first.DiagonalStepsTaken = 0;
             first.HasFreeObjectInteraction = true;
+            first.IsDisengaged = false;
             ProcessStartOfTurnEffects(first);
         }
 
@@ -276,6 +277,7 @@ public class CombatManager
                 CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
                 CurrentCombatant.DiagonalStepsTaken = 0;
                 CurrentCombatant.HasFreeObjectInteraction = true;
+                CurrentCombatant.IsDisengaged = false;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -501,7 +503,7 @@ public class CombatManager
         return totalCost <= creature.MovementRemaining;
     }
     
-    public void Move(Creature creature, int targetX, int targetY, int targetZ)
+    public void Move(Creature creature, int targetX, int targetY, int targetZ, VisionSystem? visionSystem = null)
     {
         var path = FindPath(creature, targetX, targetY, targetZ);
         if (path == null)
@@ -518,6 +520,14 @@ public class CombatManager
             if (movementSpent + stepCost > remaining)
                 break;
 
+            // Before each step, check whether any hostile loses melee reach — triggering an OA.
+            if (!creature.IsDisengaged)
+            {
+                CheckOpportunityAttacks(creature, path[i - 1], path[i], visionSystem);
+                if (!creature.IsAlive())
+                    break;
+            }
+
             movementSpent += stepCost;
             if (IsDiagonalStep(path[i - 1], path[i]))
                 diagonalCount++;
@@ -529,6 +539,132 @@ public class CombatManager
 
         // Update squeezing state based on final position
         creature.IsSqueezingThrough = WouldRequireSqueeze(creature, creature.X, creature.Y, creature.Z);
+    }
+
+    /// <summary>
+    /// Checks whether any hostile creature loses melee reach as <paramref name="mover"/> steps
+    /// from <paramref name="from"/> to <paramref name="to"/>, and triggers an opportunity attack
+    /// for each such creature that still has its reaction.
+    /// </summary>
+    private void CheckOpportunityAttacks(Creature mover, TacticalMapNode from, TacticalMapNode to, VisionSystem? visionSystem)
+    {
+        foreach (var hostile in _combatants.ToList())
+        {
+            if (hostile.IsPlayer == mover.IsPlayer) continue;
+            if (!hostile.IsAlive()) continue;
+            if (!hostile.HasReaction) continue;
+            if (!hostile.IsMeleeAttack) continue;
+            if (hostile.Conditions.HasCondition(Condition.Incapacitated)) continue;
+            if (hostile.Conditions.HasCondition(Condition.Unconscious)) continue;
+
+            bool inRangeBefore = IsInMeleeRangeAt(mover.Size, from.X, from.Y, from.Z, hostile);
+            bool inRangeAfter  = IsInMeleeRangeAt(mover.Size, to.X,   to.Y,   to.Z,   hostile);
+
+            if (inRangeBefore && !inRangeAfter)
+            {
+                var oaResult = MakeOpportunityAttack(hostile, mover, visionSystem);
+                TurnMessages.Add($"[OA] {oaResult.GetMessage()}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns true when a creature of <paramref name="moverSize"/> positioned at
+    /// (<paramref name="moverX"/>, <paramref name="moverY"/>, <paramref name="moverZ"/>)
+    /// is within melee reach of <paramref name="target"/>.
+    /// </summary>
+    private static bool IsInMeleeRangeAt(CreatureSize moverSize, int moverX, int moverY, int moverZ, Creature target)
+    {
+        var (moverW, moverH)   = SizeHelper.GetSpaceInSquares(moverSize);
+        var (targetW, targetH) = SizeHelper.GetSpaceInSquares(target.Size);
+
+        for (int ax = 0; ax < moverW; ax++)
+        for (int ay = 0; ay < moverH; ay++)
+        {
+            for (int tx = 0; tx < targetW; tx++)
+            for (int ty = 0; ty < targetH; ty++)
+            {
+                int dx = Math.Abs((moverX + ax) - (target.X + tx));
+                int dy = Math.Abs((moverY + ay) - (target.Y + ty));
+                int dz = Math.Abs(moverZ - target.Z);
+                if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Makes an opportunity attack using the attacker's reaction (not their action).
+    /// Triggered when a creature voluntarily leaves the attacker's melee reach
+    /// without having taken the Disengage action.
+    /// </summary>
+    public AttackResult MakeOpportunityAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult { Attacker = attacker, Target = target };
+
+        if (!attacker.HasReaction || !attacker.IsMeleeAttack)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        attacker.HasReaction = false;
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage    = target.Conditions.HasCondition(Condition.Prone)        ||
+                               target.Conditions.HasCondition(Condition.Paralyzed)    ||
+                               target.Conditions.HasCondition(Condition.Unconscious)  ||
+                               target.IsSqueezingThrough;
+        bool hasDisadvantage = !attackerCanSee || attacker.IsSqueezingThrough;
+
+        if (visionSystem != null && attacker.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
+            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        if (attacker.HasPackTactics)
+        {
+            bool allyNearTarget = _combatants.Any(c =>
+                c != attacker &&
+                c.IsPlayer == attacker.IsPlayer &&
+                c.IsAlive() &&
+                !c.Conditions.HasCondition(Condition.Incapacitated) &&
+                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+            if (allyNearTarget) hasAdvantage = true;
+        }
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName, attacker.AttackBonus, target.ArmorClass,
+            hasAdvantage, hasDisadvantage, circumstantialBonus: 0);
+
+        result.AttackRoll       = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit       = attackCheck.Total;
+        result.HasAdvantage     = attackCheck.HasAdvantage;
+        result.HasDisadvantage  = attackCheck.HasDisadvantage;
+        result.IsCritical       = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
+        result.IsHit            = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            int damageBonus = attacker.DamageBonus;
+            if (attacker.IsRaging && attacker.IsMeleeAttack)
+                damageBonus += attacker.RageDamageBonus;
+
+            result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
+            result.DamageType = attacker.CurrentDamageType;
+            target.TakeDamage(result.Damage, result.DamageType);
+            attacker.HasAttackedThisRound = true;
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -1250,6 +1386,30 @@ public class CombatManager
         creature.HasAction = false;
         creature.MovementRemaining += creature.Speed;
         TurnMessages.Add($"{creature.Name} uses Dash! (+{creature.Speed}ft movement)");
+        return true;
+    }
+
+    /// <summary>
+    /// Takes the Disengage action: the creature's movement no longer provokes opportunity
+    /// attacks for the rest of the current turn.
+    /// Nimble Escape allows taking this as a bonus action (<paramref name="isBonusAction"/> = true).
+    /// </summary>
+    /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
+    public bool Disengage(Creature creature, bool isBonusAction = false)
+    {
+        if (isBonusAction)
+        {
+            if (!creature.HasBonusAction) return false;
+            creature.HasBonusAction = false;
+        }
+        else
+        {
+            if (!creature.HasAction) return false;
+            creature.HasAction = false;
+        }
+
+        creature.IsDisengaged = true;
+        TurnMessages.Add($"{creature.Name} takes the Disengage action.");
         return true;
     }
 

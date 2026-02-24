@@ -357,6 +357,12 @@ public class Creature
     public bool HasNimbleEscape { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature has taken the Disengage action this turn.
+    /// Its movement does not provoke opportunity attacks until the start of its next turn.
+    /// </summary>
+    public bool IsDisengaged { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
     /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
     /// </summary>

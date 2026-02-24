@@ -2215,6 +2215,7 @@ public class Game1 : Game
             var combatEndTurnButtonRect = GetCombatEndTurnButtonRect(GraphicsDevice.Viewport);
             var combatRageButtonRect = GetCombatRageButtonRect(GraphicsDevice.Viewport);
             var combatDashButtonRect = GetCombatDashButtonRect(GraphicsDevice.Viewport);
+            var combatDisengageButtonRect = GetCombatDisengageButtonRect(GraphicsDevice.Viewport);
 
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
@@ -2248,7 +2249,14 @@ public class Game1 : Game
                         else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDashButtonRect.Contains(mouse.Position))
                         {
                             _combatManager.Dash(currentCombatant);
+                            FlushTurnMessages();
                             AddToCombatLog($"{currentCombatant.Name} use DASH.");
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDisengageButtonRect.Contains(mouse.Position))
+                        {
+                            _combatManager.Disengage(currentCombatant);
+                            FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
@@ -2573,7 +2581,8 @@ public class Game1 : Game
                                         int prevZ = currentCombatant.Z;
                                         int prevMove = currentCombatant.MovementRemaining;
 
-                                        _combatManager.Move(currentCombatant, tx, ty, tz);
+                                        _combatManager.Move(currentCombatant, tx, ty, tz, _visionSystem);
+                                        FlushTurnMessages();
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog($"{currentCombatant.Name} moved to ({currentCombatant.X}, {currentCombatant.Y}, {currentCombatant.Z}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
@@ -2613,12 +2622,13 @@ public class Game1 : Game
                                 // Nimble Escape: bonus action Disengage, then retreat
                                 if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
                                 {
-                                    currentCombatant.HasBonusAction = false;
-                                    AddToCombatLog($"{currentCombatant.Name} uses Nimble Escape (Disengage)");
+                                    _combatManager.Disengage(currentCombatant, isBonusAction: true);
+                                    FlushTurnMessages();
                                     var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
                                     if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
                                     {
-                                        _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z);
+                                        _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
+                                        FlushTurnMessages();
                                         AddToCombatLog($"{currentCombatant.Name} retreats");
                                         UpdateVision();
                                     }
@@ -2630,7 +2640,8 @@ public class Game1 : Game
                                 var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
                                 if (nextStep.HasValue && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
                                 {
-                                    _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z);
+                                    _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
+                                    FlushTurnMessages();
                                     AddToCombatLog($"{currentCombatant.Name} moved");
                                     UpdateVision();
                                     shouldEndTurn = false;
@@ -2644,8 +2655,9 @@ public class Game1 : Game
                         // No valid action/move left, end turn.
                         int prevRound = _combatManager.CurrentRound;
                         _combatManager.NextTurn();
+                        FlushTurnMessages();
                         int newRound = _combatManager.CurrentRound;
-                        
+
                         if (newRound > prevRound)
                         {
                             AddToCombatLog($"=== Round {newRound} ===");
@@ -2810,6 +2822,12 @@ public class Game1 : Game
         return new Rectangle(moveRect.X, moveRect.Y - moveRect.Height - 5, moveRect.Width, moveRect.Height);
     }
 
+    private Rectangle GetCombatDisengageButtonRect(Viewport viewport)
+    {
+        var dashRect = GetCombatDashButtonRect(viewport);
+        return new Rectangle(dashRect.Right + 10, dashRect.Y, dashRect.Width, dashRect.Height);
+    }
+
     private Rectangle GetCombatRageButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
@@ -2845,11 +2863,19 @@ public class Game1 : Game
         _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 
+    private void FlushTurnMessages()
+    {
+        foreach (var msg in _combatManager.TurnMessages)
+            AddToCombatLog(msg);
+        _combatManager.TurnMessages.Clear();
+    }
+
     private void EndCurrentPlayerTurn(Creature currentCombatant)
     {
         _showBonusActionMenu = false;
         int prevRound = _combatManager.CurrentRound;
         _combatManager.NextTurn();
+        FlushTurnMessages();
         int newRound = _combatManager.CurrentRound;
 
         int xpEarned = _combatManager.CollectPendingXP();
@@ -3418,6 +3444,11 @@ public class Game1 : Game
                                 "Dash (Action)",
                                 new Color(160, 100, 40),
                                 false);
+                            DrawCombatActionButton(
+                                GetCombatDisengageButtonRect(vp),
+                                currentCombatant.IsDisengaged ? "Disengaged" : "Disengage",
+                                currentCombatant.IsDisengaged ? Color.Gray : new Color(100, 130, 60),
+                                currentCombatant.IsDisengaged);
                         }
 
                         DrawCombatActionButton(
