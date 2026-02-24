@@ -315,7 +315,6 @@ public class CharacterCreation
                 int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
 
                 var skillGridRect = new Rectangle(detailsRect.X + 12, startY, (colWidth * 2) - 8, (rowHeight * 3) - 2);
-                var scrollDelta = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
                 if (skillGridRect.Contains(mouse.Position) && scrollDelta != 0)
                 {
                     if (scrollDelta > 0)
