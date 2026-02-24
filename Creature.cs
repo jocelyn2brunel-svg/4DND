@@ -616,6 +616,10 @@ public class Creature
 
     public void Heal(int amount)
     {
+        // A dead creature can't regain hit points until magic has restored it to life (PHB "Healing").
+        if (IsDead)
+            return;
+
         bool wasUnconscious = CurrentHP == 0;
         CurrentHP = Math.Min(MaxHP, CurrentHP + amount);
 
@@ -626,8 +630,26 @@ public class Creature
             DeathSaveSuccesses = 0;
             DeathSaveFailures = 0;
             IsStable = false;
-            IsDead = false;
         }
+    }
+
+    /// <summary>
+    /// Restores a dead creature to life with a given number of hit points (PHB "Healing").
+    /// Used by spells such as <em>revivify</em> or <em>raise dead</em>.
+    /// Has no effect if the creature is not dead.
+    /// </summary>
+    /// <param name="hp">Hit points to restore (clamped to 1–MaxHP).</param>
+    public void Revive(int hp)
+    {
+        if (!IsDead)
+            return;
+
+        IsDead = false;
+        CurrentHP = Math.Clamp(hp, 1, MaxHP);
+        DeathSaveSuccesses = 0;
+        DeathSaveFailures = 0;
+        IsStable = false;
+        Conditions = Conditions.RemoveCondition(Condition.Unconscious);
     }
 
     /// <summary>
