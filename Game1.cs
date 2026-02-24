@@ -3596,9 +3596,9 @@ public class Game1 : Game
                     y += 25;
                     
                     // Action economy display
-                    var actionIcon = currentCombatant.HasAction ? "[?]" : "[X]";
-                    var bonusIcon = currentCombatant.HasBonusAction ? "[?]" : "[X]";
-                    var reactionIcon = currentCombatant.HasReaction ? "[?]" : "[X]";
+                    var actionStatus = currentCombatant.HasAction ? "Ready" : "Used";
+                    var bonusStatus = currentCombatant.HasBonusAction ? "Ready" : "Used";
+                    var reactionStatus = currentCombatant.HasReaction ? "Ready" : "Used";
                     var movementText = $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft";
                     
                     var actionColor = currentCombatant.HasAction ? Color.Green : Color.DarkGray;
@@ -3607,13 +3607,13 @@ public class Game1 : Game
                     var movementColor = currentCombatant.MovementRemaining > 0 ? Color.LimeGreen : Color.DarkGray;
                     
                     _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, SafeString(actionIcon), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(actionStatus), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Bonus:", new Vector2(130, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, SafeString(bonusIcon), new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(bonusStatus), new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Reaction:", new Vector2(250, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    _spriteBatch.DrawString(_font, SafeString(reactionIcon), new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, SafeString(reactionStatus), new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
                     _spriteBatch.DrawString(_font, "Move:", new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, movementText, new Vector2(450, y), movementColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
