@@ -96,8 +96,13 @@ public class Game1 : Game
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
-    private const int CombatTopPanelHeight = 220;
+    private int _combatTopPanelHeight = 125; // Reduced from 220
     private MouseState _prevMouse;
+
+    // Draggable Combat Log
+    private Rectangle _combatLogWindowRect = new Rectangle(10, 120, 350, 120);
+    private bool _isDraggingCombatLog = false;
+    private Point _dragOffset;
     private bool _showEnemyContextMenu = false;
     private Rectangle _enemyContextMenuRect;
     private Rectangle _enemyExamineOptionRect;
@@ -1401,7 +1406,7 @@ public class Game1 : Game
         Vector2 pos = new Vector2(screenPos.X, screenPos.Y);
 
         // Avoid overlap between creature labels and the tactical top HUD.
-        if (_showCombatUI && _combatManager.InCombat && pos.Y <= CombatTopPanelHeight + 12)
+        if (_showCombatUI && _combatManager.InCombat && pos.Y <= _combatTopPanelHeight + 12)
             return;
 
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
@@ -1980,6 +1985,34 @@ public class Game1 : Game
             return;
         }
 
+        // Handle Combat Log dragging
+        if (_combatManager.InCombat && _showCombatUI)
+        {
+            if (mouse.LeftButton == ButtonState.Pressed)
+            {
+                if (!_isDraggingCombatLog && _combatLogWindowRect.Contains(mouse.Position) && _prevMouse.LeftButton == ButtonState.Released)
+                {
+                    _isDraggingCombatLog = true;
+                    _dragOffset = new Point(mouse.X - _combatLogWindowRect.X, mouse.Y - _combatLogWindowRect.Y);
+                }
+
+                if (_isDraggingCombatLog)
+                {
+                    _combatLogWindowRect.X = mouse.X - _dragOffset.X;
+                    _combatLogWindowRect.Y = mouse.Y - _dragOffset.Y;
+
+                    // Keep on screen
+                    var vp = GraphicsDevice.Viewport;
+                    _combatLogWindowRect.X = Math.Clamp(_combatLogWindowRect.X, 0, vp.Width - _combatLogWindowRect.Width);
+                    _combatLogWindowRect.Y = Math.Clamp(_combatLogWindowRect.Y, 0, vp.Height - _combatLogWindowRect.Height);
+                }
+            }
+            else
+            {
+                _isDraggingCombatLog = false;
+            }
+        }
+
         // Normal gameplay and pause menu handling
         if (kb.IsKeyDown(Keys.Escape) && !_prevKb.IsKeyDown(Keys.Escape))
         {
@@ -2149,6 +2182,7 @@ public class Game1 : Game
             var combatBonusActionButtonRect = GetCombatBonusActionButtonRect(GraphicsDevice.Viewport);
             var combatEndTurnButtonRect = GetCombatEndTurnButtonRect(GraphicsDevice.Viewport);
             var combatRageButtonRect = GetCombatRageButtonRect(GraphicsDevice.Viewport);
+            var combatDashButtonRect = GetCombatDashButtonRect(GraphicsDevice.Viewport);
 
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
@@ -2170,8 +2204,19 @@ public class Game1 : Game
                     {
                         if (combatMoveButtonRect.Contains(mouse.Position))
                         {
+                            if (currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction)
+                            {
+                                _combatManager.Dash(currentCombatant);
+                                AddToCombatLog($"{currentCombatant.Name} use DASH via Move button.");
+                            }
                             _selectedAction = CombatAction.Move;
                             _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDashButtonRect.Contains(mouse.Position))
+                        {
+                            _combatManager.Dash(currentCombatant);
+                            AddToCombatLog($"{currentCombatant.Name} use DASH.");
                             clickedOnGameplayUiButton = true;
                         }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
@@ -2507,6 +2552,14 @@ public class Game1 : Game
                     {
                         EndCurrentPlayerTurn(currentCombatant);
                     }
+                    if (kb.IsKeyDown(Keys.D5) && !_prevKb.IsKeyDown(Keys.D5))
+                    {
+                        if (currentCombatant.HasAction)
+                        {
+                            _combatManager.Dash(currentCombatant);
+                            AddToCombatLog($"{currentCombatant.Name} use DASH (Shortcut).");
+                        }
+                    }
                     
                     // Handle attack action
                     if (_selectedAction == CombatAction.Attack)
@@ -2798,10 +2851,11 @@ public class Game1 : Game
     private Rectangle GetCombatMoveButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
-        const int buttonHeight = 34;
-        const int startX = 10;
-        // Keep action buttons below turn/initiative text in the combat top panel.
-        const int y = 130;
+        const int buttonHeight = 36;
+        const int spacing = 10;
+        int totalWidth = (buttonWidth * 4) + (spacing * 3);
+        int startX = (viewport.Width - totalWidth) / 2;
+        int y = viewport.Height - buttonHeight - 20;
         return new Rectangle(startX, y, buttonWidth, buttonHeight);
     }
 
@@ -2829,12 +2883,19 @@ public class Game1 : Game
         return new Rectangle(bonusRect.Right + spacing, bonusRect.Y, buttonWidth, bonusRect.Height);
     }
 
+    private Rectangle GetCombatDashButtonRect(Viewport viewport)
+    {
+        var moveRect = GetCombatMoveButtonRect(viewport);
+        return new Rectangle(moveRect.X, moveRect.Y - moveRect.Height - 5, moveRect.Width, moveRect.Height);
+    }
+
     private Rectangle GetCombatRageButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
         const int buttonHeight = 34;
         var bonusRect = GetCombatBonusActionButtonRect(viewport);
-        return new Rectangle(bonusRect.X, bonusRect.Bottom + 5, buttonWidth, buttonHeight);
+        // Position Rage above the Bonus Action button
+        return new Rectangle(bonusRect.X, bonusRect.Y - buttonHeight - 5, buttonWidth, buttonHeight);
     }
 
     private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected)
@@ -3353,7 +3414,7 @@ public class Game1 : Game
         if (_showCombatUI && _combatManager.InCombat)
         {
             // Combat panel at top
-            int panelHeight = CombatTopPanelHeight;
+            int panelHeight = _combatTopPanelHeight;
             var combatPanel = new Rectangle(0, 0, vp.Width, panelHeight);
             _spriteBatch.Draw(_pixel, combatPanel, Color.Black * 0.8f);
             
@@ -3412,11 +3473,30 @@ public class Game1 : Game
                     // Player actions
                     if (currentCombatant.IsPlayer)
                     {
+                        var moveLabel = "Move";
+                        var moveColor = new Color(45, 95, 145);
+                        bool isDashingMove = currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction;
+                        if (isDashingMove)
+                        {
+                            moveLabel = "Dash?";
+                            moveColor = new Color(160, 100, 40);
+                        }
+
                         DrawCombatActionButton(
                             GetCombatMoveButtonRect(vp),
-                            "Move",
-                            new Color(45, 95, 145),
+                            moveLabel,
+                            moveColor,
                             _selectedAction == CombatAction.Move);
+
+                        if (_selectedAction == CombatAction.Move && currentCombatant.HasAction)
+                        {
+                            DrawCombatActionButton(
+                                GetCombatDashButtonRect(vp),
+                                "Dash (Action)",
+                                new Color(160, 100, 40),
+                                false);
+                        }
+
                         DrawCombatActionButton(
                             GetCombatAttackButtonRect(vp),
                             "Attack",
@@ -3443,8 +3523,10 @@ public class Game1 : Game
                                 false);
                         }
 
-                        _spriteBatch.DrawString(_font, "Raccourcis: [1] Move  [2] Attack  [3] Bonus Act  [4] End Turn", new Vector2(10, y + 10), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
-                        y += 45;
+                        var moveRect = GetCombatMoveButtonRect(vp);
+                        var shortcutsText = "Raccourcis: [1] Move  [2] Attack  [3] Bonus Act  [4] End Turn  [5] Dash";
+                        var shortcutsSize = _font.MeasureString(shortcutsText) * 0.65f;
+                        _spriteBatch.DrawString(_font, shortcutsText, new Vector2((vp.Width - shortcutsSize.X) / 2, moveRect.Y - 25), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
 
                         if (_selectedAction != CombatAction.None && _selectedAction != CombatAction.BonusAction)
                         {
@@ -3454,8 +3536,8 @@ public class Game1 : Game
                                 CombatAction.Attack => "Click on an enemy to attack",
                                 _ => ""
                             };
-                            _spriteBatch.DrawString(_font, actionText, new Vector2(10, y), Color.Yellow);
-                            y += 25;
+                            var actionTextSize = _font.MeasureString(actionText) * 0.8f;
+                            _spriteBatch.DrawString(_font, actionText, new Vector2((vp.Width - actionTextSize.X) / 2, moveRect.Y - 55), Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                         }
                     }
                     else
@@ -3465,15 +3547,19 @@ public class Game1 : Game
                     }
                 }
                 
-                // Combat log (always below action controls)
-                int combatLogY = Math.Max(y + 8, panelHeight - 100);
-                _spriteBatch.DrawString(_font, "Combat Log:", new Vector2(10, combatLogY), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-                combatLogY += 20;
+                // Draggable Combat Log Window
+                _spriteBatch.Draw(_pixel, _combatLogWindowRect, Color.Black * 0.7f);
+                DrawBorder(_spriteBatch, _pixel, _combatLogWindowRect, Color.Gray * 0.5f, 1);
+
+                int logX = _combatLogWindowRect.X + 8;
+                int logY = _combatLogWindowRect.Y + 6;
+                _spriteBatch.DrawString(_font, "Combat Log", new Vector2(logX, logY), Color.White * 0.8f, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+                logY += 20;
                 
-                for (int i = Math.Max(0, _combatLog.Count - 4); i < _combatLog.Count; i++)
+                for (int i = Math.Max(0, _combatLog.Count - 5); i < _combatLog.Count; i++)
                 {
-                    _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(10, combatLogY), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                    combatLogY += 18;
+                    _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(logX, logY), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                    logY += 16;
                 }
 
                 _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, new Rectangle(0, 0, vp.Width, vp.Height));
@@ -3553,15 +3639,15 @@ public class Game1 : Game
                     legendY += 18;
                 }
                 
-                // Instructions
+                // Bottom screen hints (moved from top panel)
                 var hint = "Press Tab to toggle combat UI | ESC for menu | PageUp/Down: Change level";
                 var hintSize = _font.MeasureString(hint);
-                _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, panelHeight - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, vp.Height - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 
                 // Test keybinding
                 var testHint = "Test: [B]linded [F]og [K]Darkness | [Space]Fly [R]Up [T]Down | [X]STR [Z]Stealth [N]Save";
                 var testHintSize = _font.MeasureString(testHint);
-                _spriteBatch.DrawString(_font, testHint, new Vector2(vp.Width - testHintSize.X - 10, panelHeight - 50), Color.Yellow * 0.6f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, testHint, new Vector2(vp.Width - testHintSize.X - 10, vp.Height - 50), Color.Yellow * 0.6f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 
                 // Display current view level
                 var levelHint = $"View Level: Z{_currentViewLevel}";
@@ -3570,7 +3656,7 @@ public class Game1 : Game
                     levelHint += $" | Player: Z{_playerCreature.Z} {(_playerCreature.IsFlying ? "[FLYING]" : "[GROUND]")}";
                 }
                 var levelHintSize = _font.MeasureString(levelHint);
-                _spriteBatch.DrawString(_font, levelHint, new Vector2(10, panelHeight - 25), Color.Cyan * 0.8f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, levelHint, new Vector2(10, vp.Height - 25), Color.Cyan * 0.8f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
         }
         
@@ -3606,7 +3692,7 @@ public class Game1 : Game
                 tooltipPos.Y = mouse.Y - tooltipSize.Y - 15;
 
             if (_showCombatUI)
-                tooltipPos.Y = MathF.Max(CombatTopPanelHeight + 8, tooltipPos.Y);
+                tooltipPos.Y = MathF.Max(_combatTopPanelHeight + 8, tooltipPos.Y);
             
             // Draw background
             _spriteBatch.Draw(_pixel, new Rectangle((int)tooltipPos.X - 5, (int)tooltipPos.Y - 3, (int)tooltipSize.X + 10, (int)tooltipSize.Y + 6), Color.Black * 0.9f);
@@ -3858,7 +3944,7 @@ public class Game1 : Game
         int width = Math.Min(420, (int)textSize.X + 24);
         int height = (int)textSize.Y + 24;
         int x = Math.Clamp(viewport.Width - width - 20, 8, viewport.Width - width - 8);
-        int minY = _showCombatUI ? CombatTopPanelHeight + 8 : 8;
+        int minY = _showCombatUI ? _combatTopPanelHeight + 8 : 8;
         int y = Math.Clamp(viewport.Height - height - 20, minY, viewport.Height - height - 8);
 
         _enemyExaminePopupRect = new Rectangle(x, y, width, height);
