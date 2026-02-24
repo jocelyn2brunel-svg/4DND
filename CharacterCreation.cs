@@ -51,6 +51,7 @@ public class CharacterCreation
     };
     private readonly Random _random = new();
     private readonly Dictionary<string, HashSet<string>> _selectedClassSkills = new();
+    private readonly Dictionary<string, int> _classSkillScrollOffsets = new();
 
     public CharacterCreation(SpriteFont font, Texture2D pixel)
     {
@@ -70,6 +71,7 @@ public class CharacterCreation
         _isRolling = false;
         _rollTimer = 0;
         _selectedClassSkills.Clear();
+        _classSkillScrollOffsets.Clear();
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character createdCharacter)
@@ -309,10 +311,28 @@ public class CharacterCreation
             {
                 var detailsRect = new Rectangle(menuRectC.X + paddingC + 480, menuRectC.Y + titleH + 40, 480, 420);
                 var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
+                int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
+                int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
+
+                var skillGridRect = new Rectangle(detailsRect.X + 12, startY, (colWidth * 2) - 8, (rowHeight * 3) - 2);
+                var scrollDelta = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+                if (skillGridRect.Contains(mouse.Position) && scrollDelta != 0)
+                {
+                    if (scrollDelta > 0)
+                        currentOffset = Math.Max(0, currentOffset - 1);
+                    else if (scrollDelta < 0)
+                        currentOffset = Math.Min(maxOffset, currentOffset + 1);
+
+                    _classSkillScrollOffsets[selectedClass.Name] = currentOffset;
+                }
 
                 for (int i = 0; i < optionsToDraw; i++)
                 {
-                    string skill = selectedClass.SkillChoiceOptions[i];
+                    int skillIdx = currentOffset + i;
+                    if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
+                        break;
+
+                    string skill = selectedClass.SkillChoiceOptions[skillIdx];
                     int col = i / 3;
                     int row = i % 3;
                     var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
@@ -686,9 +706,15 @@ public class CharacterCreation
 
             var selectedSkills = GetSelectedSkillsForClass(selectedClass);
             var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
+            int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
+            int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
             for (int i = 0; i < optionsToDraw; i++)
             {
-                string skill = selectedClass.SkillChoiceOptions[i];
+                int skillIdx = currentOffset + i;
+                if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
+                    break;
+
+                string skill = selectedClass.SkillChoiceOptions[skillIdx];
                 bool isSelected = selectedSkills.Contains(skill);
                 int col = i / 3;
                 int row = i % 3;
@@ -697,6 +723,12 @@ public class CharacterCreation
                 DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
                 var prefix = isSelected ? "[x]" : "[ ]";
                 spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 6, skillRect.Y + 2), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            }
+
+            if (maxOffset > 0)
+            {
+                var pageText = $"Skills {currentOffset + 1}-{Math.Min(currentOffset + optionsToDraw, selectedClass.SkillChoiceOptions.Count)} / {selectedClass.SkillChoiceOptions.Count} (mouse wheel)";
+                spriteBatch.DrawString(_font, pageText, new Vector2(detailsRect.X + 12, startY + (rowHeight * 3) + 4), Color.LightGray, 0f, Vector2.Zero, 0.45f, SpriteEffects.None, 0f);
             }
         }
     }
@@ -1095,6 +1127,23 @@ public class CharacterCreation
         }
 
         return new List<string>(selected);
+    }
+
+    private int GetClassSkillScrollOffset(string className, int maxOffset)
+    {
+        if (!_classSkillScrollOffsets.TryGetValue(className, out var offset))
+        {
+            offset = 0;
+            _classSkillScrollOffsets[className] = 0;
+        }
+
+        if (offset > maxOffset)
+        {
+            offset = maxOffset;
+            _classSkillScrollOffsets[className] = offset;
+        }
+
+        return offset;
     }
 
     private void ToggleSkillSelection(string className, string skill, int maxChoices)
