@@ -1631,7 +1631,64 @@ public class CombatManager
         
         return total;
     }
-    
+
+    /// <summary>
+    /// Resolves a damaging area spell following PHB "Damage Rolls": damage is rolled once and
+    /// applied to every creature within the area. Each creature makes a saving throw; on a success
+    /// it takes half damage (or none, depending on <see cref="Spell.HalfDamageOnSave"/>).
+    /// Creatures with total cover are not affected (PHB "Cover").
+    /// </summary>
+    /// <param name="caster">The creature casting the spell.</param>
+    /// <param name="spell">The spell being cast (must have <see cref="Spell.DamageDice"/> set).</param>
+    /// <param name="targetX">Grid X of the spell's point of origin.</param>
+    /// <param name="targetY">Grid Y of the spell's point of origin.</param>
+    /// <param name="targetZ">Grid Z of the spell's point of origin.</param>
+    public SpellResult CastAreaSpell(Creature caster, Spell spell, int targetX, int targetY, int targetZ = 0)
+    {
+        var result = new SpellResult
+        {
+            Caster = caster,
+            SpellName = spell.Name,
+            DamageType = spell.DamageType
+        };
+
+        if (!caster.HasAction)
+            return result;
+
+        caster.HasAction = false;
+
+        // PHB "Damage Rolls": roll damage once for all targets
+        result.DamageRolled = RollDamage(spell.DamageDice, 0, false);
+
+        int radiusTiles = spell.AreaRadiusFeet / 5;
+
+        foreach (var creature in _combatants.Where(c => c.IsAlive()))
+        {
+            int dist = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+            if (dist > radiusTiles) continue;
+
+            // PHB "Cover": total cover prevents targeting by spells
+            if (creature.Cover == CoverType.Total) continue;
+
+            int damage = result.DamageRolled;
+            bool saved = false;
+
+            if (!string.IsNullOrEmpty(spell.SaveAbility))
+            {
+                var saveCheck = MakeSavingThrow(creature, spell.SaveAbility, spell.SaveDC);
+                saved = saveCheck.Success;
+                if (saved)
+                    damage = spell.HalfDamageOnSave ? DndMath.Half(damage) : 0;
+            }
+
+            creature.TakeDamage(damage, spell.DamageType);
+            result.TargetResults.Add((creature, saved, damage));
+        }
+
+        TurnMessages.Add(result.GetMessage());
+        return result;
+    }
+
     private int RollD(int sides)
     {
         if (sides <= 0) return 0;
@@ -2045,5 +2102,29 @@ public class CombatManager
             return $"{Attacker.Name} hit {Target.Name} for {Damage} damage! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
         
         return $"{Attacker.Name} missed {Target.Name}! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
+    }
+}
+
+public class SpellResult
+{
+    public Creature Caster { get; set; } = null!;
+    public string SpellName { get; set; } = "";
+    public int DamageRolled { get; set; }
+    public string DamageType { get; set; } = "";
+    public List<(Creature Target, bool SavedSuccessfully, int DamageTaken)> TargetResults { get; } = new();
+
+    public string GetMessage()
+    {
+        if (TargetResults.Count == 0)
+            return $"{Caster.Name} casts {SpellName} but hits no targets.";
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"{Caster.Name} casts {SpellName} for {DamageRolled} {DamageType} damage!");
+        foreach (var (target, saved, taken) in TargetResults)
+        {
+            string saveText = saved ? "saved (half)" : "failed save";
+            sb.Append($"\n  {target.Name}: {saveText} → {taken} damage");
+        }
+        return sb.ToString();
     }
 }

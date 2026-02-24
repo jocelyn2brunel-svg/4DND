@@ -77,7 +77,15 @@ public class Spell
     public int Duration { get; set; } // In rounds, 0 = instantaneous
     public SpellEffect Effect { get; set; }
     public string Description { get; set; } = "";
-    
+
+    // Damage properties
+    public string DamageDice { get; set; } = "";       // e.g., "8d6"
+    public string DamageType { get; set; } = "";        // e.g., "Fire"
+    public string SaveAbility { get; set; } = "";       // e.g., "DEX"; empty = no saving throw
+    public int SaveDC { get; set; } = 0;
+    public int AreaRadiusFeet { get; set; } = 0;        // 0 = single target, >0 = sphere radius
+    public bool HalfDamageOnSave { get; set; } = true;  // true: half damage on save; false: no damage on save
+
     // Vision-affecting spells from D&D 5e
     public static Spell Blindness => new()
     {
@@ -137,5 +145,51 @@ public class Spell
         Duration = 60, // 1 hour
         Effect = SpellEffect.Daylight,
         Description = "60 ft radius sphere of bright light, 60 ft beyond is dim"
+    };
+
+    /// <summary>
+    /// Fireball (PHB): 3rd-level Evocation. A bright streak of flame explodes in a 20-foot radius sphere.
+    /// Each creature in the area makes a DEX saving throw, taking 8d6 fire damage on a failure,
+    /// or half as much on a success. The spell's save DC must be set by the caster at cast time.
+    /// </summary>
+    public static Spell Fireball(int saveDC) => new()
+    {
+        Name = "Fireball",
+        Level = 3,
+        School = "Evocation",
+        RequiresConcentration = false,
+        Range = 150,
+        Duration = 0,
+        Effect = SpellEffect.None,
+        DamageDice = "8d6",
+        DamageType = "Fire",
+        SaveAbility = "DEX",
+        SaveDC = saveDC,
+        AreaRadiusFeet = 20,
+        HalfDamageOnSave = true,
+        Description = "8d6 fire damage in a 20 ft radius; DEX save for half"
+    };
+
+    /// <summary>
+    /// Flame Strike (PHB): 5th-level Evocation. A vertical column of divine flame. Each creature in a
+    /// 10-foot radius, 40-foot high cylinder makes a DEX save. On a failure, 4d6 fire + 4d6 radiant damage;
+    /// half on a success. Simplified here as 8d6 Fire (combined pool).
+    /// </summary>
+    public static Spell FlameStrike(int saveDC) => new()
+    {
+        Name = "Flame Strike",
+        Level = 5,
+        School = "Evocation",
+        RequiresConcentration = false,
+        Range = 60,
+        Duration = 0,
+        Effect = SpellEffect.None,
+        DamageDice = "8d6",
+        DamageType = "Fire",
+        SaveAbility = "DEX",
+        SaveDC = saveDC,
+        AreaRadiusFeet = 10,
+        HalfDamageOnSave = true,
+        Description = "8d6 fire/radiant damage in a 10 ft radius; DEX save for half"
     };
 }
