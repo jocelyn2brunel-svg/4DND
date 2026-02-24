@@ -2607,6 +2607,13 @@ public class Game1 : Game
         {
             RecalculateVision();
         }
+        // Keep the character sheet data in sync with the in-game creature state.
+        // Persistence still happens at combat end, but this prevents temporary HP mismatches in UI.
+        if (_playerCreature != null && _currentCharacter != null)
+        {
+            _playerCreature.UpdateCharacter(_currentCharacter);
+        }
+
         _prevKb = kb;
         _prevMouse = mouse;
         base.Update(gameTime);
