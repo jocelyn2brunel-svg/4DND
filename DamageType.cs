@@ -57,6 +57,6 @@ public static class DamageTypeExtensions
         DamageType.Radiant       => "radiant",
         DamageType.Slashing      => "slashing",
         DamageType.Thunder       => "thunder",
-        _                        => damageType.ToString().ToLower()
+        _                        => damageType.ToString().ToLowerInvariant()
     };
 }

@@ -2694,7 +2694,7 @@ public class Game1 : Game
                                 {
                                     int spellAttackBonus = GetSpellcastingAbilityModifier(_currentCharacter) + _currentCharacter.ProficiencyBonus;
                                     string damageDice = GetCantripDamageDice(_currentCharacter.Level);
-                                    var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, "Force", _visionSystem);
+                                    var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, DamageType.Force, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;

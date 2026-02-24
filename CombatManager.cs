@@ -1509,7 +1509,7 @@ public class CombatManager
     /// Makes a spell attack roll (ranged spell attack) following D&amp;D 5e rules.
     /// Uses the provided spell attack bonus and damage dice instead of the creature's weapon stats.
     /// </summary>
-    public AttackResult MakeSpellAttack(Creature attacker, Creature target, int spellAttackBonus, string damageDice, string damageType = "Force", VisionSystem? visionSystem = null)
+    public AttackResult MakeSpellAttack(Creature attacker, Creature target, int spellAttackBonus, string damageDice, DamageType damageType = DamageType.Force, VisionSystem? visionSystem = null)
     {
         var result = new AttackResult
         {

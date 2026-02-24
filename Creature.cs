@@ -536,7 +536,7 @@ public class Creature
             damage += Dice.Roll(6);
 
         int hpBefore = CurrentHP;
-        TakeDamage(damage, "Bludgeoning");
+        TakeDamage(damage, DamageType.Bludgeoning);
 
         if (CurrentHP < hpBefore)
             Conditions = Conditions.AddCondition(Condition.Prone);
@@ -807,7 +807,7 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d6",
             DamageBonus = 2,
-            CurrentDamageType = "Slashing",
+            CurrentDamageType = DamageType.Slashing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             StealthProficiency = true,
@@ -846,7 +846,7 @@ public class Creature
             AttackBonus = 5,
             DamageDice = "1d12",
             DamageBonus = 3,
-            CurrentDamageType = "Slashing",
+            CurrentDamageType = DamageType.Slashing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             XPReward = 100,  // CR 1/2
@@ -883,11 +883,11 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d6",
             DamageBonus = 2,
-            CurrentDamageType = "Piercing",
+            CurrentDamageType = DamageType.Piercing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
-            DamageImmunities = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Poison" },
-            DamageVulnerabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bludgeoning" },
+            DamageImmunities = new HashSet<DamageType> { DamageType.Poison },
+            DamageVulnerabilities = new HashSet<DamageType> { DamageType.Bludgeoning },
             ConditionImmunities = Condition.Poisoned | Condition.Exhaustion,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
@@ -923,7 +923,7 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "2d4",
             DamageBonus = 2,
-            CurrentDamageType = "Piercing",
+            CurrentDamageType = DamageType.Piercing,
             IsMeleeAttack = true,
             DarkvisionRange = 0,
             StealthProficiency = true,
@@ -964,7 +964,7 @@ public class Creature
             AttackBonus = 4,
             DamageDice = "1d4",
             DamageBonus = 2,
-            CurrentDamageType = "Piercing",
+            CurrentDamageType = DamageType.Piercing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasSunlightSensitivity = true,
@@ -1003,7 +1003,7 @@ public class Creature
             AttackBonus = 8,
             DamageDice = "2d10",
             DamageBonus = 6,
-            CurrentDamageType = "Piercing",
+            CurrentDamageType = DamageType.Piercing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasTremorsense = true,
@@ -1044,7 +1044,7 @@ public class Creature
             AttackBonus = 6,
             DamageDice = "1d8",
             DamageBonus = 3,
-            CurrentDamageType = "Piercing",
+            CurrentDamageType = DamageType.Piercing,
             IsMeleeAttack = true,
             DarkvisionRange = 60,
             HasTrueSight = true,
@@ -1132,7 +1132,7 @@ public class Creature
             creature.AttackBonus = creature.GetAbilityModifier(creature.Strength) + character.ProficiencyBonus;
             creature.DamageDice = "1";
             creature.DamageBonus = creature.GetAbilityModifier(creature.Strength);
-            creature.CurrentDamageType = "Bludgeoning";
+            creature.CurrentDamageType = DamageType.Bludgeoning;
             creature.IsMeleeAttack = true;
         }
 

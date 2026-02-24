@@ -1125,7 +1125,7 @@ public class CharacterSheet
     
     private string GetWeaponDamage(string weapon) {
         var item = ItemDatabase.GetItem(weapon);
-        return (item != null && !string.IsNullOrEmpty(item.DamageDice)) ? $"{item.DamageDice} {item.DamageType.ToLower()}" : "1d6";
+        return (item != null && !string.IsNullOrEmpty(item.DamageDice)) ? $"{item.DamageDice} {item.DamageType.ToDisplayString()}" : "1d6";
     }
 
     private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage) {
