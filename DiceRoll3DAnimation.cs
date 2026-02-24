@@ -46,7 +46,7 @@ public class DiceRoll3DAnimation
         _remainingTime -= deltaSeconds;
     }
 
-    public void Draw(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont? font, Rectangle viewport)
+    public void Draw(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font, Rectangle viewport)
     {
         if (!IsActive)
             return;
