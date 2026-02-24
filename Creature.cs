@@ -381,6 +381,31 @@ public class Creature
     public bool IsSurprised { get; set; } = false;
 
     /// <summary>
+    /// Number of death saving throw successes (0–3).
+    /// Resets when the creature regains hit points or becomes stable.
+    /// </summary>
+    public int DeathSaveSuccesses { get; set; } = 0;
+
+    /// <summary>
+    /// Number of death saving throw failures (0–3). Three failures means the creature dies.
+    /// Resets when the creature regains hit points.
+    /// </summary>
+    public int DeathSaveFailures { get; set; } = 0;
+
+    /// <summary>
+    /// Whether this creature has stabilized (three death save successes without healing).
+    /// A stable creature remains unconscious at 0 HP but no longer makes death saving throws.
+    /// </summary>
+    public bool IsStable { get; set; } = false;
+
+    /// <summary>
+    /// Whether this creature is truly dead.
+    /// For non-player creatures, set immediately at 0 HP.
+    /// For players, set after three death save failures or instant death.
+    /// </summary>
+    public bool IsDead { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -487,14 +512,14 @@ public class Creature
 
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
 
-    public bool IsAlive() => CurrentHP > 0;
+    public bool IsAlive() => !IsDead;
     
     public bool IsBlinded()
     {
         return Conditions.HasCondition(Condition.Blinded) || Conditions.HasCondition(Condition.Unconscious);
     }
     
-    public void TakeDamage(int amount, DamageType damageType = DamageType.None)
+    public void TakeDamage(int amount, DamageType damageType = DamageType.None, bool isCriticalHit = false)
     {
         // Immunity: no damage
         if (damageType != DamageType.None && DamageImmunities.Contains(damageType))
@@ -506,8 +531,20 @@ public class Creature
 
         // Barbarian Rage resistance: Resistance to bludgeoning, piercing, and slashing damage.
         if (IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing))
-        {
             amount /= 2;
+
+        // Damage at 0 Hit Points (PHB "Damage at 0 Hit Points"):
+        // taking any damage while at 0 HP causes a death saving throw failure.
+        if (CurrentHP == 0 && IsPlayer && !IsDead)
+        {
+            // Damage equals or exceeds HP maximum: instant death
+            if (amount >= MaxHP)
+                IsDead = true;
+            else
+                AddDeathSaveFailures(isCriticalHit ? 2 : 1);
+
+            HasTakenDamageThisRound = true;
+            return;
         }
 
         if (amount >= CurrentHP)
@@ -518,11 +555,16 @@ public class Creature
             // Instant Death: remaining damage equals or exceeds the creature's hit point maximum (PHB "Instant Death")
             if (remaining >= MaxHP)
             {
-                // Creature dies outright — no unconscious state
+                IsDead = true;
+            }
+            else if (!IsPlayer)
+            {
+                // Non-player creatures die immediately at 0 HP (no death saves)
+                IsDead = true;
             }
             else
             {
-                // Falling Unconscious: drop to 0 HP but survive (PHB "Falling Unconscious")
+                // Falling Unconscious: player drops to 0 HP and begins making death saves
                 Conditions = Conditions.AddCondition(Condition.Unconscious)
                                        .AddCondition(Condition.Prone);
             }
@@ -542,7 +584,13 @@ public class Creature
 
         // Unconsciousness ends when the creature regains any hit points (PHB "Falling Unconscious")
         if (wasUnconscious && CurrentHP > 0)
+        {
             Conditions = Conditions.RemoveCondition(Condition.Unconscious);
+            DeathSaveSuccesses = 0;
+            DeathSaveFailures = 0;
+            IsStable = false;
+            IsDead = false;
+        }
     }
 
     /// <summary>
@@ -568,6 +616,63 @@ public class Creature
             Conditions = Conditions.AddCondition(Condition.Prone);
 
         return damage;
+    }
+
+    private void AddDeathSaveFailures(int count)
+    {
+        DeathSaveFailures = Math.Min(3, DeathSaveFailures + count);
+        if (DeathSaveFailures >= 3)
+            IsDead = true;
+    }
+
+    /// <summary>
+    /// Makes a death saving throw at the start of the creature's turn (PHB "Death Saving Throws").
+    /// Roll a d20: 10 or higher is a success, below 10 is a failure.
+    /// Rolling a 1 counts as two failures. Rolling a 20 causes the creature to regain 1 HP.
+    /// Three successes stabilize the creature; three failures kill it.
+    /// </summary>
+    /// <param name="rng">Random number generator for the d20 roll.</param>
+    /// <returns>
+    /// A tuple with the <c>Roll</c>, whether it was a <c>IsSuccess</c>, a natural <c>IsNatural20</c>,
+    /// a natural <c>IsNatural1</c>, whether the creature is now <c>IsStabilized</c>, and whether it <c>HasDied</c>.
+    /// </returns>
+    public (int Roll, bool IsSuccess, bool IsNatural20, bool IsNatural1, bool IsStabilized, bool HasDied)
+        MakeDeathSavingThrow(Random rng)
+    {
+        int roll = rng.Next(1, 21);
+
+        if (roll == 20)
+        {
+            // Rolling 20: regain 1 HP (PHB "Rolling 1 or 20")
+            Heal(1); // Heal resets death save counters
+            return (roll, true, true, false, false, false);
+        }
+
+        if (roll == 1)
+        {
+            // Rolling 1: counts as two failures (PHB "Rolling 1 or 20")
+            AddDeathSaveFailures(2);
+            return (roll, false, false, true, false, IsDead);
+        }
+
+        if (roll >= 10)
+        {
+            DeathSaveSuccesses++;
+            if (DeathSaveSuccesses >= 3)
+            {
+                // Three successes: creature stabilizes (PHB "Death Saving Throws")
+                IsStable = true;
+                DeathSaveSuccesses = 0;
+                DeathSaveFailures = 0;
+                return (roll, true, false, false, true, false);
+            }
+            return (roll, true, false, false, false, false);
+        }
+        else
+        {
+            AddDeathSaveFailures(1);
+            return (roll, false, false, false, false, IsDead);
+        }
     }
 
     /// <summary>

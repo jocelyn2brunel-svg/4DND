@@ -270,7 +270,7 @@ public class CombatManager
         // A surprised creature cannot move, act, or react on its first turn.
         if (CurrentCombatant != null)
         {
-            if (!CurrentCombatant.IsSurprised)
+            if (!CurrentCombatant.IsSurprised && CurrentCombatant.CurrentHP > 0)
             {
                 CurrentCombatant.HasAction = true;
                 CurrentCombatant.HasBonusAction = true;
@@ -311,6 +311,25 @@ public class CombatManager
     
     private void ProcessStartOfTurnEffects(Creature creature)
     {
+        // Death Saving Throw: players at 0 HP make a death saving throw at the start of each turn (PHB "Death Saving Throws").
+        if (creature.IsPlayer && creature.CurrentHP == 0 && !creature.IsDead && !creature.IsStable)
+        {
+            var (roll, isSuccess, isNatural20, isNatural1, isStabilized, hasDied) = creature.MakeDeathSavingThrow(_random);
+
+            if (isNatural20)
+                TurnMessages.Add($"{creature.Name} rolled a natural 20 on their death saving throw and regains 1 HP!");
+            else if (hasDied)
+                TurnMessages.Add($"{creature.Name} has died (3 death save failures).");
+            else if (isStabilized)
+                TurnMessages.Add($"{creature.Name} stabilizes with 3 successes and no longer makes death saving throws.");
+            else if (isNatural1)
+                TurnMessages.Add($"{creature.Name} rolled a 1 — counts as 2 death save failures! ({creature.DeathSaveSuccesses} successes / {creature.DeathSaveFailures} failures)");
+            else if (isSuccess)
+                TurnMessages.Add($"{creature.Name} succeeds on their death saving throw (rolled {roll}). ({creature.DeathSaveSuccesses} successes / {creature.DeathSaveFailures} failures)");
+            else
+                TurnMessages.Add($"{creature.Name} fails their death saving throw (rolled {roll}). ({creature.DeathSaveSuccesses} successes / {creature.DeathSaveFailures} failures)");
+        }
+
         // Flying Movement: a non-hovering flyer falls if it cannot move (PHB "Flying Movement").
         // Check at the start of the turn covers conditions applied mid-turn (paralysis, grapple, etc.).
         CheckFlyingFall(creature);
@@ -694,7 +713,7 @@ public class CombatManager
 
             result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
             attacker.HasAttackedThisRound = true;
         }
 
@@ -1256,7 +1275,7 @@ public class CombatManager
 
             result.Damage = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
 
             attacker.HasAttackedThisRound = true;
         }
@@ -1265,7 +1284,7 @@ public class CombatManager
     }
 
     /// <summary>
-    /// Makes the Two-Weapon Fighting bonus action attack (PHB "Two-Weapon Fighting").
+    /// Makes the Two-Weapon Fighting bonus action attack
     /// The attacker must hold a light melee weapon in each hand; the bonus attack uses
     /// <see cref="Creature.HasBonusAction"/> instead of the main action, and the ability
     /// modifier is <em>not</em> added to the damage roll (unless it is negative).
@@ -1371,7 +1390,7 @@ public class CombatManager
 
             result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
             attacker.HasAttackedThisRound = true;
         }
 
@@ -1379,7 +1398,7 @@ public class CombatManager
     }
 
     /// <summary>
-    /// Makes a ranged weapon attack following D&amp;D 5e ranged attack rules.
+    /// Makes a ranged weapon attack
     /// <para><b>Range:</b> Cannot attack beyond long range. Attack rolls have disadvantage
     /// when the target is beyond normal range but within long range.</para>
     /// <para><b>Ranged Attacks in Close Combat:</b> Attack rolls have disadvantage if the
@@ -1498,7 +1517,7 @@ public class CombatManager
         {
             result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
             attacker.HasAttackedThisRound = true;
         }
 
@@ -1594,7 +1613,7 @@ public class CombatManager
         {
             result.Damage = RollDamage(damageDice, 0, result.IsCritical);
             result.DamageType = damageType;
-            target.TakeDamage(result.Damage, result.DamageType);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
             attacker.HasAttackedThisRound = true;
         }
 
