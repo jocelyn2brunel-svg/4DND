@@ -80,6 +80,22 @@ public class Character
     // Proficiencies (armor and weapons)
     public List<string> ArmorProficiencies { get; set; } = new();
     public List<string> WeaponProficiencies { get; set; } = new();
+
+    // Bard-specific
+    /// <summary>Die type for Bardic Inspiration (d6, d8, d10, or d12 depending on level).</summary>
+    public int BardicInspirationDice { get; set; } = 6;
+    /// <summary>Number of Bardic Inspiration uses remaining (recharges on long rest; on short rest at level 5+).</summary>
+    public int BardicInspirationUsesRemaining { get; set; } = 0;
+    /// <summary>Maximum number of Bardic Inspiration uses (= Charisma modifier, minimum 1).</summary>
+    public int BardicInspirationMax { get; set; } = 0;
+    /// <summary>Remaining spell slots indexed by spell level (index 0 = 1st level, etc.).</summary>
+    public int[] SpellSlotsRemaining { get; set; } = new int[5];
+    /// <summary>Maximum spell slots per level at current character level.</summary>
+    public int[] SpellSlotsMax { get; set; } = new int[5];
+    /// <summary>Number of cantrips the bard knows.</summary>
+    public int CantripsKnown { get; set; } = 0;
+    /// <summary>Number of spells the bard knows (excluding cantrips).</summary>
+    public int SpellsKnown { get; set; } = 0;
     
     // Derived properties
     public int ProficiencyBonus => DndMath.GetProficiencyBonus(Level);

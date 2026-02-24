@@ -430,6 +430,21 @@ public class CharacterSheet
             }
         }
 
+        // Bard-specific level features
+        if (c.Class == "Bard")
+        {
+            var classData = ClassData.GetClass(c.Class);
+            var levelData = classData.GetBardLevelData(c.Level);
+            if (levelData != null)
+            {
+                // Section header + Bardic Inspiration + Spell Slots header + up to 5 slot rows + Features
+                contentY += 5 + 15 + 14 + 14 + 15;
+                for (int i = 0; i < levelData.SpellSlots.Length; i++)
+                    if (levelData.SpellSlots[i] > 0) contentY += 14;
+                contentY += 14; // Features line
+            }
+        }
+
         int height = contentY + 10;
 
         if (spriteBatch != null)
@@ -494,6 +509,41 @@ public class CharacterSheet
                     drawY += 14;
                     spriteBatch.DrawString(_font, SafeString($"• {levelData.Features}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                     RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Capacités de niveau {c.Level}: {levelData.Features}.");
+                }
+            }
+            else if (c.Class == "Bard")
+            {
+                var bardLevelData = classData.GetBardLevelData(c.Level);
+                if (bardLevelData != null)
+                {
+                    drawY += 5;
+                    spriteBatch.DrawString(_font, "Bard:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    drawY += 15;
+
+                    // Bardic Inspiration
+                    spriteBatch.DrawString(_font, SafeString($"• Bardic Inspiration: {c.BardicInspirationUsesRemaining}/{c.BardicInspirationMax} (d{c.BardicInspirationDice})"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Inspiration Bardique: {c.BardicInspirationUsesRemaining} restante(s) sur {c.BardicInspirationMax}. Dé: d{c.BardicInspirationDice}.");
+                    drawY += 14;
+
+                    // Cantrips and Spells Known
+                    spriteBatch.DrawString(_font, SafeString($"• Cantrips: {c.CantripsKnown}  |  Spells Known: {c.SpellsKnown}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    drawY += 14;
+
+                    // Spell Slots
+                    spriteBatch.DrawString(_font, "Spell Slots:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                    drawY += 15;
+                    for (int i = 0; i < bardLevelData.SpellSlots.Length; i++)
+                    {
+                        if (bardLevelData.SpellSlots[i] <= 0) continue;
+                        int remaining = i < c.SpellSlotsRemaining.Length ? c.SpellSlotsRemaining[i] : 0;
+                        spriteBatch.DrawString(_font, SafeString($"• Level {i + 1}: {remaining}/{bardLevelData.SpellSlots[i]}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                        RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Emplacements de sort de niveau {i + 1}: {remaining} restant(s) sur {bardLevelData.SpellSlots[i]}.");
+                        drawY += 14;
+                    }
+
+                    // Features
+                    spriteBatch.DrawString(_font, SafeString($"• {bardLevelData.Features}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Capacités de niveau {c.Level}: {bardLevelData.Features}.");
                 }
             }
         }

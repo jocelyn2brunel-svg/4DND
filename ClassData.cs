@@ -5,6 +5,13 @@ namespace _4DND;
 
 public record ClassLevelData(int Level, string Features, int Rages, int RageDamage);
 
+/// <summary>
+/// Bard level progression data following D&amp;D 5e rules.
+/// BardicInspirationDice is the die type (6, 8, 10, or 12).
+/// SpellSlots is a per-level array [slot1, slot2, slot3, slot4, slot5].
+/// </summary>
+public record BardLevelData(int Level, string Features, int BardicInspirationDice, int CantripsKnown, int SpellsKnown, int[] SpellSlots);
+
 public class ClassData
 {
     public string Name { get; set; } = "";
@@ -18,6 +25,7 @@ public class ClassData
     public int SkillChoicesCount { get; set; } = 0;
     public List<string> SkillChoiceOptions { get; set; } = new();
     public List<ClassLevelData> LevelProgression { get; set; } = new();
+    public List<BardLevelData> BardLevelProgression { get; set; } = new();
 
     public ClassLevelData GetLevelData(int level)
     {
@@ -26,6 +34,13 @@ public class ClassData
         return null;
     }
     
+    public BardLevelData? GetBardLevelData(int level)
+    {
+        foreach (var entry in BardLevelProgression)
+            if (entry.Level == level) return entry;
+        return null;
+    }
+
     private static readonly Dictionary<string, ClassData> _classDatabase = new();
     
     static ClassData()
@@ -88,7 +103,40 @@ public class ClassData
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Dexterity", "Charisma" },
             ArmorProficiencies = new List<string> { "Light armor" },
-            WeaponProficiencies = new List<string> { "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords" }
+            WeaponProficiencies = new List<string> { "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords" },
+            ToolProficiencies = new List<string> { "Three musical instruments of your choice" },
+            SkillChoicesCount = 3,
+            SkillChoiceOptions = new List<string>
+            {
+                "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception",
+                "History", "Insight", "Intimidation", "Investigation", "Medicine",
+                "Nature", "Perception", "Performance", "Persuasion", "Religion",
+                "Sleight of Hand", "Stealth", "Survival"
+            },
+            BardLevelProgression = new List<BardLevelData>
+            {
+                //                                                          Slots: 1  2  3  4  5
+                new(1,  "Bardic Inspiration (d6), Spellcasting",        6, 2,  4, new[] { 2, 0, 0, 0, 0 }),
+                new(2,  "Jack of All Trades, Song of Rest (d6)",        6, 2,  5, new[] { 3, 0, 0, 0, 0 }),
+                new(3,  "Bard College, Expertise",                      6, 2,  6, new[] { 4, 2, 0, 0, 0 }),
+                new(4,  "Ability Score Improvement",                    6, 3,  7, new[] { 4, 3, 0, 0, 0 }),
+                new(5,  "Bardic Inspiration (d8), Font of Inspiration", 8, 3,  8, new[] { 4, 3, 2, 0, 0 }),
+                new(6,  "Countercharm, Bard College feature",           8, 3,  9, new[] { 4, 3, 3, 0, 0 }),
+                new(7,  "—",                                            8, 3, 10, new[] { 4, 3, 3, 1, 0 }),
+                new(8,  "Ability Score Improvement",                    8, 3, 11, new[] { 4, 3, 3, 2, 0 }),
+                new(9,  "Song of Rest (d8)",                            8, 3, 12, new[] { 4, 3, 3, 3, 1 }),
+                new(10, "Bardic Inspiration (d10), Expertise, Magical Secrets", 10, 4, 14, new[] { 4, 3, 3, 3, 2 }),
+                new(11, "—",                                           10, 4, 15, new[] { 4, 3, 3, 3, 2 }),
+                new(12, "Ability Score Improvement",                   10, 4, 15, new[] { 4, 3, 3, 3, 2 }),
+                new(13, "Song of Rest (d10)",                          10, 4, 16, new[] { 4, 3, 3, 3, 2 }),
+                new(14, "Magical Secrets, Bard College feature",       10, 4, 18, new[] { 4, 3, 3, 3, 2 }),
+                new(15, "Bardic Inspiration (d12)",                    12, 4, 19, new[] { 4, 3, 3, 3, 2 }),
+                new(16, "Ability Score Improvement",                   12, 4, 19, new[] { 4, 3, 3, 3, 2 }),
+                new(17, "Song of Rest (d12)",                          12, 4, 20, new[] { 4, 3, 3, 3, 2 }),
+                new(18, "Magical Secrets",                             12, 4, 22, new[] { 4, 3, 3, 3, 3 }),
+                new(19, "Ability Score Improvement",                   12, 4, 22, new[] { 4, 3, 3, 3, 3 }),
+                new(20, "Superior Inspiration",                        12, 4, 22, new[] { 4, 3, 3, 3, 3 }),
+            }
         };
         
         _classDatabase["Cleric"] = new ClassData

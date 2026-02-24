@@ -1152,6 +1152,13 @@ public class CharacterCreation
         }
     }
 
+    private string GenerateRandomName()
+    {
+        var prefix = _namePrefixes[_random.Next(_namePrefixes.Length)];
+        var suffix = _nameSuffixes[_random.Next(_nameSuffixes.Length)];
+        return prefix + suffix;
+    }
+
     private Character CreateTempCharacterForPreview()
     {
         var selectedRace = Race.GetRace(_races[_raceIndex]);
@@ -1186,14 +1193,32 @@ public class CharacterCreation
         // Calculate AC
         c.CalculateDerivedStats();
         
+        // Class-specific initialization
+        if (c.Class == "Barbarian")
+        {
+            var barbarianData = ClassData.GetClass("Barbarian");
+            var levelData = barbarianData.GetLevelData(c.Level);
+            if (levelData != null)
+                c.RagesRemaining = levelData.Rages;
+        }
+        else if (c.Class == "Bard")
+        {
+            var bardData = ClassData.GetClass("Bard");
+            var levelData = bardData.GetBardLevelData(c.Level);
+            if (levelData != null)
+            {
+                c.BardicInspirationDice = levelData.BardicInspirationDice;
+                c.CantripsKnown = levelData.CantripsKnown;
+                c.SpellsKnown = levelData.SpellsKnown;
+                int chaMod = Math.Max(1, c.GetAbilityModifier(c.Charisma));
+                c.BardicInspirationMax = chaMod;
+                c.BardicInspirationUsesRemaining = chaMod;
+                c.SpellSlotsMax = (int[])levelData.SpellSlots.Clone();
+                c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
+            }
+        }
+        
         return c;
-    }
-
-    private string GenerateRandomName()
-    {
-        var prefix = _namePrefixes[_random.Next(_namePrefixes.Length)];
-        var suffix = _nameSuffixes[_random.Next(_nameSuffixes.Length)];
-        return prefix + suffix;
     }
 
     private Character CreateCharacterFromData()
@@ -1286,6 +1311,31 @@ public class CharacterCreation
         
         // Calculate AC from equipment
         c.CalculateDerivedStats();
+
+        // Class-specific initialization
+        if (c.Class == "Barbarian")
+        {
+            var barbarianData = ClassData.GetClass("Barbarian");
+            var levelData = barbarianData.GetLevelData(c.Level);
+            if (levelData != null)
+                c.RagesRemaining = levelData.Rages;
+        }
+        else if (c.Class == "Bard")
+        {
+            var bardData = ClassData.GetClass("Bard");
+            var levelData = bardData.GetBardLevelData(c.Level);
+            if (levelData != null)
+            {
+                c.BardicInspirationDice = levelData.BardicInspirationDice;
+                c.CantripsKnown = levelData.CantripsKnown;
+                c.SpellsKnown = levelData.SpellsKnown;
+                int chaMod = Math.Max(1, c.GetAbilityModifier(c.Charisma));
+                c.BardicInspirationMax = chaMod;
+                c.BardicInspirationUsesRemaining = chaMod;
+                c.SpellSlotsMax = (int[])levelData.SpellSlots.Clone();
+                c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
+            }
+        }
         
         return c;
     }

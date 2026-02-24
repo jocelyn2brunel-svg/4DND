@@ -376,6 +376,18 @@ public class Creature
     /// </summary>
     public bool HasTakenDamageThisRound { get; set; } = false;
 
+    // Bard-specific
+    /// <summary>Die type for Bardic Inspiration (d6/d8/d10/d12).</summary>
+    public int BardicInspirationDice { get; set; } = 6;
+    /// <summary>Bardic Inspiration uses remaining until a long rest.</summary>
+    public int BardicInspirationUsesRemaining { get; set; } = 0;
+    /// <summary>Maximum Bardic Inspiration uses (= Charisma modifier, minimum 1).</summary>
+    public int BardicInspirationMax { get; set; } = 0;
+    /// <summary>Remaining spell slots per level (index 0 = 1st-level slots).</summary>
+    public int[] SpellSlotsRemaining { get; set; } = new int[5];
+    /// <summary>Maximum spell slots per level at the bard's current level.</summary>
+    public int[] SpellSlotsMax { get; set; } = new int[5];
+
     public int GetAbilityModifier(int score) => DndMath.GetAbilityModifier(score);
 
     public bool IsAlive() => CurrentHP > 0;
@@ -875,6 +887,15 @@ public class Creature
                 creature.RageDamageBonus = levelData.RageDamage;
         }
 
+        if (character.Class == "Bard")
+        {
+            creature.BardicInspirationDice = character.BardicInspirationDice;
+            creature.BardicInspirationUsesRemaining = character.BardicInspirationUsesRemaining;
+            creature.BardicInspirationMax = character.BardicInspirationMax;
+            creature.SpellSlotsRemaining = (int[])character.SpellSlotsRemaining.Clone();
+            creature.SpellSlotsMax = (int[])character.SpellSlotsMax.Clone();
+        }
+
         return creature;
     }
     
@@ -882,5 +903,11 @@ public class Creature
     {
         character.CurrentHP = CurrentHP;
         character.RagesRemaining = RagesRemaining;
+
+        if (character.Class == "Bard")
+        {
+            character.BardicInspirationUsesRemaining = BardicInspirationUsesRemaining;
+            character.SpellSlotsRemaining = (int[])SpellSlotsRemaining.Clone();
+        }
     }
 }
