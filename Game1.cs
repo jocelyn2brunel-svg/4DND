@@ -1497,7 +1497,7 @@ public class Game1 : Game
         }
     }
     
-    protected override void OnExiting(object sender, EventArgs args)
+    protected override void OnExiting(object sender, Microsoft.Xna.Framework.ExitingEventArgs args)
     {
         _luteSynth?.Dispose();
         base.OnExiting(sender, args);
