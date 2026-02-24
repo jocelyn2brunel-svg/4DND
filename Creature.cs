@@ -376,6 +376,20 @@ public class Creature
     public bool IsDodging { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature is currently hidden following a successful Dexterity (Stealth) check.
+    /// A hidden creature benefits from the Unseen Attacker rule: its attack rolls have advantage
+    /// and attack rolls against it have disadvantage (from attackers that cannot see it).
+    /// The hidden condition ends when the creature attacks, casts a spell, or is detected.
+    /// </summary>
+    public bool IsHidden { get; set; } = false;
+
+    /// <summary>
+    /// The result of the last Dexterity (Stealth) check used to hide.
+    /// Observers with a passive Perception equal to or greater than this value detect the creature.
+    /// </summary>
+    public int HiddenStealthResult { get; set; } = 0;
+
+    /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
     /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
     /// </summary>

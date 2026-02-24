@@ -2266,6 +2266,12 @@ public class Game1 : Game
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
+                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && GetCombatHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        {
+                            _combatManager.Hide(currentCombatant);
+                            FlushTurnMessages();
+                            clickedOnGameplayUiButton = true;
+                        }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Attack;
@@ -2289,6 +2295,16 @@ public class Game1 : Game
                                 _combatManager.StartRage(currentCombatant);
                                 currentCombatant.HasBonusAction = false;
                                 AddToCombatLog($"{currentCombatant.Name} enters RAGE!");
+                            }
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
+                        else if (_showBonusActionMenu && GetCombatBonusHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        {
+                            if (currentCombatant.HasBonusAction && currentCombatant.HasNimbleEscape)
+                            {
+                                _combatManager.Hide(currentCombatant, isBonusAction: true);
+                                FlushTurnMessages();
                             }
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
@@ -2841,6 +2857,12 @@ public class Game1 : Game
         return new Rectangle(disengageRect.Right + 10, disengageRect.Y, disengageRect.Width, disengageRect.Height);
     }
 
+    private Rectangle GetCombatHideButtonRect(Viewport viewport)
+    {
+        var dodgeRect = GetCombatDodgeButtonRect(viewport);
+        return new Rectangle(dodgeRect.Right + 10, dodgeRect.Y, dodgeRect.Width, dodgeRect.Height);
+    }
+
     private Rectangle GetCombatRageButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
@@ -2848,6 +2870,12 @@ public class Game1 : Game
         var bonusRect = GetCombatBonusActionButtonRect(viewport);
         // Position Rage above the Bonus Action button
         return new Rectangle(bonusRect.X, bonusRect.Y - buttonHeight - 5, buttonWidth, buttonHeight);
+    }
+
+    private Rectangle GetCombatBonusHideButtonRect(Viewport viewport)
+    {
+        var rageRect = GetCombatRageButtonRect(viewport);
+        return new Rectangle(rageRect.Right + 10, rageRect.Y, rageRect.Width, rageRect.Height);
     }
 
     private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected)
@@ -3020,11 +3048,15 @@ public class Game1 : Game
         {
             if (GetCombatDashButtonRect(viewport).Contains(mousePosition)
                 || GetCombatDisengageButtonRect(viewport).Contains(mousePosition)
-                || GetCombatDodgeButtonRect(viewport).Contains(mousePosition))
+                || GetCombatDodgeButtonRect(viewport).Contains(mousePosition)
+                || GetCombatHideButtonRect(viewport).Contains(mousePosition))
                 return true;
         }
 
         if (_showBonusActionMenu && GetCombatRageButtonRect(viewport).Contains(mousePosition))
+            return true;
+
+        if (_showBonusActionMenu && GetCombatBonusHideButtonRect(viewport).Contains(mousePosition))
             return true;
 
         return false;
@@ -3455,6 +3487,8 @@ public class Game1 : Game
                     
                     _spriteBatch.DrawString(_font, "Move:", new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, movementText, new Vector2(450, y), movementColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    if (currentCombatant.IsHidden)
+                        _spriteBatch.DrawString(_font, "[HIDDEN]", new Vector2(540, y), Color.LimeGreen, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     y += 25;
                     
                     // Initiative order
@@ -3502,6 +3536,11 @@ public class Game1 : Game
                                 currentCombatant.IsDodging ? "Dodging" : "Dodge",
                                 currentCombatant.IsDodging ? Color.Gray : new Color(70, 115, 145),
                                 currentCombatant.IsDodging);
+                            DrawCombatActionButton(
+                                GetCombatHideButtonRect(vp),
+                                currentCombatant.IsHidden ? "Hidden!" : "Hide",
+                                currentCombatant.IsHidden ? Color.Gray : new Color(60, 90, 60),
+                                currentCombatant.IsHidden);
                         }
 
                         DrawCombatActionButton(
@@ -3528,6 +3567,15 @@ public class Game1 : Game
                                 $"Rage ({currentCombatant.RagesRemaining})",
                                 canRage ? Color.DarkRed : Color.Gray,
                                 false);
+
+                            if (currentCombatant.HasNimbleEscape)
+                            {
+                                DrawCombatActionButton(
+                                    GetCombatBonusHideButtonRect(vp),
+                                    currentCombatant.IsHidden ? "Hidden!" : "Hide (BA)",
+                                    currentCombatant.IsHidden ? Color.Gray : new Color(60, 90, 60),
+                                    currentCombatant.IsHidden);
+                            }
                         }
 
                         var moveRect = GetCombatMoveButtonRect(vp);

@@ -280,6 +280,7 @@ public class CombatManager
                 CurrentCombatant.HasFreeObjectInteraction = true;
                 CurrentCombatant.IsDisengaged = false;
                 CurrentCombatant.IsDodging = false;
+                CurrentCombatant.IsHidden = false;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -1147,9 +1148,13 @@ public class CombatManager
         bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
                            target.Conditions.HasCondition(Condition.Paralyzed) ||
                            target.Conditions.HasCondition(Condition.Unconscious) ||
-                           target.IsSqueezingThrough;  // Attack rolls against a squeezing creature have advantage
+                           target.IsSqueezingThrough ||  // Attack rolls against a squeezing creature have advantage
+                           attacker.IsHidden;            // Unseen attacker: attack rolls have advantage
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough;  // Squeezing creature has disadvantage on attack rolls
+
+        // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
+        attacker.IsHidden = false;
 
         // Dodge: attacker has disadvantage if the dodging target can see the attacker
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
@@ -1548,6 +1553,52 @@ public class CombatManager
     {
         creature.IsRaging = false;
         creature.RageTurnsLeft = 0;
+    }
+
+    /// <summary>
+    /// Takes the Hide action: the creature makes a Dexterity (Stealth) check.
+    /// If the result exceeds the passive Wisdom (Perception) of all nearby observers,
+    /// the creature becomes hidden and gains the benefits of being an unseen attacker.
+    /// Nimble Escape allows taking this as a bonus action (<paramref name="isBonusAction"/> = true).
+    /// </summary>
+    /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
+    public bool Hide(Creature creature, bool isBonusAction = false)
+    {
+        if (isBonusAction)
+        {
+            if (!creature.HasBonusAction) return false;
+            creature.HasBonusAction = false;
+        }
+        else
+        {
+            if (!creature.HasAction) return false;
+            creature.HasAction = false;
+        }
+
+        int dexMod = DndMath.GetAbilityModifier(creature.Dexterity);
+        int profBonus = creature.IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
+        int stealthBonus = dexMod + (creature.StealthProficiency ? profBonus : 0);
+        int roll = _random.Next(1, 21);
+        int stealthResult = roll + stealthBonus;
+
+        creature.HiddenStealthResult = stealthResult;
+
+        bool detected = _combatants
+            .Where(o => o != creature && o.IsAlive() && o.IsPlayer != creature.IsPlayer)
+            .Any(o => o.PassivePerception >= stealthResult);
+
+        if (detected)
+        {
+            creature.IsHidden = false;
+            TurnMessages.Add($"{creature.Name} tried to hide (Stealth {stealthResult}) but was detected!");
+        }
+        else
+        {
+            creature.IsHidden = true;
+            TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
+        }
+
+        return true;
     }
 }
 
