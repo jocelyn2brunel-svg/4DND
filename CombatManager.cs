@@ -1559,21 +1559,38 @@ public class CombatManager
     /// Takes the Hide action: the creature makes a Dexterity (Stealth) check.
     /// If the result exceeds the passive Wisdom (Perception) of all nearby observers,
     /// the creature becomes hidden and gains the benefits of being an unseen attacker.
+    /// Requires that no enemy has direct line of sight to the creature (PHB "Unseen Attackers and Targets").
     /// Nimble Escape allows taking this as a bonus action (<paramref name="isBonusAction"/> = true).
     /// </summary>
     /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
-    public bool Hide(Creature creature, bool isBonusAction = false)
+    public bool Hide(Creature creature, bool isBonusAction = false, VisionSystem? visionSystem = null)
     {
         if (isBonusAction)
         {
             if (!creature.HasBonusAction) return false;
-            creature.HasBonusAction = false;
         }
         else
         {
             if (!creature.HasAction) return false;
-            creature.HasAction = false;
         }
+
+        // Cannot hide while an enemy has direct line of sight.
+        if (visionSystem != null)
+        {
+            bool visibleToEnemy = _combatants
+                .Any(o => o != creature && o.IsAlive() && o.IsPlayer != creature.IsPlayer && visionSystem.CanSee(o, creature));
+
+            if (visibleToEnemy)
+            {
+                TurnMessages.Add($"{creature.Name} cannot hide — an enemy can see them!");
+                return false;
+            }
+        }
+
+        if (isBonusAction)
+            creature.HasBonusAction = false;
+        else
+            creature.HasAction = false;
 
         int dexMod = DndMath.GetAbilityModifier(creature.Dexterity);
         int profBonus = creature.IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;

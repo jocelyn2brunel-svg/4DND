@@ -2268,7 +2268,7 @@ public class Game1 : Game
                         }
                         else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && GetCombatHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
-                            _combatManager.Hide(currentCombatant);
+                            _combatManager.Hide(currentCombatant, visionSystem: _visionSystem);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
@@ -2303,7 +2303,7 @@ public class Game1 : Game
                         {
                             if (currentCombatant.HasBonusAction && currentCombatant.HasNimbleEscape)
                             {
-                                _combatManager.Hide(currentCombatant, isBonusAction: true);
+                                _combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem);
                                 FlushTurnMessages();
                             }
                             _showBonusActionMenu = false;
