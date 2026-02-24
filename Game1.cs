@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace _4DND;
@@ -392,9 +393,37 @@ public class Game1 : Game
     
     private void AddToCombatLog(string message)
     {
-        _combatLog.Add(message);
+        _combatLog.Add(SanitizeTextForFont(message));
         if (_combatLog.Count > MAX_COMBAT_LOG)
             _combatLog.RemoveAt(0);
+    }
+
+    private string SanitizeTextForFont(string text)
+    {
+        if (string.IsNullOrEmpty(text) || _font == null)
+            return text;
+
+        var supportedChars = _font.Characters;
+        var sanitized = new StringBuilder(text.Length);
+
+        foreach (char c in text)
+        {
+            if (supportedChars.Contains(c))
+            {
+                sanitized.Append(c);
+                continue;
+            }
+
+            if (char.IsWhiteSpace(c))
+            {
+                sanitized.Append(' ');
+                continue;
+            }
+
+            sanitized.Append('?');
+        }
+
+        return sanitized.ToString();
     }
 
     private void LoadCharacters()
