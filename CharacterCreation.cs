@@ -9,11 +9,12 @@ namespace _4DND;
 public class CharacterCreation
 {
     private string _createName = string.Empty;
-    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: abilities, 4: final review
+    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: skills, 4: abilities, 5: final review
     private List<string> _races = Race.GetAllRaceNames();
     private readonly string[] _classes = new[] { "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard" };
     private int _raceIndex = 0;
     private int _classIndex = 0;
+    private int _skillIndex = 0;
     private int[] _rolledAbilities = new int[6];
     private readonly string[] _abilityNames = new[] { "STR", "DEX", "CON", "INT", "WIS", "CHA" };
 
@@ -51,7 +52,28 @@ public class CharacterCreation
     };
     private readonly Random _random = new();
     private readonly Dictionary<string, HashSet<string>> _selectedClassSkills = new();
-    private readonly Dictionary<string, int> _classSkillScrollOffsets = new();
+
+    private static readonly Dictionary<string, string> _skillDescriptions = new()
+    {
+        ["Acrobatics"] = "Your Dexterity (Acrobatics) check covers your attempt to stay on your feet in a tricky situation, such as when you're trying to run across a sheet of ice, balance on a tightrope, or stay upright on a rocking ship's deck.",
+        ["Animal Handling"] = "When there is any question whether you can calm down a domesticated animal, keep a mount from getting spooked, or intuit an animal's intentions, the DM might call for a Wisdom (Animal Handling) check.",
+        ["Arcana"] = "Your Intelligence (Arcana) check measures your ability to recall lore about spells, magic items, phenomenological traditions, the planes of existence, and the inhabitants of those planes.",
+        ["Athletics"] = "Your Strength (Athletics) check covers difficult situations you encounter while climbing, jumping, or swimming.",
+        ["Deception"] = "Your Charisma (Deception) check determines whether you can convincingly hide the truth, either verbally or through your actions.",
+        ["History"] = "Your Intelligence (History) check measures your ability to recall lore about historical events, legendary people, ancient kingdoms, past disputes, recent wars, and lost civilizations.",
+        ["Insight"] = "Your Wisdom (Insight) check decides whether you can determine the true intentions of a creature, such as when searching out a lie or predicting someone's next move.",
+        ["Intimidation"] = "When you attempt to influence someone through overt threats, hostile actions, and physical violence, the DM might call for a Charisma (Intimidation) check.",
+        ["Investigation"] = "When you look around for clues and make deductions based on those clues, you make an Intelligence (Investigation) check.",
+        ["Medicine"] = "A Wisdom (Medicine) check lets you try to stabilize a dying companion or diagnose an illness.",
+        ["Nature"] = "Your Intelligence (Nature) check measures your ability to recall lore about terrain, plants and animals, the weather, and natural cycles.",
+        ["Perception"] = "Your Wisdom (Perception) check lets you spot, hear, or otherwise detect the presence of something. It measures your general awareness of your surroundings and the keenness of your senses.",
+        ["Performance"] = "Your Charisma (Performance) check determines how well you can delight an audience with music, dance, acting, storytelling, or some other form of entertainment.",
+        ["Persuasion"] = "When you attempt to influence someone or a group of people with tact, social graces, or good nature, the DM might call for a Charisma (Persuasion) check.",
+        ["Religion"] = "Your Intelligence (Religion) check measures your ability to recall lore about deities, rites and prayers, religious hierarchies, holy symbols, and the practices of secret cults.",
+        ["Sleight of Hand"] = "Whenever you attempt an act of legerdemain or manual trickery, such as planting something on someone else or concealing an object on your person, you make a Dexterity (Sleight of Hand) check.",
+        ["Stealth"] = "Make a Dexterity (Stealth) check when you attempt to conceal yourself from enemies, slink past guards, slip away without being noticed, or sneak up on someone without being seen or heard.",
+        ["Survival"] = "The DM might guide you to make a Wisdom (Survival) check to follow tracks, hunt wild game, guide your group through frozen wastelands, identify signs that owlbears live nearby, predict the weather, or avoid quicksand and other natural hazards."
+    };
 
     public CharacterCreation(SpriteFont font, Texture2D pixel)
     {
@@ -65,13 +87,13 @@ public class CharacterCreation
         _createStep = 0;
         _raceIndex = 0;
         _classIndex = 0;
+        _skillIndex = 0;
         _rolledAbilities = new int[6];
         _raceScrollOffset = 0;
         _classScrollOffset = 0;
         _isRolling = false;
         _rollTimer = 0;
         _selectedClassSkills.Clear();
-        _classSkillScrollOffsets.Clear();
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character createdCharacter)
@@ -138,18 +160,18 @@ public class CharacterCreation
         // Next button
         if (canGoNext && IsMouseClicked(mouse, _prevMouse, nextRect))
         {
-            if (_createStep == 2) // Before going to abilities, roll them
+            if (_createStep == 3) // Before going to abilities, roll them
             {
                 RollAbilities();
-                _createStep = 3; // Advance to abilities step
+                _createStep = 4; // Advance to abilities step
             }
-            else if (_createStep == 3) // After abilities, go to final review
+            else if (_createStep == 4) // After abilities, go to final review
             {
-                _createStep = 4;
+                _createStep = 5;
                 _prevMouse = mouse;
                 return true;
             }
-            else if (_createStep == 4) // Final confirmation
+            else if (_createStep == 5) // Final confirmation
             {
                 createdCharacter = CreateCharacterFromData();
                 _prevMouse = mouse;
@@ -288,6 +310,7 @@ public class CharacterCreation
                 if (IsMouseClicked(mouse, _prevMouse, item))
                 {
                     _classIndex = classIdx;
+                    _skillIndex = 0;
                 }
             }
             
@@ -305,51 +328,35 @@ public class CharacterCreation
                     _classScrollOffset++;
             }
 
-            // Skill choice toggles for the selected class
+        }
+        // Step 3: Skill selection
+        else if (_createStep == 3)
+        {
             var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+            var skillsRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, 460, 420);
+
             if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
             {
-                var detailsRect = new Rectangle(menuRectC.X + paddingC + 480, menuRectC.Y + titleH + 40, 480, 420);
-                var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
-                int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
-                int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
-
-                var skillGridRect = new Rectangle(detailsRect.X + 12, startY, (colWidth * 2) - 8, (rowHeight * 3) - 2);
-                if (skillGridRect.Contains(mouse.Position) && scrollDelta != 0)
+                for (int i = 0; i < selectedClass.SkillChoiceOptions.Count; i++)
                 {
-                    if (scrollDelta > 0)
-                        currentOffset = Math.Max(0, currentOffset - 1);
-                    else if (scrollDelta < 0)
-                        currentOffset = Math.Min(maxOffset, currentOffset + 1);
+                    int col = i / 10;
+                    int row = i % 10;
+                    var item = new Rectangle(skillsRect.X + 4 + col * 228, skillsRect.Y + row * 40 + 4, 224, 36);
 
-                    _classSkillScrollOffsets[selectedClass.Name] = currentOffset;
-                }
-
-                for (int i = 0; i < optionsToDraw; i++)
-                {
-                    int skillIdx = currentOffset + i;
-                    if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
-                        break;
-
-                    string skill = selectedClass.SkillChoiceOptions[skillIdx];
-                    int col = i / 3;
-                    int row = i % 3;
-                    var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
-
-                    if (skillRect.Contains(mouse.Position))
+                    if (item.Contains(mouse.Position))
                     {
-                        _tooltipText = $"Select class skill: {skill}";
+                        _skillIndex = i;
                     }
 
-                    if (IsMouseClicked(mouse, _prevMouse, skillRect))
+                    if (IsMouseClicked(mouse, _prevMouse, item))
                     {
-                        ToggleSkillSelection(selectedClass.Name, skill, selectedClass.SkillChoicesCount);
+                        ToggleSkillSelection(selectedClass.Name, selectedClass.SkillChoiceOptions[i], selectedClass.SkillChoicesCount);
                     }
                 }
             }
         }
-        // Step 3: Ability rolls
-        else if (_createStep == 3)
+        // Step 4: Ability rolls
+        else if (_createStep == 4)
         {
             // Reroll button - position matches DrawAbilitiesStep
             var rerollRect = new Rectangle(menuRectC.X + menuWidthC / 2 - 80, menuRectC.Y + titleH + 250, 160, 40);
@@ -389,7 +396,7 @@ public class CharacterCreation
             var mouse = Mouse.GetState();
             
             // Title with step indicator
-            var title = $"Create Character - Step {_createStep + 1}/5";
+            var title = $"Create Character - Step {_createStep + 1}/6";
             var tsize = _font.MeasureString(title);
             spriteBatch.DrawString(_font, title, new Vector2(menuRectC.X + (menuWidthC - tsize.X) / 2, menuRectC.Y + 12), Color.Gold);
             
@@ -418,9 +425,12 @@ public class CharacterCreation
                     DrawClassStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 3:
-                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    DrawSkillsStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 4:
+                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    break;
+                case 5:
                     DrawFinalReviewStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
             }
@@ -448,15 +458,15 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, barRect, Color.DarkGray * 0.5f);
         
         // Progress fill
-        float progress = (_createStep + 1) / 5f;
+        float progress = (_createStep + 1) / 6f;
         var fillRect = new Rectangle(barX, barY, (int)(barWidth * progress), barHeight);
         spriteBatch.Draw(_pixel, fillRect, Color.LightGreen);
         
         // Step labels
-        string[] stepLabels = { "Name", "Race", "Class", "Abilities", "Review" };
-        for (int i = 0; i < 5; i++)
+        string[] stepLabels = { "Name", "Race", "Class", "Skills", "Abilities", "Review" };
+        for (int i = 0; i < 6; i++)
         {
-            int stepX = barX + (barWidth * i / 4);
+            int stepX = barX + (barWidth * i / 5);
             var stepColor = i <= _createStep ? Color.Gold : Color.Gray;
             var stepLabel = stepLabels[i];
             var labelSize = _font.MeasureString(stepLabel);
@@ -628,6 +638,99 @@ public class CharacterCreation
         DrawClassDetails(spriteBatch, menuRect, padding, titleH, mouse);
     }
 
+    private void DrawSkillsStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
+    {
+        var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+        var instructionText = $"Choose {selectedClass.SkillChoicesCount} skills for your {selectedClass.Name}:";
+        spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        // Skills list (left side)
+        var skillsRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 40, 460, 420);
+        spriteBatch.Draw(_pixel, skillsRect, Color.Gray * 0.7f);
+        DrawBorder(spriteBatch, skillsRect, 2, Color.Gold * 0.4f);
+
+        var selectedSkills = GetSelectedSkillsForClass(selectedClass);
+        if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
+        {
+            for (int i = 0; i < selectedClass.SkillChoiceOptions.Count; i++)
+            {
+                int col = i / 10;
+                int row = i % 10;
+                var item = new Rectangle(skillsRect.X + 4 + col * 228, skillsRect.Y + row * 40 + 4, 224, 36);
+
+                bool isHovered = item.Contains(mouse.Position);
+                string skill = selectedClass.SkillChoiceOptions[i];
+                bool isSelected = selectedSkills.Contains(skill);
+
+                Color itemColor = isSelected ? Color.ForestGreen * 0.8f : (isHovered ? Color.LightGray * 0.8f : Color.DarkGray);
+                spriteBatch.Draw(_pixel, item, itemColor);
+
+                if (isHovered || (i == _skillIndex))
+                    DrawBorder(spriteBatch, item, 2, Color.Gold);
+
+                var prefix = isSelected ? "[x] " : "[ ] ";
+                spriteBatch.DrawString(_font, prefix + skill, new Vector2(item.X + 10, item.Y + 6), isSelected ? Color.White : Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+            }
+        }
+
+        // Skill details panel (right side)
+        DrawSkillDetails(spriteBatch, menuRect, padding, titleH, mouse);
+    }
+
+    private void DrawSkillDetails(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
+    {
+        var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+        if (_skillIndex < 0 || _skillIndex >= selectedClass.SkillChoiceOptions.Count) return;
+
+        var skillName = selectedClass.SkillChoiceOptions[_skillIndex];
+        var detailsRect = new Rectangle(menuRect.X + padding + 480, menuRect.Y + titleH + 40, 480, 420);
+        spriteBatch.Draw(_pixel, detailsRect, Color.DarkSlateGray * 0.8f);
+        DrawBorder(spriteBatch, detailsRect, 2, Color.Gold * 0.4f);
+
+        int yOffset = detailsRect.Y + 12;
+
+        // Skill name
+        spriteBatch.DrawString(_font, skillName, new Vector2(detailsRect.X + 12, yOffset), Color.Gold, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+        yOffset += 35;
+
+        // Ability
+        string ability = GetSkillAbility(skillName);
+        spriteBatch.DrawString(_font, $"Ability: {ability}", new Vector2(detailsRect.X + 12, yOffset), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        yOffset += 30;
+
+        // Description
+        if (_skillDescriptions.TryGetValue(skillName, out var desc))
+        {
+            DrawWrappedText(spriteBatch, desc, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.55f);
+        }
+    }
+
+    private string GetSkillAbility(string skill)
+    {
+        return skill switch
+        {
+            "Acrobatics" => "Dexterity",
+            "Animal Handling" => "Wisdom",
+            "Arcana" => "Intelligence",
+            "Athletics" => "Strength",
+            "Deception" => "Charisma",
+            "History" => "Intelligence",
+            "Insight" => "Wisdom",
+            "Intimidation" => "Charisma",
+            "Investigation" => "Intelligence",
+            "Medicine" => "Wisdom",
+            "Nature" => "Intelligence",
+            "Perception" => "Wisdom",
+            "Performance" => "Charisma",
+            "Persuasion" => "Charisma",
+            "Religion" => "Intelligence",
+            "Sleight of Hand" => "Dexterity",
+            "Stealth" => "Dexterity",
+            "Survival" => "Wisdom",
+            _ => "Unknown"
+        };
+    }
+
     private void DrawClassDetails(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
         if (_classIndex < 0 || _classIndex >= _classes.Length) return;
@@ -700,61 +803,9 @@ public class CharacterCreation
         {
             spriteBatch.DrawString(_font, "Skills:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             yOffset += 22;
-            var skillsText = $"  Choose {selectedClass.SkillChoicesCount} from " + string.Join(", ", selectedClass.SkillChoiceOptions);
+            var skillsText = $"  You will choose {selectedClass.SkillChoicesCount} skills in the next step.";
             DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
-
-            var selectedSkills = GetSelectedSkillsForClass(selectedClass);
-            var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
-            int maxOffset = Math.Max(0, selectedClass.SkillChoiceOptions.Count - optionsToDraw);
-            int currentOffset = GetClassSkillScrollOffset(selectedClass.Name, maxOffset);
-            for (int i = 0; i < optionsToDraw; i++)
-            {
-                int skillIdx = currentOffset + i;
-                if (skillIdx >= selectedClass.SkillChoiceOptions.Count)
-                    break;
-
-                string skill = selectedClass.SkillChoiceOptions[skillIdx];
-                bool isSelected = selectedSkills.Contains(skill);
-                int col = i / 3;
-                int row = i % 3;
-                var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
-                spriteBatch.Draw(_pixel, skillRect, isSelected ? Color.ForestGreen * 0.8f : Color.Black * 0.35f);
-                DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
-                var prefix = isSelected ? "[x]" : "[ ]";
-                spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 6, skillRect.Y + 2), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            }
-
-            if (maxOffset > 0)
-            {
-                var pageText = $"Skills {currentOffset + 1}-{Math.Min(currentOffset + optionsToDraw, selectedClass.SkillChoiceOptions.Count)} / {selectedClass.SkillChoiceOptions.Count} (mouse wheel)";
-                spriteBatch.DrawString(_font, pageText, new Vector2(detailsRect.X + 12, startY + (rowHeight * 3) + 4), Color.LightGray, 0f, Vector2.Zero, 0.45f, SpriteEffects.None, 0f);
-            }
         }
-    }
-
-    private (int startY, int rowHeight, int colWidth, int optionsToDraw) GetSkillChoiceLayout(ClassData classData, Rectangle detailsRect)
-    {
-        int yOffset = detailsRect.Y + 12;
-        yOffset += 35; // class name
-        yOffset += 60; // description
-        yOffset += 25; // hit die
-        yOffset += 30; // primary ability
-        yOffset += 22 + classData.SavingThrowProficiencies.Count * 20 + 10; // saving throws + spacing
-
-        if (classData.ArmorProficiencies.Count > 0)
-            yOffset += 22 + 40;
-
-        if (classData.WeaponProficiencies.Count > 0)
-            yOffset += 22 + 40;
-
-        yOffset += 22 + 40; // tools
-        yOffset += 22 + 55; // skills title + wrapped line block
-
-        int rowHeight = 26;
-        int colWidth = (detailsRect.Width - 30) / 2;
-        int optionsToDraw = Math.Min(6, classData.SkillChoiceOptions.Count);
-
-        return (yOffset, rowHeight, colWidth, optionsToDraw);
     }
 
     private void DrawAbilitiesStep(SpriteBatch spriteBatch, GameTime gameTime, Rectangle menuRect, int padding, int titleH, MouseState mouse)
@@ -1074,7 +1125,7 @@ public class CharacterCreation
 
     private bool CanProceedToNextStep()
     {
-        if (_createStep == 2)
+        if (_createStep == 3)
         {
             var selectedClass = ClassData.GetClass(_classes[_classIndex]);
             if (selectedClass.SkillChoicesCount <= 0)
@@ -1087,9 +1138,10 @@ public class CharacterCreation
         {
             0 => !string.IsNullOrWhiteSpace(_createName),
             1 => true,
-            2 => false,
-            3 => !_isRolling,
-            4 => true,
+            2 => true,
+            3 => false,
+            4 => !_isRolling,
+            5 => true,
             _ => false
         };
     }
@@ -1100,9 +1152,10 @@ public class CharacterCreation
         {
             0 => "Proceed to race selection",
             1 => "Proceed to class selection",
-            2 => "Choose class skills then roll ability scores",
-            3 => "Review your character",
-            4 => "Finalize and create character",
+            2 => "Proceed to skill selection",
+            3 => "Choose class skills then roll ability scores",
+            4 => "Review your character",
+            5 => "Finalize and create character",
             _ => "Next"
         };
     }
@@ -1128,22 +1181,6 @@ public class CharacterCreation
         return new List<string>(selected);
     }
 
-    private int GetClassSkillScrollOffset(string className, int maxOffset)
-    {
-        if (!_classSkillScrollOffsets.TryGetValue(className, out var offset))
-        {
-            offset = 0;
-            _classSkillScrollOffsets[className] = 0;
-        }
-
-        if (offset > maxOffset)
-        {
-            offset = maxOffset;
-            _classSkillScrollOffsets[className] = offset;
-        }
-
-        return offset;
-    }
 
     private void ToggleSkillSelection(string className, string skill, int maxChoices)
     {
