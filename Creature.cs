@@ -263,6 +263,12 @@ public class Creature
     public int Level { get; set; } = 1;
     public int MaxHP { get; set; }
     public int CurrentHP { get; set; }
+    /// <summary>
+    /// Temporary hit points that act as a buffer against damage (PHB "Temporary Hit Points").
+    /// Damage is applied to TempHP first; excess carries over to CurrentHP.
+    /// Temporary HP cannot be restored by healing and do not stack — keep the higher value.
+    /// </summary>
+    public int TempHP { get; set; } = 0;
     public int ArmorClass { get; set; }
     public int Speed { get; set; } = 30;
     public int XPReward { get; set; } = 0;
@@ -533,6 +539,20 @@ public class Creature
         if (IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing))
             amount /= 2;
 
+        // Temporary Hit Points absorb damage first (PHB "Temporary Hit Points").
+        // Damage depletes TempHP first; any leftover carries over to normal hit points.
+        if (TempHP > 0)
+        {
+            int absorbed = Math.Min(TempHP, amount);
+            TempHP -= absorbed;
+            amount -= absorbed;
+            if (amount == 0)
+            {
+                HasTakenDamageThisRound = true;
+                return;
+            }
+        }
+
         // Damage at 0 Hit Points (PHB "Damage at 0 Hit Points"):
         // taking any damage while at 0 HP causes a death saving throw failure.
         if (CurrentHP == 0 && IsPlayer && !IsDead)
@@ -577,6 +597,17 @@ public class Creature
         HasTakenDamageThisRound = true;
     }
     
+    /// <summary>
+    /// Grants temporary hit points. Temporary HP do not stack: if the new amount is greater
+    /// than the current TempHP, it replaces it; otherwise the existing value is kept (PHB "Temporary Hit Points").
+    /// </summary>
+    /// <param name="amount">The number of temporary hit points to grant.</param>
+    public void GainTempHP(int amount)
+    {
+        if (amount > TempHP)
+            TempHP = amount;
+    }
+
     public void Heal(int amount)
     {
         bool wasUnconscious = CurrentHP == 0;

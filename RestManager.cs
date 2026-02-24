@@ -131,6 +131,13 @@ public static class RestManager
         if (result.HPRestored > 0)
             result.Log.Add($"Hit points fully restored: {hpBefore} → {character.MaxHP}.");
 
+        // Temporary hit points expire on a long rest (PHB "Temporary Hit Points")
+        if (character.TempHP > 0)
+        {
+            character.TempHP = 0;
+            result.Log.Add("Temporary hit points expired.");
+        }
+
         // Restore spent Hit Dice: up to half the character's total (minimum 1), rounded down
         int spentDice = character.HitDiceTotal - character.HitDiceRemaining;
         int diceToRestore = Math.Min(spentDice, Math.Max(1, DndMath.Half(character.HitDiceTotal)));

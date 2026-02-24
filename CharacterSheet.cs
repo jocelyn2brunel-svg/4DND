@@ -638,7 +638,11 @@ public class CharacterSheet
         int hpHeight = 80;
         if (spriteBatch != null) DrawHPBox(spriteBatch, c, x, currentY, width, hpHeight);
         currentY += hpHeight + 10;
-        
+
+        int tempHpHeight = 80;
+        if (spriteBatch != null) DrawTempHPBox(spriteBatch, c, x, currentY, width, tempHpHeight);
+        currentY += tempHpHeight + 10;
+
         int hdWidth = width / 2 - 5;
         if (spriteBatch != null)
         {
@@ -866,6 +870,27 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, currentHpText, new Vector2(x + (width - hpSize.X * 1.2f) / 2, y + 28), Color.Black, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
         spriteBatch.DrawString(_font, "POINTS DE VIE ACTUELS", new Vector2(x + 10, y + 58), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         RegisterTooltip(rect, $"PV: {c.CurrentHP}/{c.MaxHP}");
+    }
+
+    private void DrawTempHPBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
+    {
+        var rect = new Rectangle(x, y, width, height);
+        spriteBatch.Draw(_pixel, rect, Color.White);
+        DrawBorder(spriteBatch, rect, Color.Black, 2);
+        var tempHpRect = new Rectangle(x + 5, y + 25, width - 10, 30);
+        spriteBatch.Draw(_pixel, tempHpRect, new Color(220, 220, 220));
+        DrawBorder(spriteBatch, tempHpRect, Color.Black, 1);
+        string tempHpText = c.TempHP > 0 ? c.TempHP.ToString() : "";
+        if (tempHpText.Length > 0)
+        {
+            var tempHpSize = _font.MeasureString(tempHpText);
+            spriteBatch.DrawString(_font, tempHpText, new Vector2(x + (width - tempHpSize.X * 1.2f) / 2, y + 28), new Color(0, 80, 200), 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+        }
+        spriteBatch.DrawString(_font, "PV TEMPORAIRES", new Vector2(x + 10, y + 58), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        string tooltip = c.TempHP > 0
+            ? $"PV temporaires: {c.TempHP}. Absorbent les dégâts avant les PV normaux. Expirent après un repos long."
+            : "PV temporaires: aucun. Accordés par certains sorts ou capacités; absorbent les dégâts avant les PV normaux.";
+        RegisterTooltip(rect, tooltip);
     }
 
     private void DrawHitDiceBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
