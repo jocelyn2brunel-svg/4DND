@@ -32,8 +32,10 @@ public class CharacterSheet
     private bool _contextItemIsLight;
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
+    private Rectangle _grappleActionRect;
 
     public bool PlayLuteRequested { get; set; }
+    public bool GrappleRequested { get; set; }
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -95,6 +97,11 @@ public class CharacterSheet
             if (!string.IsNullOrEmpty(_inspectWeaponText) && !_inspectPopupRect.Contains(_mousePosition))
             {
                 _inspectWeaponText = null;
+            }
+
+            if (!_showItemContextMenu && _grappleActionRect.Contains(_mousePosition))
+            {
+                GrappleRequested = true;
             }
 
             if (_showItemContextMenu)
@@ -740,10 +747,13 @@ public class CharacterSheet
             entryY += entryHeight;
 
             int grappleBonus = c.GetSkillBonus("Athletics", out _);
+            _grappleActionRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+            if (_grappleActionRect.Contains(_mousePosition))
+                spriteBatch.Draw(_pixel, _grappleActionRect, new Color(180, 210, 255, 120));
             spriteBatch.DrawString(_font, "Grapple", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, FormatModifier(grappleBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString("Contested (Ath/Acr)"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), $"Lutte: jet de Force (Athlétisme) {FormatModifier(grappleBonus)} contré par Force (Athlétisme) ou Dextérité (Acrobaties) de la cible.\nCible à portée de mêlée, taille max: une catégorie de plus que vous.\nNécessite une main libre. Succès: cible agrippée (vitesse 0).");
+            RegisterTooltip(_grappleActionRect, $"Lutte: jet de Force (Athlétisme) {FormatModifier(grappleBonus)} contré par Force (Athlétisme) ou Dextérité (Acrobaties) de la cible.\nCible à portée de mêlée, taille max: une catégorie de plus que vous.\nNécessite une main libre. Succès: cible agrippée (vitesse 0).\n[Clic gauche pour lancer]");
         }
         
         return height;

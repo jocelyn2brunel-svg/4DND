@@ -2427,6 +2427,16 @@ public class Game1 : Game
                     _characterSheet.PlayLuteRequested = false;
                 }
 
+                if (_characterSheet.GrappleRequested && _currentCharacter != null)
+                {
+                    int roll = Dice.Roll(20);
+                    int bonus = _currentCharacter.GetSkillBonus("Athletics", out _);
+                    int total = roll + bonus;
+                    string sign = bonus >= 0 ? $"+{bonus}" : $"{bonus}";
+                    AddToCombatLog($"Lutte: d20({roll}){sign} = {total} (Athl.)");
+                    _characterSheet.GrappleRequested = false;
+                }
+
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
