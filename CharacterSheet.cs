@@ -31,6 +31,8 @@ public class CharacterSheet
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
 
+    public bool PlayLuteRequested { get; set; }
+
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
         _font = font;
@@ -143,6 +145,10 @@ public class CharacterSheet
                                 hasCharacterChanges = true;
                             }
                         }
+                        _showItemContextMenu = false;
+                        break;
+                    case "Jouer":
+                        PlayLuteRequested = true;
                         _showItemContextMenu = false;
                         break;
                     case "Examiner":
@@ -860,17 +866,27 @@ public class CharacterSheet
 
     private string[] GetContextMenuOptions()
     {
+        var options = new List<string>();
+
+        if (_contextItemName == "Lute")
+        {
+            options.Add("Jouer");
+        }
+
         if (_contextItemIsEquipped)
         {
-            return new[] { "Déséquiper", "Jeter", "Lancer", "Examiner" };
+            options.Add("Déséquiper");
         }
-
-        if (_contextItemIsEquippable)
+        else if (_contextItemIsEquippable)
         {
-            return new[] { "Équiper", "Jeter", "Lancer", "Examiner" };
+            options.Add("Équiper");
         }
 
-        return new[] { "Jeter", "Lancer", "Examiner" };
+        options.Add("Jeter");
+        options.Add("Lancer");
+        options.Add("Examiner");
+
+        return options.ToArray();
     }
 
     private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
