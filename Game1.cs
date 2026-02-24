@@ -1261,8 +1261,8 @@ public class Game1 : Game
         if (creature.IsPlayer)
             return Color.LimeGreen;
 
-        bool isEnemy = creature.Alignment is Alignment.LawfulEvil or Alignment.NeutralEvil or Alignment.ChaoticEvil;
-        return isEnemy ? Color.Red : Color.DeepSkyBlue;
+        // Any non-player unit is considered hostile from the player's perspective.
+        return Color.Red;
     }
 
     private void Draw3DTileOutline(int x, int y, int z, Color color, int width = 1, int height = 1)
