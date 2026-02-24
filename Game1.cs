@@ -3002,7 +3002,7 @@ public class Game1 : Game
             {
                 hoveredX = hovered.Value.x;
                 hoveredY = hovered.Value.y;
-                Draw3DTile(hoveredX.Value, hoveredY.Value, _currentViewLevel, Color.Yellow * 0.5f);
+                Draw3DTileOutline(hoveredX.Value, hoveredY.Value, _currentViewLevel, Color.Yellow);
             }
             Draw3DLine(Vector3.Zero, new Vector3(5, 0, 0), Color.Red);
             Draw3DLine(Vector3.Zero, new Vector3(0, 5, 0), Color.Lime);
