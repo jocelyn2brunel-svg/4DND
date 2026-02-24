@@ -38,7 +38,7 @@ public class Item
     // Weapon properties
     public WeaponType WeaponCategory { get; set; }
     public string DamageDice { get; set; } = ""; // e.g., "1d8"
-    public string DamageType { get; set; } = ""; // e.g., "Slashing"
+    public DamageType DamageType { get; set; } = DamageType.None;
     public bool IsLight { get; set; }
     public bool IsFinesse { get; set; }
     public bool IsVersatile { get; set; }

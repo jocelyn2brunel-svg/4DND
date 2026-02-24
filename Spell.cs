@@ -80,7 +80,7 @@ public class Spell
 
     // Damage properties
     public string DamageDice { get; set; } = "";       // e.g., "8d6"
-    public string DamageType { get; set; } = "";        // e.g., "Fire"
+    public DamageType DamageType { get; set; } = DamageType.None;
     public string SaveAbility { get; set; } = "";       // e.g., "DEX"; empty = no saving throw
     public int SaveDC { get; set; } = 0;
     public int AreaRadiusFeet { get; set; } = 0;        // 0 = single target, >0 = sphere radius
@@ -162,7 +162,7 @@ public class Spell
         Duration = 0,
         Effect = SpellEffect.None,
         DamageDice = "8d6",
-        DamageType = "Fire",
+        DamageType = DamageType.Fire,
         SaveAbility = "DEX",
         SaveDC = saveDC,
         AreaRadiusFeet = 20,
@@ -185,7 +185,7 @@ public class Spell
         Duration = 0,
         Effect = SpellEffect.None,
         DamageDice = "8d6",
-        DamageType = "Fire",
+        DamageType = DamageType.Fire,
         SaveAbility = "DEX",
         SaveDC = saveDC,
         AreaRadiusFeet = 10,

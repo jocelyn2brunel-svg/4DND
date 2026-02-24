@@ -305,7 +305,7 @@ public class Creature
     public int AttackBonus { get; set; } = 2;
     public string DamageDice { get; set; } = "1d6";
     public int DamageBonus { get; set; } = 0;
-    public string CurrentDamageType { get; set; } = "Bludgeoning";
+    public DamageType CurrentDamageType { get; set; } = DamageType.Bludgeoning;
     public bool IsMeleeAttack { get; set; } = true;
 
     /// <summary>
@@ -338,10 +338,10 @@ public class Creature
     public Condition Conditions { get; set; } = Condition.None;
 
     /// <summary>Damage types this creature isimmune to (takes 0 damage).</summary>
-    public HashSet<string> DamageImmunities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<DamageType> DamageImmunities { get; set; } = new();
 
     /// <summary>Damage types this creature is vulnerable to (takes double damage).</summary>
-    public HashSet<string> DamageVulnerabilities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<DamageType> DamageVulnerabilities { get; set; } = new();
 
     /// <summary>Conditions this creature cannot be affected by.</summary>
     public Condition ConditionImmunities { get; set; } = Condition.None;
@@ -494,18 +494,18 @@ public class Creature
         return Conditions.HasCondition(Condition.Blinded) || Conditions.HasCondition(Condition.Unconscious);
     }
     
-    public void TakeDamage(int amount, string damageType = "")
+    public void TakeDamage(int amount, DamageType damageType = DamageType.None)
     {
         // Immunity: no damage
-        if (!string.IsNullOrEmpty(damageType) && DamageImmunities.Contains(damageType))
+        if (damageType != DamageType.None && DamageImmunities.Contains(damageType))
             return;
 
         // Vulnerability: double damage
-        if (!string.IsNullOrEmpty(damageType) && DamageVulnerabilities.Contains(damageType))
+        if (damageType != DamageType.None && DamageVulnerabilities.Contains(damageType))
             amount *= 2;
 
         // Barbarian Rage resistance: Resistance to bludgeoning, piercing, and slashing damage.
-        if (IsRaging && (damageType == "Bludgeoning" || damageType == "Piercing" || damageType == "Slashing"))
+        if (IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing))
         {
             amount /= 2;
         }
