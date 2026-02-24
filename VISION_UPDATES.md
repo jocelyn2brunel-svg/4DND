@@ -33,7 +33,7 @@ This document describes the updates made to properly implement D&D 5e vision rul
 - Added `AddTremorsenseVision()` method in `VisionSystem`
 - Updated `CanSee()` methods to handle Tremorsense
 - Updated `IsHeavilyObscured()` to exempt Tremorsense
-- Added orange indicator dot for creatures with Tremorsense
+- Removed creature vision/state indicator dots from the tactical UI
 
 ### 3. Truesight (ENHANCED)
 **Previous Issue**: Truesight existed but didn't properly handle all cases.
@@ -52,23 +52,11 @@ This document describes the updates made to properly implement D&D 5e vision rul
 - Enhanced `CanSee()` to prioritize Truesight for invisible creatures
 - Updated `CalculateVisibility()` to allow Truesight through magical effects
 - Updated `IsHeavilyObscured()` to always return false for Truesight
-- Added gold indicator dot (5x5 pixels) for creatures with Truesight
+- Removed creature vision/state indicator dots from the tactical UI
 
 ## Visual Indicators
 
-Creatures now display vision type indicators in the top-right corner:
-
-| Indicator | Color | Vision Type |
-|-----------|-------|-------------|
-| 5x5 dot | Gold | Truesight (highest priority) |
-| 5x5 dot | Cyan | Blindsight |
-| 5x5 dot | Orange | Tremorsense |
-| 4x4 dot | Purple | Superior Darkvision (120 ft) |
-| 4x4 dot | Yellow | Normal Darkvision (60 ft) |
-
-Additional indicators:
-- **Orange dot** (top-left): Sunlight Sensitivity active
-- **Red dot** (bottom-left): Has active condition
+Vision and status indicator dots are no longer displayed on creature UI.
 
 ## Priority Order
 

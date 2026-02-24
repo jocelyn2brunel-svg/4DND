@@ -3246,25 +3246,7 @@ public class Game1 : Game
             DrawEnemyContextMenu(vp);
             DrawEnemyExaminePopup(vp);
 
-            if (_combatManager.InCombat && _showVisionOverlay)
-            {
-                foreach (var source in _visionSystem._lightSources)
-                    if (source.IsActive)
-                    {
-                        Vector3 sPos = GraphicsDevice.Viewport.Project(new Vector3(source.X, source.Y, source.Z), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
-                        if (sPos.Z >= 0 && sPos.Z <= 1) _spriteBatch.Draw(_pixel, new Rectangle((int)sPos.X - 5, (int)sPos.Y - 5, 10, 10), source.LightColor * 0.8f);
-                    }
-                foreach (var effect in _visionSystem._areaEffects)
-                {
-                    Vector3 ePos = GraphicsDevice.Viewport.Project(new Vector3(effect.X, effect.Y, effect.Z), _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
-                    if (ePos.Z >= 0 && ePos.Z <= 1) {
-                        Color col = effect.EffectType == LightType.Darkness ? Color.Purple * 0.5f : Color.White * 0.5f;
-                        if (effect.BlocksVision) col = Color.Gray * 0.7f;
-                        _spriteBatch.Draw(_pixel, new Rectangle((int)ePos.X - 10, (int)ePos.Y - 1, 20, 2), col);
-                        _spriteBatch.Draw(_pixel, new Rectangle((int)ePos.X - 1, (int)ePos.Y - 10, 2, 20), col);
-                    }
-                }
-            }
+            // Vision/status debug markers intentionally hidden to keep the tactical UI clean.
         }
 
         // CHARACTER SHEET
