@@ -29,6 +29,7 @@ public class CharacterSheet
     private string? _contextItemName;
     private bool _contextItemIsEquipped;
     private bool _contextItemIsEquippable;
+    private bool _contextItemIsLight;
     private string? _inspectWeaponText;
     private Rectangle _inspectPopupRect;
 
@@ -77,6 +78,8 @@ public class CharacterSheet
                 _contextItemName = clickedItem.ItemName;
                 _contextItemIsEquipped = clickedItem.IsEquipped;
                 _contextItemIsEquippable = clickedItem.IsEquippable;
+                var contextItemData = ItemDatabase.GetItem(clickedItem.ItemName);
+                _contextItemIsLight = contextItemData != null && contextItemData.IsLight && contextItemData.Type == ItemType.Weapon;
                 _showItemContextMenu = true;
                 _inspectWeaponText = null;
                 _itemContextMenuRect = BuildContextMenuRect(_mousePosition);
@@ -103,6 +106,17 @@ public class CharacterSheet
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             if (character.InventoryData.EquipItem(_contextItemName))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
+                        }
+                        _showItemContextMenu = false;
+                        break;
+                    case "Équiper (secondaire)":
+                        if (!string.IsNullOrEmpty(_contextItemName))
+                        {
+                            if (character.InventoryData.EquipOffhandItem(_contextItemName))
                             {
                                 character.CalculateDerivedStats();
                                 hasCharacterChanges = true;
@@ -652,7 +666,8 @@ public class CharacterSheet
     {
         int entryHeight = 20;
         int headerHeight = 45;
-        int entryCount = Math.Max(3, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + 2);
+        int offhandCount = c.InventoryData.OffhandWeapon != null ? 1 : 0;
+        int entryCount = Math.Max(3, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 2);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -690,6 +705,27 @@ public class CharacterSheet
                 spriteBatch.DrawString(_font, FormatModifier(atkBonus), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(_font, SafeString(damage), new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), BuildWeaponTooltip(weapon, atkBonus, damage));
+                entryY += entryHeight;
+            }
+
+            // Two-Weapon Fighting offhand bonus attack
+            if (c.InventoryData.OffhandWeapon != null)
+            {
+                string offhand = c.InventoryData.OffhandWeapon;
+                var offhandItem = ItemDatabase.GetItem(offhand);
+                int offhandAbilityMod = offhandItem != null && offhandItem.IsFinesse
+                    ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
+                    : c.GetAbilityModifier(c.Strength);
+                int offhandProfBonus = c.IsProficientWithWeapon(offhand) ? c.ProficiencyBonus : 0;
+                int offhandAtkBonus = offhandAbilityMod + offhandProfBonus;
+                string offhandDice = GetWeaponDamage(offhand);
+                // TWF: don't add ability modifier to damage (unless negative)
+                int offhandDmgMod = Math.Min(0, offhandAbilityMod);
+                string offhandDamage = offhandDmgMod < 0 ? $"{offhandDice} {FormatModifier(offhandDmgMod)}" : offhandDice;
+                spriteBatch.DrawString(_font, SafeString($"(BA) {offhand}"), new Vector2(nameCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, FormatModifier(offhandAtkBonus), new Vector2(atkBonusCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, SafeString(offhandDamage), new Vector2(damageCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), $"Combat à deux armes (action bonus): {offhand}\nBonus: {FormatModifier(offhandAtkBonus)}\nDégâts: {offhandDamage} (modificateur non ajouté si positif)\n{BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)}");
                 entryY += entryHeight;
             }
 
@@ -736,7 +772,7 @@ public class CharacterSheet
                 var itemData = ItemDatabase.GetItem(item);
                 if (itemData.Type == ItemType.Weapon)
                 {
-                    bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon;
+                    bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon;
                     _inventoryItemRects.Add((itemRect, item, isEquippedWeapon, itemData.IsEquippable));
                 }
                 else
@@ -950,6 +986,10 @@ public class CharacterSheet
         else if (_contextItemIsEquippable)
         {
             options.Add("Équiper");
+            if (_contextItemIsLight)
+            {
+                options.Add("Équiper (secondaire)");
+            }
         }
 
         options.Add("Jeter");

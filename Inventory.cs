@@ -10,6 +10,7 @@ public class Inventory
     public int Capacity { get; set; } = 50;
     
     public string? EquippedWeapon { get; set; }
+    public string? OffhandWeapon { get; set; }
     public string? EquippedArmor { get; set; }
     public string? EquippedShield { get; set; }
     
@@ -60,11 +61,25 @@ public class Inventory
         }
     }
     
+    public bool EquipOffhandItem(string itemName)
+    {
+        if (!Items.Contains(itemName)) return false;
+        var item = ItemDatabase.GetItem(itemName);
+        if (item.Type != ItemType.Weapon || !item.IsLight) return false;
+        OffhandWeapon = itemName;
+        return true;
+    }
+
     public bool UnequipItem(string itemName)
     {
         if (EquippedWeapon == itemName)
         {
             EquippedWeapon = null;
+            return true;
+        }
+        if (OffhandWeapon == itemName)
+        {
+            OffhandWeapon = null;
             return true;
         }
         if (EquippedArmor == itemName)

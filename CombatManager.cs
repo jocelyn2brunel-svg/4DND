@@ -1249,6 +1249,112 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Makes the Two-Weapon Fighting bonus action attack (PHB "Two-Weapon Fighting").
+    /// The attacker must hold a light melee weapon in each hand; the bonus attack uses
+    /// <see cref="Creature.HasBonusAction"/> instead of the main action, and the ability
+    /// modifier is <em>not</em> added to the damage roll (unless it is negative).
+    /// Barbarian rage damage still applies.
+    /// </summary>
+    public AttackResult MakeBonusActionAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult
+        {
+            Attacker = attacker,
+            Target = target
+        };
+
+        if (!attacker.HasBonusAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        attacker.HasBonusAction = false;
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
+                            target.Conditions.HasCondition(Condition.Paralyzed) ||
+                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.IsSqueezingThrough ||
+                            attacker.IsHidden ||
+                            attacker.Conditions.HasCondition(Condition.Invisible);
+        bool hasDisadvantage = !attackerCanSee ||
+                               attacker.IsSqueezingThrough;
+
+        attacker.IsHidden = false;
+
+        if (target.IsBeingHelped)
+        {
+            hasAdvantage = true;
+            target.IsBeingHelped = false;
+        }
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        if (visionSystem != null && attacker.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
+            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        if (attacker.HasPackTactics)
+        {
+            bool allyNearTarget = _combatants.Any(c =>
+                c != attacker &&
+                c.IsPlayer == attacker.IsPlayer &&
+                c.IsAlive() &&
+                !c.Conditions.HasCondition(Condition.Incapacitated) &&
+                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+            if (allyNearTarget) hasAdvantage = true;
+        }
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attacker.AttackBonus,
+            target.ArmorClass,
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0
+        );
+
+        result.AttackRoll       = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit       = attackCheck.Total;
+        result.HasAdvantage     = attackCheck.HasAdvantage;
+        result.HasDisadvantage  = attackCheck.HasDisadvantage;
+        result.IsCritical       = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
+        result.IsHit            = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            // TWF: don't add ability modifier to damage unless it is negative (PHB "Two-Weapon Fighting")
+            int damageBonus = Math.Min(0, attacker.DamageBonus);
+
+            if (attacker.IsRaging && attacker.IsMeleeAttack)
+                damageBonus += attacker.RageDamageBonus;
+
+            result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
+            result.DamageType = attacker.CurrentDamageType;
+            target.TakeDamage(result.Damage, result.DamageType);
+            attacker.HasAttackedThisRound = true;
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Makes a ranged weapon attack following D&amp;D 5e ranged attack rules.
     /// <para><b>Range:</b> Cannot attack beyond long range. Attack rolls have disadvantage
     /// when the target is beyond normal range but within long range.</para>

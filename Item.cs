@@ -39,6 +39,7 @@ public class Item
     public WeaponType WeaponCategory { get; set; }
     public string DamageDice { get; set; } = ""; // e.g., "1d8"
     public string DamageType { get; set; } = ""; // e.g., "Slashing"
+    public bool IsLight { get; set; }
     public bool IsFinesse { get; set; }
     public bool IsVersatile { get; set; }
     public string VersatileDamageDice { get; set; } = "";
