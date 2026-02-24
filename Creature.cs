@@ -510,13 +510,39 @@ public class Creature
             amount /= 2;
         }
 
-        CurrentHP = Math.Max(0, CurrentHP - amount);
+        if (amount >= CurrentHP)
+        {
+            int remaining = amount - CurrentHP;
+            CurrentHP = 0;
+
+            // Instant Death: remaining damage equals or exceeds the creature's hit point maximum (PHB "Instant Death")
+            if (remaining >= MaxHP)
+            {
+                // Creature dies outright — no unconscious state
+            }
+            else
+            {
+                // Falling Unconscious: drop to 0 HP but survive (PHB "Falling Unconscious")
+                Conditions = Conditions.AddCondition(Condition.Unconscious)
+                                       .AddCondition(Condition.Prone);
+            }
+        }
+        else
+        {
+            CurrentHP -= amount;
+        }
+
         HasTakenDamageThisRound = true;
     }
     
     public void Heal(int amount)
     {
+        bool wasUnconscious = CurrentHP == 0;
         CurrentHP = Math.Min(MaxHP, CurrentHP + amount);
+
+        // Unconsciousness ends when the creature regains any hit points (PHB "Falling Unconscious")
+        if (wasUnconscious && CurrentHP > 0)
+            Conditions = Conditions.RemoveCondition(Condition.Unconscious);
     }
 
     /// <summary>
