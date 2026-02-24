@@ -98,6 +98,12 @@ public class Game1 : Game
     private bool _showCombatUI = false;
     private const int CombatTopPanelHeight = 220;
     private MouseState _prevMouse;
+    private bool _showEnemyContextMenu = false;
+    private Rectangle _enemyContextMenuRect;
+    private Rectangle _enemyExamineOptionRect;
+    private Creature _contextTargetEnemy = null;
+    private string _enemyExamineText = "";
+    private Rectangle _enemyExaminePopupRect;
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
 
@@ -1976,6 +1982,7 @@ public class Game1 : Game
             bool wasCharacterSheetOpen = _showCharacterSheet;
             bool wasJournalOpen = _showJournal;
             bool mouseClickedThisFrame = mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released;
+            bool rightClickedThisFrame = mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released;
             bool clickedOnGameplayUiButton = false;
 
             // Update movement animation for all creatures
@@ -2305,6 +2312,56 @@ public class Game1 : Game
                 _prevMouse = mouse;
                 base.Update(gameTime);
                 return;
+            }
+
+            if (rightClickedThisFrame)
+            {
+                var hovered = GetHoveredTile();
+                Creature target = null;
+                if (hovered.HasValue)
+                {
+                    target = _combatManager.GetCreatureAt(hovered.Value.x, hovered.Value.y, _currentViewLevel);
+                }
+
+                if (target != null && !target.IsPlayer && target.IsAlive())
+                {
+                    _contextTargetEnemy = target;
+                    _showEnemyContextMenu = true;
+                    _enemyExamineText = "";
+
+                    const int menuWidth = 140;
+                    const int menuHeight = 40;
+                    int x = Math.Clamp(mouse.X, 8, GraphicsDevice.Viewport.Width - menuWidth - 8);
+                    int y = Math.Clamp(mouse.Y, 8, GraphicsDevice.Viewport.Height - menuHeight - 8);
+                    _enemyContextMenuRect = new Rectangle(x, y, menuWidth, menuHeight);
+                    _enemyExamineOptionRect = new Rectangle(x + 6, y + 6, menuWidth - 12, menuHeight - 12);
+                    clickedOnGameplayUiButton = true;
+                }
+                else
+                {
+                    _showEnemyContextMenu = false;
+                    _contextTargetEnemy = null;
+                }
+            }
+
+            if (_showEnemyContextMenu && mouseClickedThisFrame)
+            {
+                if (_enemyExamineOptionRect.Contains(mouse.Position) && _contextTargetEnemy != null)
+                {
+                    _enemyExamineText = BuildEnemyExamineText(_contextTargetEnemy);
+                    AddToCombatLog($"Examine: {_contextTargetEnemy.Name}");
+                    _showEnemyContextMenu = false;
+                    clickedOnGameplayUiButton = true;
+                }
+                else if (!_enemyContextMenuRect.Contains(mouse.Position))
+                {
+                    _showEnemyContextMenu = false;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(_enemyExamineText) && mouseClickedThisFrame && !_enemyExaminePopupRect.Contains(mouse.Position))
+            {
+                _enemyExamineText = "";
             }
 
             // Exploration movement (outside combat)
@@ -2912,6 +2969,8 @@ public class Game1 : Game
             DrawMapButton(vp, false);
             DrawSpawnButton(vp);
             DrawRotationButtons(vp);
+            DrawEnemyContextMenu(vp);
+            DrawEnemyExaminePopup(vp);
 
             if (_combatManager.InCombat && _showVisionOverlay)
             {
@@ -3692,6 +3751,66 @@ public class Game1 : Game
             }
         }
         return result + currentLine;
+    }
+
+    private string BuildEnemyExamineText(Creature creature)
+    {
+        string senses = "Normal";
+        var senseList = new List<string>();
+        if (creature.DarkvisionRange > 0) senseList.Add($"Darkvision {creature.DarkvisionRange}ft");
+        if (creature.HasBlindSight && creature.BlindSightRange > 0) senseList.Add($"Blindsight {creature.BlindSightRange}ft");
+        if (creature.HasTremorsense && creature.TremorsenseRange > 0) senseList.Add($"Tremorsense {creature.TremorsenseRange}ft");
+        if (creature.HasTrueSight && creature.TrueSightRange > 0) senseList.Add($"Truesight {creature.TrueSightRange}ft");
+        if (senseList.Count > 0) senses = string.Join(", ", senseList);
+
+        string activeConditions = creature.Conditions == Condition.None
+            ? "None"
+            : string.Join(", ", creature.Conditions.GetActiveConditionNames());
+
+        return
+            $"{creature.Name} ({creature.Type})\n" +
+            $"Alignement: {AlignmentHelper.GetDescription(creature.Alignment)}\n" +
+            $"Taille: {creature.Size} ({SizeHelper.GetSpaceDescription(creature.Size)})\n" +
+            $"PV: {creature.CurrentHP}/{creature.MaxHP} | CA: {creature.ArmorClass} | Vitesse: {creature.Speed}ft\n" +
+            $"Attaque: {creature.AttackName} +{creature.AttackBonus} ({creature.DamageDice}+{creature.DamageBonus} {creature.CurrentDamageType})\n" +
+            $"Sens: {senses} | Perception passive: {creature.PassivePerception}\n" +
+            $"Conditions: {activeConditions}";
+    }
+
+    private void DrawEnemyContextMenu(Viewport viewport)
+    {
+        if (!_showEnemyContextMenu || _font == null)
+            return;
+
+        int x = Math.Clamp(_enemyContextMenuRect.X, 8, viewport.Width - _enemyContextMenuRect.Width - 8);
+        int y = Math.Clamp(_enemyContextMenuRect.Y, 8, viewport.Height - _enemyContextMenuRect.Height - 8);
+        _enemyContextMenuRect = new Rectangle(x, y, _enemyContextMenuRect.Width, _enemyContextMenuRect.Height);
+        _enemyExamineOptionRect = new Rectangle(x + 6, y + 6, _enemyContextMenuRect.Width - 12, _enemyContextMenuRect.Height - 12);
+
+        bool isHovered = _enemyExamineOptionRect.Contains(Mouse.GetState().Position);
+        _spriteBatch.Draw(_pixel, _enemyContextMenuRect, new Color(20, 20, 20, 240));
+        DrawBorder(_spriteBatch, _pixel, _enemyContextMenuRect, Color.White, 2);
+        _spriteBatch.Draw(_pixel, _enemyExamineOptionRect, isHovered ? Color.DarkGoldenrod : Color.DarkSlateGray);
+        _spriteBatch.DrawString(_font, "Examiner", new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+    }
+
+    private void DrawEnemyExaminePopup(Viewport viewport)
+    {
+        if (string.IsNullOrWhiteSpace(_enemyExamineText) || _font == null)
+            return;
+
+        string wrapped = WrapText(SafeString(_enemyExamineText), 360);
+        var textSize = _font.MeasureString(wrapped) * 0.65f;
+        int width = Math.Min(420, (int)textSize.X + 24);
+        int height = (int)textSize.Y + 24;
+        int x = Math.Clamp(viewport.Width - width - 20, 8, viewport.Width - width - 8);
+        int minY = _showCombatUI ? CombatTopPanelHeight + 8 : 8;
+        int y = Math.Clamp(viewport.Height - height - 20, minY, viewport.Height - height - 8);
+
+        _enemyExaminePopupRect = new Rectangle(x, y, width, height);
+        _spriteBatch.Draw(_pixel, _enemyExaminePopupRect, new Color(18, 18, 18, 245));
+        DrawBorder(_spriteBatch, _pixel, _enemyExaminePopupRect, Color.White, 2);
+        _spriteBatch.DrawString(_font, wrapped, new Vector2(x + 10, y + 10), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 }
 
