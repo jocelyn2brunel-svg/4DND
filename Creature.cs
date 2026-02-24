@@ -284,6 +284,15 @@ public class Creature
     
     // Conditions
     public Condition Conditions { get; set; } = Condition.None;
+
+    /// <summary>Damage types this creature is immune to (takes 0 damage).</summary>
+    public HashSet<string> DamageImmunities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Damage types this creature is vulnerable to (takes double damage).</summary>
+    public HashSet<string> DamageVulnerabilities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Conditions this creature cannot be affected by.</summary>
+    public Condition ConditionImmunities { get; set; } = Condition.None;
     
     // Saving throw proficiencies (for monsters)
     public bool StrengthSaveProficiency { get; set; } = false;
@@ -377,6 +386,14 @@ public class Creature
     
     public void TakeDamage(int amount, string damageType = "")
     {
+        // Immunity: no damage
+        if (!string.IsNullOrEmpty(damageType) && DamageImmunities.Contains(damageType))
+            return;
+
+        // Vulnerability: double damage
+        if (!string.IsNullOrEmpty(damageType) && DamageVulnerabilities.Contains(damageType))
+            amount *= 2;
+
         // Barbarian Rage resistance: Resistance to bludgeoning, piercing, and slashing damage.
         if (IsRaging && (damageType == "Bludgeoning" || damageType == "Piercing" || damageType == "Slashing"))
         {
@@ -609,6 +626,9 @@ public class Creature
             CurrentDamageType = "Piercing",
             IsMeleeAttack = true,
             DarkvisionRange = 60,
+            DamageImmunities = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Poison" },
+            DamageVulnerabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bludgeoning" },
+            ConditionImmunities = Condition.Poisoned | Condition.Exhaustion,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
             IsPlayer = false,

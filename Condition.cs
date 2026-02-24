@@ -19,7 +19,8 @@ public enum Condition
     Prone = 1 << 9,           // Disadvantage on attacks, attacks have advantage if within 5 ft, disadvantage if beyond
     Restrained = 1 << 10,     // Speed = 0, disadvantage on attacks and DEX saves, attacks have advantage
     Stunned = 1 << 11,        // Incapacitated, auto-fail STR/DEX saves, attacks have advantage
-    Unconscious = 1 << 12     // Incapacitated, prone, auto-fail STR/DEX saves, attacks have advantage, critical on hit if within 5 ft
+    Unconscious = 1 << 12,    // Incapacitated, prone, auto-fail STR/DEX saves, attacks have advantage, critical on hit if within 5 ft
+    Exhaustion = 1 << 13      // Levels of exhaustion (1-6), each level adds cumulative penalties
 }
 
 public static class ConditionExtensions
@@ -56,6 +57,7 @@ public static class ConditionExtensions
             Condition.Restrained => "Restrained: Speed is 0, disadvantage on attacks",
             Condition.Stunned => "Stunned: Incapacitated, auto-fail STR/DEX saves",
             Condition.Unconscious => "Unconscious: Incapacitated, prone, auto-fail saves",
+            Condition.Exhaustion => "Exhaustion: Cumulative penalties based on exhaustion level",
             _ => "Unknown condition"
         };
     }
