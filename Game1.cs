@@ -107,6 +107,9 @@ public class Game1 : Game
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
 
+    private LuteSynthesizer _luteSynth = null!;
+    private LuteProceduralMusic _luteMusic = null!;
+
     private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
     public Game1()
@@ -191,6 +194,9 @@ public class Game1 : Game
         _characterCreation = new CharacterCreation(_font, _pixel);
         _characterSheet = new CharacterSheet(_font, _pixel);
         _journalUI = new JournalUI(_font, _pixel);
+
+        _luteSynth = new LuteSynthesizer();
+        _luteMusic = new LuteProceduralMusic(_luteSynth);
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
 
@@ -230,6 +236,7 @@ public class Game1 : Game
     
     private void StartCombatWithNearbyEnemies()
     {
+        _luteMusic.Stop();
         if (_currentCharacter == null || _playerCreature == null) return;
         
         var combatants = new List<Creature>();
@@ -1480,6 +1487,7 @@ public class Game1 : Game
         }
         else if (sel == "Main Menu")
         {
+            _luteMusic.Stop();
             _state = AppState.MainMenu;
             _isMenuOpen = false;
         }
@@ -1489,6 +1497,12 @@ public class Game1 : Game
         }
     }
     
+    protected override void OnExiting(object sender, EventArgs args)
+    {
+        _luteSynth?.Dispose();
+        base.OnExiting(sender, args);
+    }
+
     protected override void Update(GameTime gameTime)
     {
         var kb = Keyboard.GetState();
@@ -1979,6 +1993,10 @@ public class Game1 : Game
         
         if (_state == AppState.Playing)
         {
+            float dtPlaying = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _luteMusic.Update(dtPlaying);
+            _luteSynth.Update();
+
             bool wasCharacterSheetOpen = _showCharacterSheet;
             bool wasJournalOpen = _showJournal;
             bool mouseClickedThisFrame = mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released;
@@ -2291,6 +2309,13 @@ public class Game1 : Game
                 {
                     SaveCharacters();
                 }
+
+                if (_characterSheet.PlayLuteRequested)
+                {
+                    _luteMusic.PlayRandomTune();
+                    _characterSheet.PlayLuteRequested = false;
+                }
+
                 _prevKb = kb;
                 _prevMouse = mouse;
                 base.Update(gameTime);
