@@ -242,6 +242,8 @@ public class Game1 : Game
         
         // Add existing enemies to combat
         var existingEnemies = _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()).ToList();
+        if (existingEnemies.Count == 0) return;
+
         combatants.AddRange(existingEnemies);
         
         // Clear and restart with proper initiative
@@ -2280,48 +2282,48 @@ public class Game1 : Game
                     _targetYaw += MathHelper.ToRadians(45f);
                     clickedOnGameplayUiButton = true;
                 }
-                else if (_combatManager.InCombat && _showCombatUI)
+                else if (_showCombatUI)
                 {
-                    var currentCombatant = _combatManager.CurrentCombatant;
+                    var currentCombatant = _combatManager.InCombat ? _combatManager.CurrentCombatant : _playerCreature;
                     if (currentCombatant != null && currentCombatant.IsPlayer)
                     {
                         if (combatMoveButtonRect.Contains(mouse.Position))
                         {
-                            if (currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction)
+                            if (_combatManager.InCombat && currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction)
                             {
                                 _combatManager.Dash(currentCombatant);
-                                AddToCombatLog($"{currentCombatant.Name} use DASH via Move button.");
+                                AddToCombatLog($"{currentCombatant.Name} uses DASH via Move button.");
                             }
                             _selectedAction = CombatAction.Move;
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDashButtonRect.Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDashButtonRect.Contains(mouse.Position))
                         {
                             _combatManager.Dash(currentCombatant);
                             FlushTurnMessages();
-                            AddToCombatLog($"{currentCombatant.Name} use DASH.");
+                            AddToCombatLog($"{currentCombatant.Name} uses DASH.");
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDisengageButtonRect.Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDisengageButtonRect.Contains(mouse.Position))
                         {
                             _combatManager.Disengage(currentCombatant);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && combatDodgeButtonRect.Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDodgeButtonRect.Contains(mouse.Position))
                         {
                             _combatManager.Dodge(currentCombatant);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && GetCombatHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
                             _combatManager.Hide(currentCombatant, visionSystem: _visionSystem);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && GetCombatHelpActionButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatHelpActionButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Help;
                             _showBonusActionMenu = false;
@@ -2333,7 +2335,7 @@ public class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (_selectedAction == CombatAction.Attack && currentCombatant.HasAction && GetCombatGrappleButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        else if (_selectedAction == CombatAction.Attack && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatGrappleButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Grapple;
                             _showBonusActionMenu = false;
@@ -2357,10 +2359,11 @@ public class Game1 : Game
                         }
                         else if (_showBonusActionMenu && _currentCharacter?.Class == "Barbarian" && combatRageButtonRect.Contains(mouse.Position))
                         {
-                            if (currentCombatant.HasBonusAction && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian")
+                            if ((currentCombatant.HasBonusAction || !_combatManager.InCombat) && currentCombatant.RagesRemaining > 0 && !currentCombatant.IsRaging && _currentCharacter?.Class == "Barbarian")
                             {
                                 _combatManager.StartRage(currentCombatant);
-                                currentCombatant.HasBonusAction = false;
+                                if (_combatManager.InCombat)
+                                    currentCombatant.HasBonusAction = false;
                                 AddToCombatLog($"{currentCombatant.Name} enters RAGE!");
                             }
                             _showBonusActionMenu = false;
@@ -2368,7 +2371,7 @@ public class Game1 : Game
                         }
                         else if (_showBonusActionMenu && GetCombatBonusHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
-                            if (currentCombatant.HasBonusAction && currentCombatant.HasNimbleEscape)
+                            if ((currentCombatant.HasBonusAction || !_combatManager.InCombat) && currentCombatant.HasNimbleEscape)
                             {
                                 _combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem);
                                 FlushTurnMessages();
@@ -2409,14 +2412,10 @@ public class Game1 : Game
             // Toggle combat UI with Tab
             if (kb.IsKeyDown(Keys.Tab) && !_prevKb.IsKeyDown(Keys.Tab))
             {
-                if (!_combatManager.InCombat && _currentCharacter != null && _playerCreature != null)
+                _showCombatUI = !_showCombatUI;
+                if (_showCombatUI && _selectedAction == CombatAction.None)
                 {
-                    // Start combat with existing creatures
-                    StartCombatWithNearbyEnemies();
-                }
-                else
-                {
-                    _showCombatUI = !_showCombatUI;
+                    _selectedAction = CombatAction.Move;
                 }
             }
 
@@ -2521,8 +2520,11 @@ public class Game1 : Game
             {
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
+                    // If Combat UI is open, only allow movement if Move action is selected
+                    bool allowExplorationMove = !_showCombatUI || _selectedAction == CombatAction.Move || _selectedAction == CombatAction.None;
+
                     var hovered = GetHoveredTile();
-                    if (hovered.HasValue && _playerCreature != null)
+                    if (hovered.HasValue && _playerCreature != null && allowExplorationMove)
                     {
                         int tx = hovered.Value.x;
                         int ty = hovered.Value.y;
@@ -2601,15 +2603,19 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && currentCombatant.HasAction)
+                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat))
                                 {
+                                    bool wasInCombat = _combatManager.InCombat;
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
-                                    // Check if combat ended
-                                    if (!_combatManager.InCombat)
+                                    if (!wasInCombat && target.IsAlive())
+                                    {
+                                        StartCombatWithNearbyEnemies();
+                                    }
+                                    else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
                                         _showCombatUI = false;
@@ -2620,7 +2626,7 @@ public class Game1 : Game
                                         }
                                     }
                                 }
-                                else if (target != null && !currentCombatant.HasAction)
+                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
                                     AddToCombatLog("No action available!");
                                 }
@@ -2640,8 +2646,9 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && currentCombatant.HasAction && _currentCharacter != null)
+                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat) && _currentCharacter != null)
                                 {
+                                    bool wasInCombat = _combatManager.InCombat;
                                     int attackerRoll = Dice.Roll(20);
                                     int attackerBonus = _currentCharacter.GetSkillBonus("Athletics", out _);
                                     int attackerTotal = attackerRoll + attackerBonus;
@@ -2666,11 +2673,27 @@ public class Game1 : Game
                                         AddToCombatLog($"{target.Name} resists the grapple!");
                                     }
 
-                                    currentCombatant.HasAction = false;
+                                    if (_combatManager.InCombat)
+                                        currentCombatant.HasAction = false;
                                     _diceRollAnimation.Start(attackerRoll);
                                     _selectedAction = CombatAction.Move;
+
+                                    if (!wasInCombat && target.IsAlive())
+                                    {
+                                        StartCombatWithNearbyEnemies();
+                                    }
+                                    else if (wasInCombat && !_combatManager.InCombat)
+                                    {
+                                        AddToCombatLog("Combat ended!");
+                                        _showCombatUI = false;
+                                        if (_playerCreature != null && _currentCharacter != null)
+                                        {
+                                            _playerCreature.UpdateCharacter(_currentCharacter);
+                                            SaveCharacters();
+                                        }
+                                    }
                                 }
-                                else if (target != null && !currentCombatant.HasAction)
+                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
                                     AddToCombatLog("No action available!");
                                 }
@@ -2690,8 +2713,9 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && currentCombatant.HasAction && _currentCharacter != null)
+                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat) && _currentCharacter != null)
                                 {
+                                    bool wasInCombat = _combatManager.InCombat;
                                     int spellAttackBonus = GetSpellcastingAbilityModifier(_currentCharacter) + _currentCharacter.ProficiencyBonus;
                                     string damageDice = GetCantripDamageDice(_currentCharacter.Level);
                                     var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, DamageType.Force, _visionSystem);
@@ -2699,7 +2723,11 @@ public class Game1 : Game
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
-                                    if (!_combatManager.InCombat)
+                                    if (!wasInCombat && target.IsAlive())
+                                    {
+                                        StartCombatWithNearbyEnemies();
+                                    }
+                                    else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
                                         _showCombatUI = false;
@@ -2710,7 +2738,7 @@ public class Game1 : Game
                                         }
                                     }
                                 }
-                                else if (target != null && !currentCombatant.HasAction)
+                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
                                     AddToCombatLog("No action available!");
                                 }
@@ -2730,19 +2758,35 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && target.IsAlive() && currentCombatant.HasAction)
+                                if (target != null && !target.IsPlayer && target.IsAlive() && (currentCombatant.HasAction || !_combatManager.InCombat))
                                 {
+                                    bool wasInCombat = _combatManager.InCombat;
                                     if (_combatManager.Help(currentCombatant, target))
                                     {
                                         FlushTurnMessages();
                                         _selectedAction = CombatAction.Move;
+
+                                        if (!wasInCombat)
+                                        {
+                                            StartCombatWithNearbyEnemies();
+                                        }
+                                        else if (wasInCombat && !_combatManager.InCombat)
+                                        {
+                                            AddToCombatLog("Combat ended!");
+                                            _showCombatUI = false;
+                                            if (_playerCreature != null && _currentCharacter != null)
+                                            {
+                                                _playerCreature.UpdateCharacter(_currentCharacter);
+                                                SaveCharacters();
+                                            }
+                                        }
                                     }
                                     else
                                     {
                                         FlushTurnMessages();
                                     }
                                 }
-                                else if (!currentCombatant.HasAction)
+                                else if (!currentCombatant.HasAction && _combatManager.InCombat)
                                 {
                                     AddToCombatLog("No action available!");
                                 }
@@ -3244,7 +3288,7 @@ public class Game1 : Game
 
     private bool IsMouseOverCombatUi(Point mousePosition, Viewport viewport)
     {
-        if (!_showCombatUI || !_combatManager.InCombat)
+        if (!_showCombatUI)
             return false;
 
         if (mousePosition.Y <= _combatTopPanelHeight)
@@ -3253,7 +3297,7 @@ public class Game1 : Game
         if (_combatLogWindowRect.Contains(mousePosition))
             return true;
 
-        var currentCombatant = _combatManager.CurrentCombatant;
+        var currentCombatant = _combatManager.InCombat ? _combatManager.CurrentCombatant : _playerCreature;
         if (currentCombatant == null || !currentCombatant.IsPlayer)
             return false;
 
@@ -3643,7 +3687,7 @@ public class Game1 : Game
 
         
         // Combat UI
-        if (_showCombatUI && _combatManager.InCombat)
+        if (_showCombatUI)
         {
             // Combat panel at top
             int panelHeight = _combatTopPanelHeight;
@@ -3655,29 +3699,37 @@ public class Game1 : Game
                 int y = 10;
                 
                 // Round counter
-                var roundText = $"=== ROUND {_combatManager.CurrentRound} ===";
+                var roundText = _combatManager.InCombat ? $"=== ROUND {_combatManager.CurrentRound} ===" : "=== EXPLORATION ===";
                 var roundSize = _font.MeasureString(roundText);
                 _spriteBatch.DrawString(_font, roundText, new Vector2((vp.Width - roundSize.X) / 2, y), Color.Gold);
                 y += 30;
                 
                 // Current turn
-                var currentCombatant = _combatManager.CurrentCombatant;
+                var currentCombatant = _combatManager.InCombat ? _combatManager.CurrentCombatant : _playerCreature;
                 if (currentCombatant != null)
                 {
-                    var turnText = $"Turn: {SafeString(currentCombatant.Name)} (HP: {currentCombatant.CurrentHP}/{currentCombatant.MaxHP})";
+                    var turnLabel = _combatManager.InCombat ? "Turn:" : "Active:";
+                    var turnText = $"{turnLabel} {SafeString(currentCombatant.Name)} (HP: {currentCombatant.CurrentHP}/{currentCombatant.MaxHP})";
                     _spriteBatch.DrawString(_font, turnText, new Vector2(10, y), Color.Yellow);
                     y += 25;
                     
                     // Action economy display
-                    var actionStatus = currentCombatant.HasAction ? "Ready" : "Used";
-                    var bonusStatus = currentCombatant.HasBonusAction ? "Ready" : "Used";
-                    var reactionStatus = currentCombatant.HasReaction ? "Ready" : "Used";
-                    var movementText = $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft";
+                    bool showActionReady = currentCombatant.HasAction || !_combatManager.InCombat;
+                    bool showBonusReady = currentCombatant.HasBonusAction || !_combatManager.InCombat;
+                    bool showReactionReady = currentCombatant.HasReaction || !_combatManager.InCombat;
+                    bool showMovementReady = currentCombatant.MovementRemaining > 0 || !_combatManager.InCombat;
+
+                    var actionStatus = showActionReady ? "Ready" : "Used";
+                    var bonusStatus = showBonusReady ? "Ready" : "Used";
+                    var reactionStatus = showReactionReady ? "Ready" : "Used";
+                    var movementText = _combatManager.InCombat
+                        ? $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft"
+                        : $"{currentCombatant.Speed}/{currentCombatant.Speed}ft";
                     
-                    var actionColor = currentCombatant.HasAction ? Color.Green : Color.DarkGray;
-                    var bonusColor = currentCombatant.HasBonusAction ? Color.Green : Color.DarkGray;
-                    var reactionColor = currentCombatant.HasReaction ? Color.Green : Color.DarkGray;
-                    var movementColor = currentCombatant.MovementRemaining > 0 ? Color.LimeGreen : Color.DarkGray;
+                    var actionColor = showActionReady ? Color.Green : Color.DarkGray;
+                    var bonusColor = showBonusReady ? Color.Green : Color.DarkGray;
+                    var reactionColor = showReactionReady ? Color.Green : Color.DarkGray;
+                    var movementColor = showMovementReady ? Color.LimeGreen : Color.DarkGray;
                     
                     _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, SafeString(actionStatus), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
@@ -3696,10 +3748,17 @@ public class Game1 : Game
                     
                     // Initiative order
                     var initText = "Initiative: ";
-                    for (int i = 0; i < _combatManager.Combatants.Count && i < 5; i++)
+                    if (_combatManager.InCombat)
                     {
-                        var c = _combatManager.Combatants[i];
-                        initText += $"{SafeString(c.Name)}({c.Initiative}) ";
+                        for (int i = 0; i < _combatManager.Combatants.Count && i < 5; i++)
+                        {
+                            var c = _combatManager.Combatants[i];
+                            initText += $"{SafeString(c.Name)}({c.Initiative}) ";
+                        }
+                    }
+                    else
+                    {
+                        initText = "Exploration Mode - No combat active";
                     }
                     _spriteBatch.DrawString(_font, initText, new Vector2(10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     y += 25;
@@ -3709,7 +3768,7 @@ public class Game1 : Game
                     {
                         var moveLabel = "Move";
                         var moveColor = new Color(45, 95, 145);
-                        bool isDashingMove = currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction;
+                        bool isDashingMove = _combatManager.InCombat && currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction;
                         if (isDashingMove)
                         {
                             moveLabel = "Dash?";

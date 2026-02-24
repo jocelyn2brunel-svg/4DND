@@ -1160,7 +1160,7 @@ public class CombatManager
         };
         
         // Check if attacker has an action available
-        if (!attacker.HasAction)
+        if (_inCombat && !attacker.HasAction)
         {
             result.IsHit = false;
             return result;
@@ -1175,7 +1175,8 @@ public class CombatManager
         }
 
         // Consume the action
-        attacker.HasAction = false;
+        if (_inCombat)
+            attacker.HasAction = false;
         
         // Check if attacker can see target
         bool attackerCanSee = true;
@@ -1298,7 +1299,7 @@ public class CombatManager
             Target = target
         };
 
-        if (!attacker.HasBonusAction)
+        if (_inCombat && !attacker.HasBonusAction)
         {
             result.IsHit = false;
             return result;
@@ -1312,7 +1313,8 @@ public class CombatManager
             return result;
         }
 
-        attacker.HasBonusAction = false;
+        if (_inCombat)
+            attacker.HasBonusAction = false;
 
         bool attackerCanSee = visionSystem != null
             ? visionSystem.CanSee(attacker, target)
@@ -1415,7 +1417,7 @@ public class CombatManager
             Target = target
         };
 
-        if (!attacker.HasAction)
+        if (_inCombat && !attacker.HasAction)
         {
             result.IsHit = false;
             return result;
@@ -1441,7 +1443,8 @@ public class CombatManager
             return result;
         }
 
-        attacker.HasAction = false;
+        if (_inCombat)
+            attacker.HasAction = false;
 
         bool attackerCanSee = visionSystem != null
             ? visionSystem.CanSee(attacker, target)
@@ -1536,13 +1539,14 @@ public class CombatManager
             Target = target
         };
 
-        if (!attacker.HasAction)
+        if (_inCombat && !attacker.HasAction)
         {
             result.IsHit = false;
             return result;
         }
 
-        attacker.HasAction = false;
+        if (_inCombat)
+            attacker.HasAction = false;
 
         bool attackerCanSee = visionSystem != null
             ? visionSystem.CanSee(attacker, target)
@@ -1696,10 +1700,11 @@ public class CombatManager
             DamageType = spell.DamageType
         };
 
-        if (!caster.HasAction)
+        if (_inCombat && !caster.HasAction)
             return result;
 
-        caster.HasAction = false;
+        if (_inCombat)
+            caster.HasAction = false;
 
         // PHB "Damage Rolls": roll damage once for all targets
         result.DamageRolled = RollDamage(spell.DamageDice, 0, false);
@@ -1864,6 +1869,9 @@ public class CombatManager
     /// <returns>True if the interaction was performed; false if neither the free slot nor an action was available.</returns>
     public bool UseObjectInteraction(Creature creature)
     {
+        if (!_inCombat)
+            return true;
+
         if (creature.HasFreeObjectInteraction)
         {
             creature.HasFreeObjectInteraction = false;
@@ -1886,10 +1894,12 @@ public class CombatManager
     /// <returns>True if the Dash was successfully taken; false if no action is available.</returns>
     public bool Dash(Creature creature)
     {
-        if (!creature.HasAction)
+        if (_inCombat && !creature.HasAction)
             return false;
 
-        creature.HasAction = false;
+        if (_inCombat)
+            creature.HasAction = false;
+
         creature.MovementRemaining += creature.Speed;
         TurnMessages.Add($"{creature.Name} uses Dash! (+{creature.Speed}ft movement)");
         return true;
@@ -1970,12 +1980,16 @@ public class CombatManager
         if (!creature.Conditions.HasCondition(Condition.Prone))
             return false;
 
-        if (creature.Speed == 0 || creature.MovementRemaining < creature.Speed / 2)
-            return false;
+        if (_inCombat)
+        {
+            if (creature.Speed == 0 || creature.MovementRemaining < creature.Speed / 2)
+                return false;
 
-        creature.MovementRemaining -= creature.Speed / 2;
+            creature.MovementRemaining -= creature.Speed / 2;
+        }
+
         creature.Conditions = creature.Conditions.RemoveCondition(Condition.Prone);
-        TurnMessages.Add($"{creature.Name} stands up. ({creature.Speed / 2}ft movement spent)");
+        TurnMessages.Add($"{creature.Name} stands up.");
         return true;
     }
 
@@ -1987,15 +2001,18 @@ public class CombatManager
     /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
     public bool Disengage(Creature creature, bool isBonusAction = false)
     {
-        if (isBonusAction)
+        if (_inCombat)
         {
-            if (!creature.HasBonusAction) return false;
-            creature.HasBonusAction = false;
-        }
-        else
-        {
-            if (!creature.HasAction) return false;
-            creature.HasAction = false;
+            if (isBonusAction)
+            {
+                if (!creature.HasBonusAction) return false;
+                creature.HasBonusAction = false;
+            }
+            else
+            {
+                if (!creature.HasAction) return false;
+                creature.HasAction = false;
+            }
         }
 
         creature.IsDisengaged = true;
@@ -2011,10 +2028,12 @@ public class CombatManager
     /// <returns>True if the Dodge was successfully taken; false if no action is available.</returns>
     public bool Dodge(Creature creature)
     {
-        if (!creature.HasAction)
+        if (_inCombat && !creature.HasAction)
             return false;
 
-        creature.HasAction = false;
+        if (_inCombat)
+            creature.HasAction = false;
+
         creature.IsDodging = true;
         TurnMessages.Add($"{creature.Name} takes the Dodge action.");
         return true;
@@ -2036,13 +2055,16 @@ public class CombatManager
     /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
     public bool Hide(Creature creature, bool isBonusAction = false, VisionSystem? visionSystem = null)
     {
-        if (isBonusAction)
+        if (_inCombat)
         {
-            if (!creature.HasBonusAction) return false;
-        }
-        else
-        {
-            if (!creature.HasAction) return false;
+            if (isBonusAction)
+            {
+                if (!creature.HasBonusAction) return false;
+            }
+            else
+            {
+                if (!creature.HasAction) return false;
+            }
         }
 
         // Cannot hide while an enemy has direct line of sight.
@@ -2058,10 +2080,13 @@ public class CombatManager
             }
         }
 
-        if (isBonusAction)
-            creature.HasBonusAction = false;
-        else
-            creature.HasAction = false;
+        if (_inCombat)
+        {
+            if (isBonusAction)
+                creature.HasBonusAction = false;
+            else
+                creature.HasAction = false;
+        }
 
         int dexMod = DndMath.GetAbilityModifier(creature.Dexterity);
         int profBonus = DndMath.GetProficiencyBonus(creature.Level);
@@ -2082,42 +2107,43 @@ public class CombatManager
         }
         else
         {
-                    creature.IsHidden = true;
-                        TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
-                    }
+            creature.IsHidden = true;
+            TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
+        }
 
-                    return true;
-                }
+        return true;
+    }
 
-                /// <summary>
-                /// Takes the Help action: distracts a nearby enemy so that the next ally attack against it
-                /// has advantage. The target must be within 5 feet (1 tile) of the helper.
-                /// </summary>
-                /// <returns>True if the action was successfully taken; false if the required resource is unavailable or the target is out of range.</returns>
-                public bool Help(Creature helper, Creature target)
-                {
-                    if (!helper.HasAction) return false;
-                    if (!target.IsAlive()) return false;
-                    if (helper.IsPlayer == target.IsPlayer)
-                    {
-                        TurnMessages.Add($"{helper.Name} can only Help against an enemy.");
-                        return false;
-                    }
+    /// <summary>
+    /// Takes the Help action: distracts a nearby enemy so that the next ally attack against it
+    /// has advantage. The target must be within 5 feet (1 tile) of the helper.
+    /// </summary>
+    /// <returns>True if the action was successfully taken; false if the required resource is unavailable or the target is out of range.</returns>
+    public bool Help(Creature helper, Creature target)
+    {
+        if (_inCombat && !helper.HasAction) return false;
+        if (!target.IsAlive()) return false;
+        if (helper.IsPlayer == target.IsPlayer)
+        {
+            TurnMessages.Add($"{helper.Name} can only Help against an enemy.");
+            return false;
+        }
 
-                    if (!IsInMeleeRange(helper, target))
-                    {
-                        TurnMessages.Add($"{helper.Name} cannot Help — {target.Name} is not within 5 feet!");
-                        return false;
-                    }
+        if (!IsInMeleeRange(helper, target))
+        {
+            TurnMessages.Add($"{helper.Name} cannot Help — {target.Name} is not within 5 feet!");
+            return false;
+        }
 
-                    helper.HasAction = false;
-                    target.IsBeingHelped = true;
-                    TurnMessages.Add($"{helper.Name} uses Help to distract {target.Name}! Next attack against {target.Name} has advantage.");
-                    return true;
-                }
-            }
+        if (_inCombat)
+            helper.HasAction = false;
+        target.IsBeingHelped = true;
+        TurnMessages.Add($"{helper.Name} uses Help to distract {target.Name}! Next attack against {target.Name} has advantage.");
+        return true;
+    }
+}
 
-            public class AttackResult
+public class AttackResult
 {
     public Creature Attacker { get; set; } = null!;
     public Creature Target { get; set; } = null!;
