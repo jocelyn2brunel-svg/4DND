@@ -2993,7 +2993,7 @@ public class Game1 : Game
         if (_combatLogWindowRect.Contains(mousePosition))
             return true;
 
-        var currentCombatant = _combatManager.GetCurrentCombatant();
+        var currentCombatant = _combatManager.CurrentCombatant;
         if (currentCombatant == null || !currentCombatant.IsPlayer)
             return false;
 
