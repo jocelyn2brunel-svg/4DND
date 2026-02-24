@@ -34,7 +34,7 @@ public class ClassData
         return null;
     }
     
-    public BardLevelData? GetBardLevelData(int level)
+    public BardLevelData GetBardLevelData(int level)
     {
         foreach (var entry in BardLevelProgression)
             if (entry.Level == level) return entry;

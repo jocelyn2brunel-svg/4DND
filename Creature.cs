@@ -282,6 +282,7 @@ public class Creature
     public int TrueSightRange { get; set; } = 0;
     public bool HasSunlightSensitivity { get; set; } = false;
     public bool HasPackTactics { get; set; } = false;
+    public bool HasKeenSenses { get; set; } = false;
     
     // Conditions
     public Condition Conditions { get; set; } = Condition.None;
@@ -317,7 +318,8 @@ public class Creature
         {
             int wisdomMod = GetAbilityModifier(Wisdom);
             int profBonus = IsPlayer ? DndMath.GetProficiencyBonus(1) : 2;
-            return 10 + wisdomMod + (PerceptionProficiency ? profBonus : 0);
+            int keenBonus = HasKeenSenses ? 5 : 0; // PHB p.175: advantage on perception = +5 to passive
+            return 10 + wisdomMod + (PerceptionProficiency ? profBonus : 0) + keenBonus;
         }
     }
 
@@ -681,6 +683,8 @@ public class Creature
             DarkvisionRange = 0,
             StealthProficiency = true,
             PerceptionProficiency = true,
+            HasPackTactics = true,
+            HasKeenSenses = true,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.Gray,
             IsPlayer = false
