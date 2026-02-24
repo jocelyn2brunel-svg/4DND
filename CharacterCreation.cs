@@ -1107,8 +1107,7 @@ public class CharacterCreation
 
         if (selected.Contains(skill))
         {
-            if (selected.Count > 1)
-                selected.Remove(skill);
+            selected.Remove(skill);
             return;
         }
 
