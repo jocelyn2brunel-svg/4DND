@@ -256,6 +256,40 @@ public class Game1 : Game
         AddToCombatLog($"{spottingEnemy.Name} spotted you! Combat started automatically.");
         return true;
     }
+
+    private static bool IsValidPlayerSpawnTile(TileType tile)
+    {
+        return tile != TileType.Water && tile != TileType.Wall && tile != TileType.Empty;
+    }
+
+    private void PlacePlayerAtNearestValidTile(int preferredX = 0, int preferredY = 0, int preferredZ = 0)
+    {
+        if (_playerCreature == null)
+            return;
+
+        const int maxSearchTiles = 3000;
+        foreach (var (x, y, z) in _tacticalMap.SpiralCoords(preferredX, preferredY, preferredZ).Take(maxSearchTiles))
+        {
+            if (!IsValidPlayerSpawnTile(_tacticalMap.Get(x, y, z)))
+                continue;
+
+            _playerCreature.TeleportTo(x, y, z);
+            return;
+        }
+
+        _playerCreature.TeleportTo(preferredX, preferredY, preferredZ);
+        AddToCombatLog("Aucune case seche trouvee pour le spawn; position par defaut utilisee.");
+    }
+
+    private void CreatePlayerCreatureAtSafeSpawn()
+    {
+        if (_currentCharacter == null)
+            return;
+
+        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
+        PlacePlayerAtNearestValidTile();
+        _combatManager.Combatants.Clear();
+    }
     
     private bool TrySpawnRandomCreatureNearPlayer(int targetDistance = 20)
     {
@@ -1674,8 +1708,7 @@ public class Game1 : Game
                         // Initialize player creature from the selected character
                         if (_currentCharacter != null)
                         {
-                            _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                            _combatManager.Combatants.Clear();
+                            CreatePlayerCreatureAtSafeSpawn();
                         }
                         
                         // TODO: Go to multiplayer lobby
@@ -1758,8 +1791,7 @@ public class Game1 : Game
                                     // Initialize player creature from the selected character
                                     if (_currentCharacter != null)
                                     {
-                                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                                        _combatManager.Combatants.Clear();
+                                        CreatePlayerCreatureAtSafeSpawn();
                                     }
                                     
                                     // TODO: Go to multiplayer lobby
@@ -1808,8 +1840,7 @@ public class Game1 : Game
                 if (_isMultiplayerMode)
                 {
                     // Initialize player creature from the selected character
-                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                    _combatManager.Combatants.Clear();
+                    CreatePlayerCreatureAtSafeSpawn();
                     // TODO: Go to multiplayer lobby
                     _state = AppState.Playing;
                     UpdateVision();
@@ -1874,10 +1905,7 @@ public class Game1 : Game
                     // Initialize player creature from the selected character
                     if (_currentCharacter != null)
                     {
-                        _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                        
-                        // Clear existing enemies first to avoid duplicates
-                        _combatManager.Combatants.Clear();
+                        CreatePlayerCreatureAtSafeSpawn();
                     }
                     
                     _state = AppState.Playing;
@@ -1954,8 +1982,7 @@ public class Game1 : Game
                                 // Initialize player creature from the selected character
                                 if (_currentCharacter != null)
                                 {
-                                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                                    _combatManager.Combatants.Clear();
+                                    CreatePlayerCreatureAtSafeSpawn();
                                 }
                                  
                                 _state = AppState.Playing;
@@ -2000,8 +2027,7 @@ public class Game1 : Game
                 // Initialize player creature from the selected character
                 if (_currentCharacter != null)
                 {
-                    _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
-                    _combatManager.Combatants.Clear();
+                    CreatePlayerCreatureAtSafeSpawn();
                 }
                 
                 _state = AppState.Playing;
@@ -2028,9 +2054,7 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
-                    _playerCreature.X = 0;
-                    _playerCreature.Y = 0;
-                    _playerCreature.Z = 0;
+                    PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;
                     UpdateVision();
@@ -2045,9 +2069,7 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
-                    _playerCreature.X = 0;
-                    _playerCreature.Y = 0;
-                    _playerCreature.Z = 0;
+                    PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;
                     UpdateVision();
