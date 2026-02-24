@@ -50,6 +50,7 @@ public class CharacterCreation
         "thorn", "dell", "gorn", "mere", "nox", "dain", "stra", "len", "mir", "vek"
     };
     private readonly Random _random = new();
+    private readonly Dictionary<string, HashSet<string>> _selectedClassSkills = new();
 
     public CharacterCreation(SpriteFont font, Texture2D pixel)
     {
@@ -68,6 +69,7 @@ public class CharacterCreation
         _classScrollOffset = 0;
         _isRolling = false;
         _rollTimer = 0;
+        _selectedClassSkills.Clear();
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character createdCharacter)
@@ -299,6 +301,35 @@ public class CharacterCreation
                 var downArrow = new Rectangle(classesRect.X + classesRect.Width - 30, classesRect.Y + classesRect.Height - 25, 25, 25);
                 if (IsMouseClicked(mouse, _prevMouse, downArrow))
                     _classScrollOffset++;
+            }
+
+            // Skill choice toggles for the selected class
+            var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+            if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
+            {
+                var detailsRect = new Rectangle(menuRectC.X + paddingC + 480, menuRectC.Y + titleH + 40, 480, 420);
+                int startY = detailsRect.Y + 330;
+                int rowHeight = 26;
+                int colWidth = (detailsRect.Width - 30) / 2;
+                int optionsToDraw = Math.Min(6, selectedClass.SkillChoiceOptions.Count);
+
+                for (int i = 0; i < optionsToDraw; i++)
+                {
+                    string skill = selectedClass.SkillChoiceOptions[i];
+                    int col = i / 3;
+                    int row = i % 3;
+                    var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
+
+                    if (skillRect.Contains(mouse.Position))
+                    {
+                        _tooltipText = $"Select class skill: {skill}";
+                    }
+
+                    if (IsMouseClicked(mouse, _prevMouse, skillRect))
+                    {
+                        ToggleSkillSelection(selectedClass.Name, skill, selectedClass.SkillChoicesCount);
+                    }
+                }
             }
         }
         // Step 3: Ability rolls
@@ -655,6 +686,22 @@ public class CharacterCreation
             yOffset += 22;
             var skillsText = $"  Choose {selectedClass.SkillChoicesCount} from " + string.Join(", ", selectedClass.SkillChoiceOptions);
             DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
+
+            var selectedSkills = GetSelectedSkillsForClass(selectedClass);
+            yOffset += 55;
+            int colWidth = (detailsRect.Width - 30) / 2;
+            for (int i = 0; i < selectedClass.SkillChoiceOptions.Count && i < 6; i++)
+            {
+                string skill = selectedClass.SkillChoiceOptions[i];
+                bool isSelected = selectedSkills.Contains(skill);
+                int col = i / 3;
+                int row = i % 3;
+                var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, yOffset + row * 26, colWidth - 8, 22);
+                spriteBatch.Draw(_pixel, skillRect, isSelected ? Color.ForestGreen * 0.8f : Color.Black * 0.35f);
+                DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
+                var prefix = isSelected ? "[x]" : "[ ]";
+                spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 6, skillRect.Y + 2), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            }
         }
     }
 
@@ -803,6 +850,16 @@ public class CharacterCreation
         var weaponText = "  " + string.Join(", ", selectedClass.WeaponProficiencies);
         DrawWrappedText(spriteBatch, weaponText, new Vector2(rightX, yOffset), 450, Color.White, 0.5f);
         yOffset += 45;
+
+        var selectedSkills = GetSelectedSkillsForClass(selectedClass);
+        if (selectedSkills.Count > 0)
+        {
+            spriteBatch.DrawString(_font, "Class Skills:", new Vector2(rightX, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            yOffset += 22;
+            var classSkillText = "  " + string.Join(", ", selectedSkills);
+            DrawWrappedText(spriteBatch, classSkillText, new Vector2(rightX, yOffset), 450, Color.White, 0.5f);
+            yOffset += 45;
+        }
         
         // Starting equipment preview
         var startingEquipment = StartingEquipment.GetStartingEquipment(selectedClass.Name);
@@ -965,11 +1022,20 @@ public class CharacterCreation
 
     private bool CanProceedToNextStep()
     {
+        if (_createStep == 2)
+        {
+            var selectedClass = ClassData.GetClass(_classes[_classIndex]);
+            if (selectedClass.SkillChoicesCount <= 0)
+                return true;
+
+            return GetSelectedSkillsForClass(selectedClass).Count == selectedClass.SkillChoicesCount;
+        }
+
         return _createStep switch
         {
             0 => !string.IsNullOrWhiteSpace(_createName),
             1 => true,
-            2 => true,
+            2 => false,
             3 => !_isRolling,
             4 => true,
             _ => false
@@ -982,7 +1048,7 @@ public class CharacterCreation
         {
             0 => "Proceed to race selection",
             1 => "Proceed to class selection",
-            2 => "Roll ability scores",
+            2 => "Choose class skills then roll ability scores",
             3 => "Review your character",
             4 => "Finalize and create character",
             _ => "Next"
@@ -992,6 +1058,66 @@ public class CharacterCreation
     private string FormatBonus(int bonus)
     {
         return bonus >= 0 ? $"+{bonus}" : $"{bonus}";
+    }
+
+    private List<string> GetSelectedSkillsForClass(ClassData classData)
+    {
+        if (!_selectedClassSkills.TryGetValue(classData.Name, out var selected))
+        {
+            selected = new HashSet<string>();
+            int defaultCount = Math.Min(classData.SkillChoicesCount, classData.SkillChoiceOptions.Count);
+            for (int i = 0; i < defaultCount; i++)
+            {
+                selected.Add(classData.SkillChoiceOptions[i]);
+            }
+            _selectedClassSkills[classData.Name] = selected;
+        }
+
+        return new List<string>(selected);
+    }
+
+    private void ToggleSkillSelection(string className, string skill, int maxChoices)
+    {
+        if (!_selectedClassSkills.TryGetValue(className, out var selected))
+        {
+            selected = new HashSet<string>();
+            _selectedClassSkills[className] = selected;
+        }
+
+        if (selected.Contains(skill))
+        {
+            if (selected.Count > 1)
+                selected.Remove(skill);
+            return;
+        }
+
+        if (selected.Count < maxChoices)
+            selected.Add(skill);
+    }
+
+    private void ApplySkillProficiency(Character character, string skill)
+    {
+        switch (skill)
+        {
+            case "Acrobatics": character.AcrobaticsProficiency = true; break;
+            case "Animal Handling": character.AnimalHandlingProficiency = true; break;
+            case "Arcana": character.ArcanaProficiency = true; break;
+            case "Athletics": character.AthleticsProficiency = true; break;
+            case "Deception": character.DeceptionProficiency = true; break;
+            case "History": character.HistoryProficiency = true; break;
+            case "Insight": character.InsightProficiency = true; break;
+            case "Intimidation": character.IntimidationProficiency = true; break;
+            case "Investigation": character.InvestigationProficiency = true; break;
+            case "Medicine": character.MedicineProficiency = true; break;
+            case "Nature": character.NatureProficiency = true; break;
+            case "Perception": character.PerceptionProficiency = true; break;
+            case "Performance": character.PerformanceProficiency = true; break;
+            case "Persuasion": character.PersuasionProficiency = true; break;
+            case "Religion": character.ReligionProficiency = true; break;
+            case "Sleight of Hand": character.SleightOfHandProficiency = true; break;
+            case "Stealth": character.StealthProficiency = true; break;
+            case "Survival": character.SurvivalProficiency = true; break;
+        }
     }
 
     private void RollAbilities()
@@ -1117,60 +1243,11 @@ public class CharacterCreation
             }
         }
         
-        // Apply starting skill proficiencies based on class (basic selection)
-        switch (c.Class)
+        // Apply selected class skill proficiencies
+        var selectedSkills = GetSelectedSkillsForClass(selectedClass);
+        foreach (var skill in selectedSkills)
         {
-            case "Barbarian":
-                c.AthleticsProficiency = true;
-                c.IntimidationProficiency = true;
-                break;
-            case "Bard":
-                c.PerceptionProficiency = true;
-                c.PerformanceProficiency = true;
-                c.PersuasionProficiency = true;
-                break;
-            case "Cleric":
-                c.MedicineProficiency = true;
-                c.ReligionProficiency = true;
-                break;
-            case "Druid":
-                c.NatureProficiency = true;
-                c.SurvivalProficiency = true;
-                break;
-            case "Fighter":
-                c.AthleticsProficiency = true;
-                c.IntimidationProficiency = true;
-                break;
-            case "Monk":
-                c.AcrobaticsProficiency = true;
-                c.StealthProficiency = true;
-                break;
-            case "Paladin":
-                c.AthleticsProficiency = true;
-                c.ReligionProficiency = true;
-                break;
-            case "Ranger":
-                c.SurvivalProficiency = true;
-                c.NatureProficiency = true;
-                break;
-            case "Rogue":
-                c.StealthProficiency = true;
-                c.SleightOfHandProficiency = true;
-                c.AcrobaticsProficiency = true;
-                c.PerceptionProficiency = true;
-                break;
-            case "Sorcerer":
-                c.ArcanaProficiency = true;
-                c.PersuasionProficiency = true;
-                break;
-            case "Warlock":
-                c.ArcanaProficiency = true;
-                c.DeceptionProficiency = true;
-                break;
-            case "Wizard":
-                c.ArcanaProficiency = true;
-                c.InvestigationProficiency = true;
-                break;
+            ApplySkillProficiency(c, skill);
         }
         
         // Add starting equipment based on class
