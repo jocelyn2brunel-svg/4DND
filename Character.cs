@@ -61,6 +61,12 @@ public class Character
     public int HitDiceTotal { get; set; } = 1;
     public int HitDiceRemaining { get; set; } = 1;
     public int HitDiceType { get; set; } = 8; // d6, d8, d10, or d12 based on class
+
+    /// <summary>
+    /// Whether this character has already taken a long rest in the current 24-hour period.
+    /// Reset at the start of a new in-game day.
+    /// </summary>
+    public bool HasLongRestedToday { get; set; } = false;
     public int DeathSaveSuccesses { get; set; } = 0;
     public int DeathSaveFailures { get; set; } = 0;
     
