@@ -308,10 +308,7 @@ public class CharacterCreation
             if (selectedClass.SkillChoicesCount > 0 && selectedClass.SkillChoiceOptions.Count > 0)
             {
                 var detailsRect = new Rectangle(menuRectC.X + paddingC + 480, menuRectC.Y + titleH + 40, 480, 420);
-                int startY = detailsRect.Y + 330;
-                int rowHeight = 26;
-                int colWidth = (detailsRect.Width - 30) / 2;
-                int optionsToDraw = Math.Min(6, selectedClass.SkillChoiceOptions.Count);
+                var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
 
                 for (int i = 0; i < optionsToDraw; i++)
                 {
@@ -688,21 +685,45 @@ public class CharacterCreation
             DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
 
             var selectedSkills = GetSelectedSkillsForClass(selectedClass);
-            yOffset += 55;
-            int colWidth = (detailsRect.Width - 30) / 2;
-            for (int i = 0; i < selectedClass.SkillChoiceOptions.Count && i < 6; i++)
+            var (startY, rowHeight, colWidth, optionsToDraw) = GetSkillChoiceLayout(selectedClass, detailsRect);
+            for (int i = 0; i < optionsToDraw; i++)
             {
                 string skill = selectedClass.SkillChoiceOptions[i];
                 bool isSelected = selectedSkills.Contains(skill);
                 int col = i / 3;
                 int row = i % 3;
-                var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, yOffset + row * 26, colWidth - 8, 22);
+                var skillRect = new Rectangle(detailsRect.X + 12 + col * colWidth, startY + row * rowHeight, colWidth - 8, 22);
                 spriteBatch.Draw(_pixel, skillRect, isSelected ? Color.ForestGreen * 0.8f : Color.Black * 0.35f);
                 DrawBorder(spriteBatch, skillRect, 1, isSelected ? Color.LightGreen : Color.White * 0.35f);
                 var prefix = isSelected ? "[x]" : "[ ]";
                 spriteBatch.DrawString(_font, $"{prefix} {skill}", new Vector2(skillRect.X + 6, skillRect.Y + 2), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             }
         }
+    }
+
+    private (int startY, int rowHeight, int colWidth, int optionsToDraw) GetSkillChoiceLayout(ClassData classData, Rectangle detailsRect)
+    {
+        int yOffset = detailsRect.Y + 12;
+        yOffset += 35; // class name
+        yOffset += 60; // description
+        yOffset += 25; // hit die
+        yOffset += 30; // primary ability
+        yOffset += 22 + classData.SavingThrowProficiencies.Count * 20 + 10; // saving throws + spacing
+
+        if (classData.ArmorProficiencies.Count > 0)
+            yOffset += 22 + 40;
+
+        if (classData.WeaponProficiencies.Count > 0)
+            yOffset += 22 + 40;
+
+        yOffset += 22 + 40; // tools
+        yOffset += 22 + 55; // skills title + wrapped line block
+
+        int rowHeight = 26;
+        int colWidth = (detailsRect.Width - 30) / 2;
+        int optionsToDraw = Math.Min(6, classData.SkillChoiceOptions.Count);
+
+        return (yOffset, rowHeight, colWidth, optionsToDraw);
     }
 
     private void DrawAbilitiesStep(SpriteBatch spriteBatch, GameTime gameTime, Rectangle menuRect, int padding, int titleH, MouseState mouse)
