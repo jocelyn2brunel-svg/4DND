@@ -1595,7 +1595,9 @@ public class Game1 : Game
             int padding = 12;
             int headerHeight = 110;
             int footerHeight = 32;
-            int menuHeight = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
+            int menuHeightFromList = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
+            int previewMinimumHeight = 430;
+            int menuHeight = Math.Max(menuHeightFromList, previewMinimumHeight);
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
             var backRect = new Rectangle(menuRect.X + padding, menuRect.Y + 48, 110, 30);
@@ -3018,7 +3020,9 @@ public class Game1 : Game
             int padding = 12;
             int headerHeight = 110;
             int footerHeight = 32;
-            int menuHeight = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
+            int menuHeightFromList = headerHeight + GetCharacterMenuItemCount() * (itemHeight + padding) + padding + footerHeight;
+            int previewMinimumHeight = 430;
+            int menuHeight = Math.Max(menuHeightFromList, previewMinimumHeight);
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
             _spriteBatch.Draw(_pixel, menuRect, Color.DarkSlateGray * 0.95f);
