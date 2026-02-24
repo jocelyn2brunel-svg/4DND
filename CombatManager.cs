@@ -281,6 +281,7 @@ public class CombatManager
                 CurrentCombatant.IsDisengaged = false;
                 CurrentCombatant.IsDodging = false;
                 CurrentCombatant.IsHidden = false;
+                CurrentCombatant.IsBeingHelped = false; // Help benefit expires at the start of this creature's turn
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -1156,6 +1157,13 @@ public class CombatManager
         // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
         attacker.IsHidden = false;
 
+        // Help action: a friendly creature distracted this target, granting advantage on this attack.
+        if (target.IsBeingHelped)
+        {
+            hasAdvantage = true;
+            target.IsBeingHelped = false; // Benefit consumed by this attack
+        }
+
         // Dodge: attacker has disadvantage if the dodging target can see the attacker
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -1259,6 +1267,13 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee;
 
         attacker.IsHidden = false;
+
+        // Help action: a friendly creature distracted this target, granting advantage on this attack.
+        if (target.IsBeingHelped)
+        {
+            hasAdvantage = true;
+            target.IsBeingHelped = false; // Benefit consumed by this attack
+        }
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -1685,15 +1700,42 @@ public class CombatManager
         }
         else
         {
-            creature.IsHidden = true;
-            TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
-        }
+                    creature.IsHidden = true;
+                        TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
+                    }
 
-        return true;
-    }
-}
+                    return true;
+                }
 
-public class AttackResult
+                /// <summary>
+                /// Takes the Help action: distracts a nearby enemy so that the next ally attack against it
+                /// has advantage. The target must be within 5 feet (1 tile) of the helper.
+                /// </summary>
+                /// <returns>True if the action was successfully taken; false if the required resource is unavailable or the target is out of range.</returns>
+                public bool Help(Creature helper, Creature target)
+                {
+                    if (!helper.HasAction) return false;
+                    if (!target.IsAlive()) return false;
+                    if (helper.IsPlayer == target.IsPlayer)
+                    {
+                        TurnMessages.Add($"{helper.Name} can only Help against an enemy.");
+                        return false;
+                    }
+
+                    if (!IsInMeleeRange(helper, target))
+                    {
+                        TurnMessages.Add($"{helper.Name} cannot Help — {target.Name} is not within 5 feet!");
+                        return false;
+                    }
+
+                    helper.HasAction = false;
+                    target.IsBeingHelped = true;
+                    TurnMessages.Add($"{helper.Name} uses Help to distract {target.Name}! Next attack against {target.Name} has advantage.");
+                    return true;
+                }
+            }
+
+            public class AttackResult
 {
     public Creature Attacker { get; set; } = null!;
     public Creature Target { get; set; } = null!;

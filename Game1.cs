@@ -93,7 +93,7 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn }
+    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = false;
@@ -2302,6 +2302,12 @@ public class Game1 : Game
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
+                        else if (_selectedAction == CombatAction.Move && currentCombatant.HasAction && GetCombatHelpActionButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
+                        {
+                            _selectedAction = CombatAction.Help;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
                         {
                             _selectedAction = CombatAction.Attack;
@@ -2626,7 +2632,39 @@ public class Game1 : Game
                             }
                         }
                     }
-                    
+
+                    // Handle Help action target selection
+                    if (_selectedAction == CombatAction.Help)
+                    {
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
+                        {
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
+                            {
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
+                                int tz = hovered.Value.z;
+                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
+                                if (target != null && !target.IsPlayer && target.IsAlive() && currentCombatant.HasAction)
+                                {
+                                    if (_combatManager.Help(currentCombatant, target))
+                                    {
+                                        FlushTurnMessages();
+                                        _selectedAction = CombatAction.Move;
+                                    }
+                                    else
+                                    {
+                                        FlushTurnMessages();
+                                    }
+                                }
+                                else if (!currentCombatant.HasAction)
+                                {
+                                    AddToCombatLog("No action available!");
+                                }
+                            }
+                        }
+                    }
+
                     // Handle move action
                     if (_selectedAction == CombatAction.Move)
                     {
@@ -2947,6 +2985,12 @@ public class Game1 : Game
         return new Rectangle(dodgeRect.Right + 10, dodgeRect.Y, dodgeRect.Width, dodgeRect.Height);
     }
 
+    private Rectangle GetCombatHelpActionButtonRect(Viewport viewport)
+    {
+        var hideRect = GetCombatHideButtonRect(viewport);
+        return new Rectangle(hideRect.Right + 10, hideRect.Y, hideRect.Width, hideRect.Height);
+    }
+
     private Rectangle GetCombatRageButtonRect(Viewport viewport)
     {
         const int buttonWidth = 130;
@@ -3134,7 +3178,8 @@ public class Game1 : Game
             if (GetCombatDashButtonRect(viewport).Contains(mousePosition)
                 || GetCombatDisengageButtonRect(viewport).Contains(mousePosition)
                 || GetCombatDodgeButtonRect(viewport).Contains(mousePosition)
-                || GetCombatHideButtonRect(viewport).Contains(mousePosition))
+                || GetCombatHideButtonRect(viewport).Contains(mousePosition)
+                || GetCombatHelpActionButtonRect(viewport).Contains(mousePosition))
                 return true;
         }
 
@@ -3626,6 +3671,11 @@ public class Game1 : Game
                                 currentCombatant.IsHidden ? "Hidden!" : "Hide",
                                 currentCombatant.IsHidden ? Color.Gray : new Color(60, 90, 60),
                                 currentCombatant.IsHidden);
+                            DrawCombatActionButton(
+                                GetCombatHelpActionButtonRect(vp),
+                                "Help",
+                                new Color(70, 100, 130),
+                                _selectedAction == CombatAction.Help);
                         }
 
                         DrawCombatActionButton(
@@ -3680,6 +3730,7 @@ public class Game1 : Game
                                 CombatAction.Move => "Click on an empty tile to move",
                                 CombatAction.Attack => "Click on an enemy to attack",
                                 CombatAction.CastSpell => "Click on an enemy to cast a spell",
+                                CombatAction.Help => "Click on an adjacent enemy to distract (Help action)",
                                 _ => ""
                             };
                             var actionTextSize = _font.MeasureString(actionText) * 0.8f;

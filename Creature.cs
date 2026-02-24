@@ -391,6 +391,13 @@ public class Creature
     public int HiddenStealthResult { get; set; } = 0;
 
     /// <summary>
+    /// Whether a friendly creature has used the Help action to distract this creature.
+    /// The next attack roll made against this creature by a friendly creature has advantage.
+    /// Cleared after the first attack that benefits from it, or at the start of this creature's next turn.
+    /// </summary>
+    public bool IsBeingHelped { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
     /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
     /// </summary>
