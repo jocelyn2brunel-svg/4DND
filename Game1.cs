@@ -220,15 +220,7 @@ public class Game1 : Game
             _tacticalMap.Set(i, 3, 1, TileType.Wall);
         }
 
-        // Add some platforms at different heights
-        for (int z = 1; z <= 3; z++)
-        {
-            for (int i = -3; i <= 3; i++)
-            {
-                _tacticalMap.Set(i, i, z, TileType.Floor);
-                _tacticalMap.Set(-i, i, z, TileType.Floor);
-            }
-        }
+        // No debug/test upper-floor platforms.
         
         try
         {
