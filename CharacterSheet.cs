@@ -667,7 +667,7 @@ public class CharacterSheet
         int entryHeight = 20;
         int headerHeight = 45;
         int offhandCount = c.InventoryData.OffhandWeapon != null ? 1 : 0;
-        int entryCount = Math.Max(3, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 2);
+        int entryCount = Math.Max(4, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 3);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -737,6 +737,13 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, FormatModifier(unarmedBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString(unarmedDamage), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), $"Frappe à mains nues: bonus {FormatModifier(unarmedBonus)}, dégâts 1{FormatModifier(strMod)} contondants, portée 5 ft.");
+            entryY += entryHeight;
+
+            int grappleBonus = c.GetSkillBonus("Athletics", out _);
+            spriteBatch.DrawString(_font, "Grapple", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, FormatModifier(grappleBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, SafeString("Contested (Ath/Acr)"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), $"Lutte: jet de Force (Athlétisme) {FormatModifier(grappleBonus)} contré par Force (Athlétisme) ou Dextérité (Acrobaties) de la cible.\nCible à portée de mêlée, taille max: une catégorie de plus que vous.\nNécessite une main libre. Succès: cible agrippée (vitesse 0).");
         }
         
         return height;
