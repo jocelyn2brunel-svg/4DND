@@ -36,7 +36,9 @@ public class D20Check
     // Step 3: Compare the total to a target number
     public int TargetNumber { get; set; }
     public int Total => DieRoll + BaseModifier + CircumstantialBonus;
-    public bool Success => DndMath.MeetsDC(Total, TargetNumber);
+    public bool Success => CheckType == D20CheckType.AttackRoll
+        ? (IsCriticalHit || (!IsCriticalMiss && DndMath.MeetsDC(Total, TargetNumber)))
+        : DndMath.MeetsDC(Total, TargetNumber);
     
     // Special cases
     public bool IsNaturalOne => DieRoll == 1;
