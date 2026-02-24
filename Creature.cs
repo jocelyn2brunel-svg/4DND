@@ -368,6 +368,14 @@ public class Creature
     public bool IsDisengaged { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature has taken the Dodge action this turn.
+    /// Until the start of its next turn, attack rolls against it have disadvantage if it can see the attacker,
+    /// and it makes Dexterity saving throws with advantage.
+    /// This benefit is lost if the creature is incapacitated or its speed drops to 0.
+    /// </summary>
+    public bool IsDodging { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
     /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
     /// </summary>

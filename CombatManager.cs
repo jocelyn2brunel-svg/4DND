@@ -163,6 +163,7 @@ public class CombatManager
             first.DiagonalStepsTaken = 0;
             first.HasFreeObjectInteraction = true;
             first.IsDisengaged = false;
+            first.IsDodging = false;
             ProcessStartOfTurnEffects(first);
         }
 
@@ -278,6 +279,7 @@ public class CombatManager
                 CurrentCombatant.DiagonalStepsTaken = 0;
                 CurrentCombatant.HasFreeObjectInteraction = true;
                 CurrentCombatant.IsDisengaged = false;
+                CurrentCombatant.IsDodging = false;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -624,6 +626,16 @@ public class CombatManager
                                target.Conditions.HasCondition(Condition.Unconscious)  ||
                                target.IsSqueezingThrough;
         bool hasDisadvantage = !attackerCanSee || attacker.IsSqueezingThrough;
+
+        // Dodge: attacker has disadvantage if the dodging target can see the attacker
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
 
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
@@ -1138,7 +1150,17 @@ public class CombatManager
                            target.IsSqueezingThrough;  // Attack rolls against a squeezing creature have advantage
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough;  // Squeezing creature has disadvantage on attack rolls
-        
+
+        // Dodge: attacker has disadvantage if the dodging target can see the attacker
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
         // Check for sunlight sensitivity (circumstantial disadvantage)
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
@@ -1251,6 +1273,10 @@ public class CombatManager
         bool isDexSave = abilityName is "DEX" or "Dexterity";
         if (creature.IsSqueezingThrough && isDexSave)
             hasDisadvantage = true;
+
+        // Dodge: advantage on Dexterity saving throws while the benefit is active
+        if (creature.IsDodging && isDexSave && !creature.Conditions.HasCondition(Condition.Incapacitated) && creature.Speed > 0)
+            hasAdvantage = true;
 
         return creature.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage);
     }
@@ -1498,6 +1524,23 @@ public class CombatManager
 
         creature.IsDisengaged = true;
         TurnMessages.Add($"{creature.Name} takes the Disengage action.");
+        return true;
+    }
+
+    /// <summary>
+    /// Takes the Dodge action: until the start of the creature's next turn, attack rolls against it
+    /// have disadvantage if it can see the attacker, and it makes Dexterity saving throws with advantage.
+    /// This benefit is lost if the creature is incapacitated or its speed drops to 0.
+    /// </summary>
+    /// <returns>True if the Dodge was successfully taken; false if no action is available.</returns>
+    public bool Dodge(Creature creature)
+    {
+        if (!creature.HasAction)
+            return false;
+
+        creature.HasAction = false;
+        creature.IsDodging = true;
+        TurnMessages.Add($"{creature.Name} takes the Dodge action.");
         return true;
     }
 
