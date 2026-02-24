@@ -142,6 +142,7 @@ public class CombatManager
             creature.HasReaction = false;
             creature.MovementRemaining = 0;
             creature.DiagonalStepsTaken = 0;
+            creature.HasFreeObjectInteraction = false;
         }
         
         // Sort by initiative (descending)
@@ -160,6 +161,7 @@ public class CombatManager
             first.HasReaction = true;
             first.MovementRemaining = first.Speed;
             first.DiagonalStepsTaken = 0;
+            first.HasFreeObjectInteraction = true;
             ProcessStartOfTurnEffects(first);
         }
 
@@ -273,6 +275,7 @@ public class CombatManager
                 CurrentCombatant.HasReaction = true;
                 CurrentCombatant.MovementRemaining = CurrentCombatant.Speed;
                 CurrentCombatant.DiagonalStepsTaken = 0;
+                CurrentCombatant.HasFreeObjectInteraction = true;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -1209,6 +1212,28 @@ public class CombatManager
             creature.RagesRemaining--;
 
         TurnMessages.Add($"{creature.Name} enters a RAGE!");
+    }
+
+    /// <summary>
+    /// Interacts with one object as a free action (PHB "Other Activity on Your Turn").
+    /// The first interaction each turn is free; a second one costs the creature's action.
+    /// </summary>
+    /// <param name="creature">The creature performing the interaction.</param>
+    /// <returns>True if the interaction was performed; false if neither the free slot nor an action was available.</returns>
+    public bool UseObjectInteraction(Creature creature)
+    {
+        if (creature.HasFreeObjectInteraction)
+        {
+            creature.HasFreeObjectInteraction = false;
+            return true;
+        }
+
+        if (!creature.HasAction)
+            return false;
+
+        creature.HasAction = false;
+        TurnMessages.Add($"{creature.Name} uses their action to interact with a second object.");
+        return true;
     }
 
     /// <summary>

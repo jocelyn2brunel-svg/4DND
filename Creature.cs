@@ -268,7 +268,13 @@ public class Creature
     public bool HasReaction { get; set; } = true;
     public int MovementRemaining { get; set; } = 30;
     public int DiagonalStepsTaken { get; set; } = 0;
-    
+    /// <summary>
+    /// Free object interaction available this turn (PHB "Other Activity on Your Turn").
+    /// Each creature may interact with one object for free per turn.
+    /// A second interaction requires spending the action.
+    /// </summary>
+    public bool HasFreeObjectInteraction { get; set; } = true;
+
     // Attack info
     public string AttackName { get; set; } = "Attack";
     public int AttackBonus { get; set; } = 2;
