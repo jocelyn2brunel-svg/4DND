@@ -429,6 +429,31 @@ public class Creature
     {
         CurrentHP = Math.Min(MaxHP, CurrentHP + amount);
     }
+
+    /// <summary>
+    /// Applies falling damage: 1d6 bludgeoning per 10 feet fallen, maximum 20d6.
+    /// The creature lands prone unless it takes no damage.
+    /// </summary>
+    /// <param name="feetFallen">The distance fallen in feet.</param>
+    /// <returns>The total damage dealt.</returns>
+    public int TakeFallDamage(int feetFallen)
+    {
+        int diceCount = Math.Clamp(feetFallen / 10, 0, 20);
+        if (diceCount == 0)
+            return 0;
+
+        int damage = 0;
+        for (int i = 0; i < diceCount; i++)
+            damage += Dice.Roll(6);
+
+        int hpBefore = CurrentHP;
+        TakeDamage(damage, "Bludgeoning");
+
+        if (CurrentHP < hpBefore)
+            Conditions = Conditions.AddCondition(Condition.Prone);
+
+        return damage;
+    }
     
     /// <summary>
     /// Updates the visual position to smoothly move towards the target grid position
