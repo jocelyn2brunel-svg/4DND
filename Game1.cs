@@ -119,6 +119,45 @@ public class Game1 : Game
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
 
+    private class FloatingTooltip
+    {
+        public Creature Owner = null!;
+        public string Text = "";
+        public Color Color = Color.White;
+        public float RemainingTime;
+        public float MaxTime = 2.0f;
+        public float StackIndex = 0;
+
+        public float GetAlpha()
+        {
+            if (RemainingTime > 0.5f) return 1.0f;
+            return MathHelper.Clamp(RemainingTime / 0.5f, 0f, 1f);
+        }
+    }
+    private List<FloatingTooltip> _activeTooltips = new();
+    private Dictionary<Creature, int> _creatureHPTracker = new();
+
+    private void AddTooltip(Creature creature, string text, Color color)
+    {
+        // Find the highest stack index currently active for this creature to stack above it
+        float maxIndex = -1;
+        foreach (var t in _activeTooltips)
+        {
+            if (t.Owner == creature && t.StackIndex > maxIndex)
+                maxIndex = t.StackIndex;
+        }
+
+        _activeTooltips.Add(new FloatingTooltip
+        {
+            Owner = creature,
+            Text = SanitizeTextForFont(text),
+            Color = color,
+            RemainingTime = 2.0f,
+            MaxTime = 2.0f,
+            StackIndex = maxIndex + 1
+        });
+    }
+
     private LuteSynthesizer _luteSynth = null!;
     private LuteProceduralMusic _luteMusic = null!;
 
@@ -1549,6 +1588,89 @@ public class Game1 : Game
         foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 12); }
     }
 
+    private void UpdateHPTooltips()
+    {
+        // Track all alive creatures
+        var allCreatures = _combatManager.Combatants.Where(c => c.IsAlive()).ToList();
+        if (_playerCreature != null && _playerCreature.IsAlive() && !allCreatures.Contains(_playerCreature))
+            allCreatures.Add(_playerCreature);
+
+        foreach (var creature in allCreatures)
+        {
+            if (_creatureHPTracker.TryGetValue(creature, out int lastHP))
+            {
+                if (creature.CurrentHP > lastHP)
+                {
+                    int diff = creature.CurrentHP - lastHP;
+                    AddTooltip(creature, $"+{diff} PV", Color.LimeGreen);
+                }
+            }
+            _creatureHPTracker[creature] = creature.CurrentHP;
+        }
+
+        // Cleanup tracker for creatures no longer present or dead
+        var toRemove = _creatureHPTracker.Keys.Where(k => !allCreatures.Contains(k)).ToList();
+        foreach (var k in toRemove) _creatureHPTracker.Remove(k);
+    }
+
+    private void DrawFloatingTooltips()
+    {
+        if (_font == null) return;
+
+        foreach (var tooltip in _activeTooltips)
+        {
+            if (tooltip.Owner.Z > _currentViewLevel) continue;
+
+            bool isVisible = _visionSystem.IsVisible(tooltip.Owner.X, tooltip.Owner.Y, tooltip.Owner.Z);
+            if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
+            {
+                Color fogTint = _visionSystem.GetFogOfWarTint(tooltip.Owner.X, tooltip.Owner.Y, tooltip.Owner.Z, isVisible, _playerCreature);
+                if (fogTint == Color.Black) continue;
+            }
+
+            var (capsuleRadius, _) = GetCreatureCapsuleDimensions(tooltip.Owner.Size);
+            float uiAnchorZ = GetCreatureVisualTopZ(tooltip.Owner) + MathF.Max(0.15f, capsuleRadius * 0.4f);
+            var offset = SizeHelper.GetCenterOffset(tooltip.Owner.Size);
+
+            // Project world position to screen
+            Vector3 worldPos = new Vector3(tooltip.Owner.VisualX + offset.X, tooltip.Owner.VisualY + offset.Y, uiAnchorZ);
+            Vector3 screenPos = GraphicsDevice.Viewport.Project(worldPos, _basicEffect.Projection, _basicEffect.View, Matrix.Identity);
+
+            if (screenPos.Z < 0 || screenPos.Z > 1) continue;
+
+            // Floating animation: progress from 0 to 1
+            float progress = (tooltip.MaxTime - tooltip.RemainingTime) / tooltip.MaxTime;
+            float floatingY = progress * 40f; // Move up by 40 pixels over lifetime
+
+            // Vertical position: above health bar (-20) and name (-40).
+            // We start at -65 and add stack offset and floating.
+            Vector2 basePos = new Vector2(screenPos.X, screenPos.Y - 65 - (tooltip.StackIndex * 30) - floatingY);
+
+            float alpha = tooltip.GetAlpha();
+            float scale = 0.7f;
+            Vector2 textSize = _font.MeasureString(tooltip.Text) * scale;
+
+            Rectangle bubbleRect = new Rectangle(
+                (int)(basePos.X - textSize.X / 2 - 10),
+                (int)(basePos.Y - textSize.Y / 2 - 6),
+                (int)(textSize.X + 20),
+                (int)(textSize.Y + 12)
+            );
+
+            // Don't draw if too high (overlapping with combat top panel)
+            if (_showCombatUI && _combatManager.InCombat && bubbleRect.Y <= _combatTopPanelHeight)
+                continue;
+
+            // Draw bubble
+            _spriteBatch.Draw(_pixel, bubbleRect, Color.Black * 0.75f * alpha);
+            DrawBorder(_spriteBatch, _pixel, bubbleRect, tooltip.Color * 0.8f * alpha, 2);
+
+            // Draw text
+            Vector2 textPos = new Vector2(basePos.X - textSize.X / 2, basePos.Y - textSize.Y / 2);
+            _spriteBatch.DrawString(_font, tooltip.Text, textPos, tooltip.Color * alpha, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+    }
+
     private void Draw3DCreatureUI(Creature creature)
     {
         if (creature.Z > _currentViewLevel) return;
@@ -1738,7 +1860,15 @@ public class Game1 : Game
         var kb = Keyboard.GetState();
         var mouse = Mouse.GetState();
 
-        _diceRollAnimation.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+        float totalSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _diceRollAnimation.Update(totalSeconds);
+
+        for (int i = _activeTooltips.Count - 1; i >= 0; i--)
+        {
+            _activeTooltips[i].RemainingTime -= totalSeconds;
+            if (_activeTooltips[i].RemainingTime <= 0)
+                _activeTooltips.RemoveAt(i);
+        }
 
         // MAIN MENU
         if (_state == AppState.MainMenu)
@@ -2427,7 +2557,8 @@ public class Game1 : Game
                         {
                             if (_combatManager.InCombat && currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction)
                             {
-                                _combatManager.Dash(currentCombatant);
+                                if (_combatManager.Dash(currentCombatant))
+                                    AddTooltip(currentCombatant, "Action : Foncer", Color.Cyan);
                                 AddToCombatLog($"{currentCombatant.Name} uses DASH via Move button.");
                             }
                             _selectedAction = CombatAction.Move;
@@ -2436,26 +2567,35 @@ public class Game1 : Game
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDashButtonRect.Contains(mouse.Position))
                         {
-                            _combatManager.Dash(currentCombatant);
+                            if (_combatManager.Dash(currentCombatant))
+                                AddTooltip(currentCombatant, "Action : Foncer", Color.Cyan);
                             FlushTurnMessages();
                             AddToCombatLog($"{currentCombatant.Name} uses DASH.");
                             clickedOnGameplayUiButton = true;
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDisengageButtonRect.Contains(mouse.Position))
                         {
-                            _combatManager.Disengage(currentCombatant);
+                            if (_combatManager.Disengage(currentCombatant))
+                                AddTooltip(currentCombatant, "Action : Se désengager", Color.Cyan);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDodgeButtonRect.Contains(mouse.Position))
                         {
-                            _combatManager.Dodge(currentCombatant);
+                            if (_combatManager.Dodge(currentCombatant))
+                                AddTooltip(currentCombatant, "Action : Esquiver", Color.Cyan);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatHideButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position))
                         {
-                            _combatManager.Hide(currentCombatant, visionSystem: _visionSystem);
+                            if (_combatManager.Hide(currentCombatant, visionSystem: _visionSystem))
+                            {
+                                if (currentCombatant.IsHidden)
+                                    AddTooltip(currentCombatant, "Caché !", Color.LimeGreen);
+                                else
+                                    AddTooltip(currentCombatant, "Raté !", Color.LightGray);
+                            }
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
@@ -2500,6 +2640,7 @@ public class Game1 : Game
                                 _combatManager.StartRage(currentCombatant);
                                 if (_combatManager.InCombat)
                                     currentCombatant.HasBonusAction = false;
+                                AddTooltip(currentCombatant, "RAGE !", Color.Gold);
                                 AddToCombatLog($"{currentCombatant.Name} enters RAGE!");
                             }
                             _showBonusActionMenu = false;
@@ -2509,7 +2650,13 @@ public class Game1 : Game
                         {
                             if ((currentCombatant.HasBonusAction || !_combatManager.InCombat) && currentCombatant.HasNimbleEscape)
                             {
-                                _combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem);
+                                if (_combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem))
+                                {
+                                    if (currentCombatant.IsHidden)
+                                        AddTooltip(currentCombatant, "Caché !", Color.LimeGreen);
+                                    else
+                                        AddTooltip(currentCombatant, "Raté !", Color.LightGray);
+                                }
                                 FlushTurnMessages();
                             }
                             _showBonusActionMenu = false;
@@ -2744,6 +2891,14 @@ public class Game1 : Game
                                     bool wasInCombat = _combatManager.InCombat;
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
+                                    AddTooltip(currentCombatant, $"Attaque : {currentCombatant.AttackName}", Color.Orange);
+                                    if (result.IsHit)
+                                    {
+                                        string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                        AddTooltip(target, dmgText, Color.Red);
+                                    }
+                                    else
+                                        AddTooltip(target, "Raté !", Color.LightGray);
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
@@ -2799,13 +2954,16 @@ public class Game1 : Game
                                     string defSign = defenderBonus >= 0 ? $"+{defenderBonus}" : $"{defenderBonus}";
                                     AddToCombatLog($"Grapple: {currentCombatant.Name} {attackerRoll}{atkSign}={attackerTotal} vs {target.Name} {defenderRoll}{defSign}={defenderTotal}");
 
+                                    AddTooltip(currentCombatant, "Action : Lutte", Color.Cyan);
                                     if (attackerTotal >= defenderTotal)
                                     {
                                         target.Conditions = target.Conditions.AddCondition(Condition.Grappled);
+                                        AddTooltip(target, "Agrippé !", Color.Orange);
                                         AddToCombatLog($"{target.Name} is GRAPPLED! (Speed=0)");
                                     }
                                     else
                                     {
+                                        AddTooltip(target, "Résiste !", Color.LightGray);
                                         AddToCombatLog($"{target.Name} resists the grapple!");
                                     }
 
@@ -2856,6 +3014,14 @@ public class Game1 : Game
                                     string damageDice = GetCantripDamageDice(_currentCharacter.Level);
                                     var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, DamageType.Force, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
+                                    AddTooltip(currentCombatant, "Sort : Décharge occulte", Color.DeepSkyBlue);
+                                    if (result.IsHit)
+                                    {
+                                        string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                        AddTooltip(target, dmgText, Color.Red);
+                                    }
+                                    else
+                                        AddTooltip(target, "Raté !", Color.LightGray);
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
@@ -2899,6 +3065,8 @@ public class Game1 : Game
                                     bool wasInCombat = _combatManager.InCombat;
                                     if (_combatManager.Help(currentCombatant, target))
                                     {
+                                        AddTooltip(currentCombatant, "Action : Aider", Color.Cyan);
+                                        AddTooltip(target, "Distrait !", Color.Gold);
                                         FlushTurnMessages();
                                         _selectedAction = CombatAction.Move;
 
@@ -3018,13 +3186,22 @@ public class Game1 : Game
                                 // Attack
                                 var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
                                 AddToCombatLog(result.GetMessage());
+                                AddTooltip(currentCombatant, $"Attaque : {currentCombatant.AttackName}", Color.Orange);
+                                if (result.IsHit)
+                                {
+                                    string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                    AddTooltip(playerCreature, dmgText, Color.Red);
+                                }
+                                else
+                                    AddTooltip(playerCreature, "Raté !", Color.LightGray);
                                 _diceRollAnimation.Start(result.AttackRoll);
                                 shouldEndTurn = false;
 
                                 // Nimble Escape: bonus action Disengage, then retreat
                                 if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
                                 {
-                                    _combatManager.Disengage(currentCombatant, isBonusAction: true);
+                                    if (_combatManager.Disengage(currentCombatant, isBonusAction: true))
+                                        AddTooltip(currentCombatant, "Action : Se désengager", Color.Cyan);
                                     FlushTurnMessages();
                                     var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
                                     if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
@@ -3112,6 +3289,8 @@ public class Game1 : Game
         {
             _playerCreature.UpdateCharacter(_currentCharacter);
         }
+
+        UpdateHPTooltips();
 
         _prevKb = kb;
         _prevMouse = mouse;
@@ -3509,6 +3688,8 @@ public class Game1 : Game
         {
             if (_combatManager.InCombat) { foreach (var creature in _combatManager.Combatants) if (creature.IsAlive()) Draw3DCreatureUI(creature); }
             else if (_playerCreature != null) { Draw3DCreatureUI(_playerCreature); foreach (var creature in _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive())) Draw3DCreatureUI(creature); }
+
+            DrawFloatingTooltips();
 
             DrawInventoryButton(vp);
             DrawMapButton(vp, false);
