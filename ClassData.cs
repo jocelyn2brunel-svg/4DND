@@ -101,7 +101,7 @@ public class ClassData
         _classDatabase["Barbarian"] = new ClassData
         {
             Name = "Barbarian",
-            Description = "A fierce warrior of primitive background who can enter a battle rage",
+            Description = Loc.Tr("A fierce warrior of primitive background who can enter a battle rage"),
             HitDice = 12,
             PrimaryAbility = "Strength",
             SavingThrowProficiencies = new List<string> { "Strength", "Constitution" },
@@ -146,7 +146,7 @@ public class ClassData
         _classDatabase["Bard"] = new ClassData
         {
             Name = "Bard",
-            Description = "An inspiring magician whose power echoes the music of creation",
+            Description = Loc.Tr("An inspiring magician whose power echoes the music of creation"),
             HitDice = 8,
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Dexterity", "Charisma" },
@@ -192,7 +192,7 @@ public class ClassData
         _classDatabase["Cleric"] = new ClassData
         {
             Name = "Cleric",
-            Description = "A priestly champion who wields divine magic in service of a higher power",
+            Description = Loc.Tr("A priestly champion who wields divine magic in service of a higher power"),
             HitDice = 8,
             PrimaryAbility = "Wisdom",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
@@ -247,7 +247,7 @@ public class ClassData
         _classDatabase["Druid"] = new ClassData
         {
             Name = "Druid",
-            Description = "A priest of the Old Faith, wielding the powers of nature - moonlight and plant growth, fire and lightning - and adopting animal forms",
+            Description = Loc.Tr("A priest of the Old Faith, wielding the powers of nature - moonlight and plant growth, fire and lightning - and adopting animal forms"),
             HitDice = 8,
             PrimaryAbility = "Wisdom",
             SavingThrowProficiencies = new List<string> { "Intelligence", "Wisdom" },
@@ -260,7 +260,7 @@ public class ClassData
         _classDatabase["Fighter"] = new ClassData
         {
             Name = "Fighter",
-            Description = "A master of martial combat, skilled with a variety of weapons and armor",
+            Description = Loc.Tr("A master of martial combat, skilled with a variety of weapons and armor"),
             HitDice = 10,
             PrimaryAbility = "Strength or Dexterity",
             SavingThrowProficiencies = new List<string> { "Strength", "Constitution" },
@@ -271,7 +271,7 @@ public class ClassData
         _classDatabase["Monk"] = new ClassData
         {
             Name = "Monk",
-            Description = "A master of martial arts, harnessing the power of the body in pursuit of physical and spiritual perfection",
+            Description = Loc.Tr("A master of martial arts, harnessing the power of the body in pursuit of physical and spiritual perfection"),
             HitDice = 8,
             PrimaryAbility = "Dexterity and Wisdom",
             SavingThrowProficiencies = new List<string> { "Strength", "Dexterity" },
@@ -282,7 +282,7 @@ public class ClassData
         _classDatabase["Paladin"] = new ClassData
         {
             Name = "Paladin",
-            Description = "A holy warrior bound to a sacred oath",
+            Description = Loc.Tr("A holy warrior bound to a sacred oath"),
             HitDice = 10,
             PrimaryAbility = "Strength and Charisma",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
@@ -295,7 +295,7 @@ public class ClassData
         _classDatabase["Ranger"] = new ClassData
         {
             Name = "Ranger",
-            Description = "A warrior who uses martial prowess and nature magic to combat threats on the edges of civilization",
+            Description = Loc.Tr("A warrior who uses martial prowess and nature magic to combat threats on the edges of civilization"),
             HitDice = 10,
             PrimaryAbility = "Dexterity and Wisdom",
             SavingThrowProficiencies = new List<string> { "Strength", "Dexterity" },
@@ -308,7 +308,7 @@ public class ClassData
         _classDatabase["Rogue"] = new ClassData
         {
             Name = "Rogue",
-            Description = "A scoundrel who uses stealth and trickery to overcome obstacles and enemies",
+            Description = Loc.Tr("A scoundrel who uses stealth and trickery to overcome obstacles and enemies"),
             HitDice = 8,
             PrimaryAbility = "Dexterity",
             SavingThrowProficiencies = new List<string> { "Dexterity", "Intelligence" },
@@ -319,7 +319,7 @@ public class ClassData
         _classDatabase["Sorcerer"] = new ClassData
         {
             Name = "Sorcerer",
-            Description = "A spellcaster who draws on inherent magic from a gift or bloodline",
+            Description = Loc.Tr("A spellcaster who draws on inherent magic from a gift or bloodline"),
             HitDice = 6,
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Constitution", "Charisma" },
@@ -332,7 +332,7 @@ public class ClassData
         _classDatabase["Warlock"] = new ClassData
         {
             Name = "Warlock",
-            Description = "A wielder of magic that is derived from a bargain with an extraplanar entity",
+            Description = Loc.Tr("A wielder of magic that is derived from a bargain with an extraplanar entity"),
             HitDice = 8,
             PrimaryAbility = "Charisma",
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
@@ -345,7 +345,7 @@ public class ClassData
         _classDatabase["Wizard"] = new ClassData
         {
             Name = "Wizard",
-            Description = "A scholarly magic-user capable of manipulating the structures of reality",
+            Description = Loc.Tr("A scholarly magic-user capable of manipulating the structures of reality"),
             HitDice = 6,
             PrimaryAbility = "Intelligence",
             SavingThrowProficiencies = new List<string> { "Intelligence", "Wisdom" },

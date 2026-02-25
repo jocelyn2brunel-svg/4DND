@@ -39,7 +39,7 @@ public class Race
         ["Human"] = new Race
         {
             Name = "Human",
-            DisplayName = "Human",
+            DisplayName = Loc.Tr("Human"),
             Size = CreatureSize.Medium,
             StrengthBonus = 1,
             DexterityBonus = 1,
@@ -49,37 +49,37 @@ public class Race
             CharismaBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 0,
-            Description = "Versatile and adaptable (+1 to all abilities)"
+            Description = Loc.Tr("Versatile and adaptable (+1 to all abilities)")
         },
         
         // Elves
         ["High Elf"] = new Race
         {
             Name = "High Elf",
-            DisplayName = "Elf (High)",
+            DisplayName = Loc.Tr("Elf (High)"),
             Size = CreatureSize.Medium,
             DexterityBonus = 2,
             IntelligenceBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = "Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft)"
+            Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft)")
         },
         ["Wood Elf"] = new Race
         {
             Name = "Wood Elf",
-            DisplayName = "Elf (Wood)",
+            DisplayName = Loc.Tr("Elf (Wood)"),
             Size = CreatureSize.Medium,
             DexterityBonus = 2,
             WisdomBonus = 1,
             BaseSpeed = 35,
             DarkvisionRange = 60,
-            Description = "Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft)"
+            Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft)")
         },
         
         ["Drow"] = new Race
         {
             Name = "Drow",
-            DisplayName = "Elf (Drow)",
+            DisplayName = Loc.Tr("Elf (Drow)"),
             Size = CreatureSize.Medium,
             DexterityBonus = 2,
             CharismaBonus = 1,
@@ -87,14 +87,14 @@ public class Race
             DarkvisionRange = 120,
             HasSuperiorDarkvision = true,
             HasSunlightSensitivity = true,
-            Description = "Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity)"
+            Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity)")
         },
         
         // Dwarves
         ["Hill Dwarf"] = new Race
         {
             Name = "Hill Dwarf",
-            DisplayName = "Dwarf (Hill)",
+            DisplayName = Loc.Tr("Dwarf (Hill)"),
             Size = CreatureSize.Medium,
             ConstitutionBonus = 2,
             WisdomBonus = 1,
@@ -105,12 +105,12 @@ public class Race
             HasStonecunning = true,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
-            Description = "Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
+            Description = Loc.Tr("Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
         },
         ["Mountain Dwarf"] = new Race
         {
             Name = "Mountain Dwarf",
-            DisplayName = "Dwarf (Mountain)",
+            DisplayName = Loc.Tr("Dwarf (Mountain)"),
             Size = CreatureSize.Medium,
             StrengthBonus = 2,
             ConstitutionBonus = 2,
@@ -121,89 +121,89 @@ public class Race
             HasStonecunning = true,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
-            Description = "Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
+            Description = Loc.Tr("Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
         },
         
         // Halflings
         ["Lightfoot Halfling"] = new Race
         {
             Name = "Lightfoot Halfling",
-            DisplayName = "Halfling (Lightfoot)",
+            DisplayName = Loc.Tr("Halfling (Lightfoot)"),
             Size = CreatureSize.Small,
             DexterityBonus = 2,
             CharismaBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 0,
-            Description = "Nimble and charming (+2 DEX, +1 CHA)"
+            Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA)")
         },
         ["Stout Halfling"] = new Race
         {
             Name = "Stout Halfling",
-            DisplayName = "Halfling (Stout)",
+            DisplayName = Loc.Tr("Halfling (Stout)"),
             Size = CreatureSize.Small,
             DexterityBonus = 2,
             ConstitutionBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 0,
-            Description = "Nimble and resilient (+2 DEX, +1 CON)"
+            Description = Loc.Tr("Nimble and resilient (+2 DEX, +1 CON)")
         },
         
         ["Half-Orc"] = new Race
         {
             Name = "Half-Orc",
-            DisplayName = "Half-Orc",
+            DisplayName = Loc.Tr("Half-Orc"),
             Size = CreatureSize.Medium,
             StrengthBonus = 2,
             ConstitutionBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = "Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)"
+            Description = Loc.Tr("Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)")
         },
         
         ["Tiefling"] = new Race
         {
             Name = "Tiefling",
-            DisplayName = "Tiefling",
+            DisplayName = Loc.Tr("Tiefling"),
             Size = CreatureSize.Medium,
             CharismaBonus = 2,
             IntelligenceBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = "Infernal heritage with darkvision (+2 CHA, +1 INT, Darkvision 60 ft)"
+            Description = Loc.Tr("Infernal heritage with darkvision (+2 CHA, +1 INT, Darkvision 60 ft)")
         },
         
         ["Dragonborn"] = new Race
         {
             Name = "Dragonborn",
-            DisplayName = "Dragonborn",
+            DisplayName = Loc.Tr("Dragonborn"),
             Size = CreatureSize.Medium,
             StrengthBonus = 2,
             CharismaBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 0,
-            Description = "Draconic heritage (+2 STR, +1 CHA)"
+            Description = Loc.Tr("Draconic heritage (+2 STR, +1 CHA)")
         },
         
         ["Gnome"] = new Race
         {
             Name = "Gnome",
-            DisplayName = "Gnome",
+            DisplayName = Loc.Tr("Gnome"),
             Size = CreatureSize.Small,
             IntelligenceBonus = 2,
             BaseSpeed = 25,
             DarkvisionRange = 60,
-            Description = "Small and clever (+2 INT, Darkvision 60 ft)"
+            Description = Loc.Tr("Small and clever (+2 INT, Darkvision 60 ft)")
         },
         
         ["Half-Elf"] = new Race
         {
             Name = "Half-Elf",
-            DisplayName = "Half-Elf",
+            DisplayName = Loc.Tr("Half-Elf"),
             Size = CreatureSize.Medium,
             CharismaBonus = 2,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = "Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft)"
+            Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft)")
         }
     };
     
