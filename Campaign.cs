@@ -171,6 +171,18 @@ namespace _4DND
         public float PartyX { get; set; }
         public float PartyY { get; set; }
 
+        // Time tracking
+        public double TotalGameMinutes { get; set; } = 8 * 60; // Start at 8:00 AM on Day 1
+
+        public int GameHour => (int)(TotalGameMinutes / 60) % 24;
+        public int GameMinute => (int)(TotalGameMinutes % 60);
+        public int GameDay => (int)(TotalGameMinutes / (24 * 60)) + 1;
+
+        public string GameTimeDisplay => $"Jour {GameDay}, {GameHour:D2}:{GameMinute:D2}";
+
+        public double LastSurvivalCheckMinutes { get; set; } = 8 * 60;
+        public float HoursTraveledToday { get; set; } = 0f;
+
         // Campaign notes and lore
         public List<string> CampaignNotes { get; set; } = new();
         public Dictionary<string, string> Lore { get; set; } = new();
