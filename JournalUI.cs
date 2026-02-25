@@ -74,7 +74,7 @@ public class JournalUI
         var headerRect = new Rectangle(journalX, journalY, journalWidth, headerHeight);
         spriteBatch.Draw(_pixel, headerRect, new Color(80, 60, 40));
 
-        string title = "JOURNAL D'AVENTURE : " + campaign.Name.ToUpper();
+        string title = Loc.Tr("ADVENTURE JOURNAL: ") + campaign.Name.ToUpper();
         var titleSize = _font.MeasureString(title);
         spriteBatch.DrawString(_font, title, new Vector2(journalX + (journalWidth - titleSize.X) / 2, journalY + (headerHeight - titleSize.Y) / 2), Color.Gold);
 
@@ -87,9 +87,9 @@ public class JournalUI
         int wrapWidth = contentRect.Width - 40;
 
         // Measure sections
-        int hookHeight = MeasureSection("LE COMMENCEMENT (HOOK)", campaign.AdventureHook, wrapWidth);
-        int middleHeight = MeasureSection("LE DÉROULEMENT (DEVELOPMENT)", campaign.AdventureMiddle, wrapWidth);
-        int endingHeight = MeasureSection("LA CONCLUSION (CLIMAX)", campaign.AdventureEnding, wrapWidth);
+        int hookHeight = MeasureSection(Loc.Tr("THE BEGINNING (HOOK)"), campaign.AdventureHook, wrapWidth);
+        int middleHeight = MeasureSection(Loc.Tr("THE DEVELOPMENT"), campaign.AdventureMiddle, wrapWidth);
+        int endingHeight = MeasureSection(Loc.Tr("THE CONCLUSION (CLIMAX)"), campaign.AdventureEnding, wrapWidth);
 
         int totalContentHeight = hookHeight + middleHeight + endingHeight + 60; // Extra spacing
         int maxScroll = Math.Max(0, totalContentHeight - contentRect.Height);
@@ -102,11 +102,11 @@ public class JournalUI
 
         int drawY = contentRect.Y - (int)_scrollOffset;
 
-        drawY += DrawSection(spriteBatch, "LE COMMENCEMENT (HOOK)", campaign.AdventureHook, contentRect.X, drawY, wrapWidth, Color.DarkBlue);
+        drawY += DrawSection(spriteBatch, Loc.Tr("THE BEGINNING (HOOK)"), campaign.AdventureHook, contentRect.X, drawY, wrapWidth, Color.DarkBlue);
         drawY += 30;
-        drawY += DrawSection(spriteBatch, "LE DÉROULEMENT (DEVELOPMENT)", campaign.AdventureMiddle, contentRect.X, drawY, wrapWidth, Color.DarkGreen);
+        drawY += DrawSection(spriteBatch, Loc.Tr("THE DEVELOPMENT"), campaign.AdventureMiddle, contentRect.X, drawY, wrapWidth, Color.DarkGreen);
         drawY += 30;
-        drawY += DrawSection(spriteBatch, "LA CONCLUSION (CLIMAX)", campaign.AdventureEnding, contentRect.X, drawY, wrapWidth, Color.DarkRed);
+        drawY += DrawSection(spriteBatch, Loc.Tr("THE CONCLUSION (CLIMAX)"), campaign.AdventureEnding, contentRect.X, drawY, wrapWidth, Color.DarkRed);
 
         spriteBatch.End();
         spriteBatch.Begin(samplerState: SamplerState.PointClamp);
@@ -119,7 +119,7 @@ public class JournalUI
         }
 
         // Hint
-        string hint = "Appuyez sur 'J' pour fermer | Molette pour défiler";
+        string hint = Loc.Tr("Press 'J' to close | Scroll wheel to scroll");
         var hintSize = _font.MeasureString(hint) * 0.7f;
         spriteBatch.DrawString(_font, hint, new Vector2((vp.Width - hintSize.X) / 2, vp.Height - 30), Color.White * 0.8f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
 
@@ -153,7 +153,7 @@ public class JournalUI
         }
         else
         {
-            spriteBatch.DrawString(_font, "Aucun détail disponible.", new Vector2(x + 15, y + 35), Color.Gray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("No details available."), new Vector2(x + 15, y + 35), Color.Gray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
 
         return sectionHeight;
@@ -170,7 +170,7 @@ public class JournalUI
         spriteBatch.Draw(_pixel, rect, new Color(140, 40, 40));
         DrawBorder(spriteBatch, rect, Color.Black, 2);
 
-        string text = "Fermer";
+        string text = Loc.Tr("Close");
         var size = _font.MeasureString(text) * 0.8f;
         spriteBatch.DrawString(_font, text, new Vector2(rect.X + (rect.Width - size.X) / 2, rect.Y + (rect.Height - size.Y) / 2), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
     }

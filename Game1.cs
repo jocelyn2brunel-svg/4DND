@@ -293,8 +293,8 @@ public class Game1 : Game
         _combatManager.StartCombat(combatants);
         _showCombatUI = _hudAlwaysVisible;
         _selectedAction = CombatAction.Move;
-        AddToCombatLog("Combat started!");
-        AddToCombatLog($"Round {_combatManager.CurrentRound} begins!");
+        AddToCombatLog(Loc.Tr("Combat started!"));
+        AddToCombatLog(Loc.Tr("Round {0} begins!", _combatManager.CurrentRound));
         
         // Setup lighting for combat
         SetupCombatLighting();
@@ -317,7 +317,7 @@ public class Game1 : Game
         }
 
         StartCombatWithNearbyEnemies();
-        AddToCombatLog($"{spottingEnemy.Name} spotted you! Combat started automatically.");
+        AddToCombatLog(Loc.Tr("{0} spotted you! Combat started automatically.", spottingEnemy.Name));
         return true;
     }
 
@@ -342,7 +342,7 @@ public class Game1 : Game
         }
 
         _playerCreature.TeleportTo(preferredX, preferredY, preferredZ);
-        AddToCombatLog("Aucune case seche trouvee pour le spawn; position par defaut utilisee.");
+        AddToCombatLog(Loc.Tr("No dry tile found for spawn; using default position."));
     }
 
     private void CreatePlayerCreatureAtSafeSpawn()
@@ -395,12 +395,12 @@ public class Game1 : Game
                 enemy.IsFlying = true;
 
             _combatManager.Combatants.Add(enemy);
-            AddToCombatLog($"Spawn: {enemy.Name} apparait en ({spawnX}, {spawnY}, {spawnZ}).");
+            AddToCombatLog(Loc.Tr("Spawn: {0} appears at ({1}, {2}, {3}).", enemy.Name, spawnX, spawnY, spawnZ));
             UpdateVision();
             return true;
         }
 
-        AddToCombatLog("Spawn impossible: aucune case valide trouvee a 20 cases.");
+        AddToCombatLog(Loc.Tr("Spawn impossible: no valid tile found within 20 tiles."));
         return false;
     }
 
@@ -1626,7 +1626,7 @@ public class Game1 : Game
                 if (creature.CurrentHP > lastHP)
                 {
                     int diff = creature.CurrentHP - lastHP;
-                    AddTooltip(creature, $"+{diff} PV", Color.LimeGreen);
+                    AddTooltip(creature, Loc.Tr("+{0} HP", diff), Color.LimeGreen);
                 }
             }
             _creatureHPTracker[creature] = creature.CurrentHP;
@@ -1721,7 +1721,7 @@ public class Game1 : Game
 
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, 60, 6), Color.DarkRed);
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 30, (int)pos.Y - 20, (int)(60 * (float)creature.CurrentHP / creature.MaxHP), 6), Color.Green);
-        string name = $"{creature.Name} [Z{creature.Z}]" + (creature.IsFlying ? " [Vol]" : "");
+        string name = $"{creature.Name} [Z{creature.Z}]" + (creature.IsFlying ? " [" + Loc.Tr("Fly") + "]" : "");
         Vector2 size = _font.MeasureString(name) * 0.6f;
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - (int)size.X / 2 - 4, (int)pos.Y - 40, (int)size.X + 8, (int)size.Y + 4), Color.Black * 0.6f);
         _spriteBatch.DrawString(_font, name, new Vector2(pos.X - size.X / 2, pos.Y - 38), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -2737,8 +2737,8 @@ public class Game1 : Game
                                 _combatManager.StartRage(currentCombatant);
                                 if (_combatManager.InCombat)
                                     currentCombatant.HasBonusAction = false;
-                                AddTooltip(currentCombatant, "RAGE !", Color.Gold);
-                                AddToCombatLog($"{currentCombatant.Name} enters RAGE!");
+                                AddTooltip(currentCombatant, Loc.Tr("RAGE!"), Color.Gold);
+                                AddToCombatLog(Loc.Tr("{0} enters RAGE!", currentCombatant.Name));
                             }
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
@@ -2773,12 +2773,12 @@ public class Game1 : Game
             if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
             {
                 _currentViewLevel++;
-                AddToCombatLog($"Viewing level {_currentViewLevel}");
+                AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
             }
             if (kb.IsKeyDown(Keys.PageDown) && !_prevKb.IsKeyDown(Keys.PageDown))
             {
                 _currentViewLevel = Math.Max(0, _currentViewLevel - 1);
-                AddToCombatLog($"Viewing level {_currentViewLevel}");
+                AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
             }
             
             
@@ -2819,7 +2819,7 @@ public class Game1 : Game
                     int bonus = _currentCharacter.GetSkillBonus("Athletics", out _);
                     int total = roll + bonus;
                     string sign = bonus >= 0 ? $"+{bonus}" : $"{bonus}";
-                    AddToCombatLog($"Lutte: d20({roll}){sign} = {total} (Athl.)");
+                    AddToCombatLog(Loc.Tr("Grapple: d20({0}){1} = {2} (Athl.)", roll, sign, total));
                     _characterSheet.GrappleRequested = false;
                 }
 
@@ -2881,7 +2881,7 @@ public class Game1 : Game
                 if (_enemyExamineOptionRect.Contains(mouse.Position) && _contextTargetEnemy != null)
                 {
                     _enemyExamineText = BuildEnemyExamineText(_contextTargetEnemy);
-                    AddToCombatLog($"Examine: {_contextTargetEnemy.Name}");
+                    AddToCombatLog(Loc.Tr("Examine: {0}", _contextTargetEnemy.Name));
                     _showEnemyContextMenu = false;
                     clickedOnGameplayUiButton = true;
                 }
@@ -2989,14 +2989,14 @@ public class Game1 : Game
                                     bool wasInCombat = _combatManager.InCombat;
                                     var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
-                                    AddTooltip(currentCombatant, $"Attaque : {currentCombatant.AttackName}", Color.Orange);
+                                    AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
                                     if (result.IsHit)
                                     {
-                                        string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
                                         AddTooltip(target, dmgText, Color.Red);
                                     }
                                     else
-                                        AddTooltip(target, "Raté !", Color.LightGray);
+                                        AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
@@ -3006,7 +3006,7 @@ public class Game1 : Game
                                     }
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
-                                        AddToCombatLog("Combat ended!");
+                                        AddToCombatLog(Loc.Tr("Combat ended!"));
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3016,7 +3016,7 @@ public class Game1 : Game
                                 }
                                 else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
-                                    AddToCombatLog("No action available!");
+                                    AddToCombatLog(Loc.Tr("No action available!"));
                                 }
                             }
                         }
@@ -3075,7 +3075,7 @@ public class Game1 : Game
                                     }
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
-                                        AddToCombatLog("Combat ended!");
+                                        AddToCombatLog(Loc.Tr("Combat ended!"));
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3085,7 +3085,7 @@ public class Game1 : Game
                                 }
                                 else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
-                                    AddToCombatLog("No action available!");
+                                    AddToCombatLog(Loc.Tr("No action available!"));
                                 }
                             }
                         }
@@ -3110,14 +3110,14 @@ public class Game1 : Game
                                     string damageDice = GetCantripDamageDice(_currentCharacter.Level);
                                     var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, DamageType.Force, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
-                                    AddTooltip(currentCombatant, "Sort : Décharge occulte", Color.DeepSkyBlue);
+                                    AddTooltip(currentCombatant, Loc.Tr("Spell: Eldritch Blast"), Color.DeepSkyBlue);
                                     if (result.IsHit)
                                     {
-                                        string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
                                         AddTooltip(target, dmgText, Color.Red);
                                     }
                                     else
-                                        AddTooltip(target, "Raté !", Color.LightGray);
+                                        AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
                                     _diceRollAnimation.Start(result.AttackRoll);
                                     _selectedAction = CombatAction.Move;
 
@@ -3127,7 +3127,7 @@ public class Game1 : Game
                                     }
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
-                                        AddToCombatLog("Combat ended!");
+                                        AddToCombatLog(Loc.Tr("Combat ended!"));
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3137,7 +3137,7 @@ public class Game1 : Game
                                 }
                                 else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
-                                    AddToCombatLog("No action available!");
+                                    AddToCombatLog(Loc.Tr("No action available!"));
                                 }
                             }
                         }
@@ -3160,8 +3160,8 @@ public class Game1 : Game
                                     bool wasInCombat = _combatManager.InCombat;
                                     if (_combatManager.Help(currentCombatant, target))
                                     {
-                                        AddTooltip(currentCombatant, "Action : Aider", Color.Cyan);
-                                        AddTooltip(target, "Distrait !", Color.Gold);
+                                        AddTooltip(currentCombatant, Loc.Tr("Action: Help"), Color.Cyan);
+                                        AddTooltip(target, Loc.Tr("Distracted!"), Color.Gold);
                                         FlushTurnMessages();
                                         _selectedAction = CombatAction.Move;
 
@@ -3171,7 +3171,7 @@ public class Game1 : Game
                                         }
                                         else if (wasInCombat && !_combatManager.InCombat)
                                         {
-                                            AddToCombatLog("Combat ended!");
+                                        AddToCombatLog(Loc.Tr("Combat ended!"));
                                             if (_playerCreature != null && _currentCharacter != null)
                                             {
                                                 _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3186,7 +3186,7 @@ public class Game1 : Game
                                 }
                                 else if (!currentCombatant.HasAction && _combatManager.InCombat)
                                 {
-                                    AddToCombatLog("No action available!");
+                                    AddToCombatLog(Loc.Tr("No action available!"));
                                 }
                             }
                         }
@@ -3249,7 +3249,7 @@ public class Game1 : Game
                                         FlushTurnMessages();
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
-                                        AddToCombatLog($"{currentCombatant.Name} moved to ({currentCombatant.X}, {currentCombatant.Y}, {currentCombatant.Z}) [{distanceInFeet}ft, {currentCombatant.MovementRemaining}ft remaining]");
+                                        AddToCombatLog(Loc.Tr("{0} moved to ({1}, {2}, {3}) [{4}ft, {5}ft remaining]", currentCombatant.Name, currentCombatant.X, currentCombatant.Y, currentCombatant.Z, distanceInFeet, currentCombatant.MovementRemaining));
                                         _selectedAction = CombatAction.Move;
                                         
                                         // Update vision after movement
@@ -3257,7 +3257,7 @@ public class Game1 : Game
                                     }
                                     else
                                     {
-                                        AddToCombatLog("Out of movement range!");
+                                        AddToCombatLog(Loc.Tr("Out of movement range!"));
                                     }
                                 }
                             }
@@ -3280,14 +3280,14 @@ public class Game1 : Game
                                 // Attack
                                 var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
                                 AddToCombatLog(result.GetMessage());
-                                AddTooltip(currentCombatant, $"Attaque : {currentCombatant.AttackName}", Color.Orange);
+                                AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
                                 if (result.IsHit)
                                 {
-                                    string dmgText = result.IsCritical ? $"CRIT ! -{result.Damage} PV" : $"-{result.Damage} PV";
+                                    string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
                                     AddTooltip(playerCreature, dmgText, Color.Red);
                                 }
                                 else
-                                    AddTooltip(playerCreature, "Raté !", Color.LightGray);
+                                    AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
                                 _diceRollAnimation.Start(result.AttackRoll);
                                 shouldEndTurn = false;
 
@@ -3295,14 +3295,14 @@ public class Game1 : Game
                                 if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
                                 {
                                     if (_combatManager.Disengage(currentCombatant, isBonusAction: true))
-                                        AddTooltip(currentCombatant, "Action : Se désengager", Color.Cyan);
+                                        AddTooltip(currentCombatant, Loc.Tr("Action: Disengage"), Color.Cyan);
                                     FlushTurnMessages();
                                     var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
                                     if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
                                     {
                                         _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
                                         FlushTurnMessages();
-                                        AddToCombatLog($"{currentCombatant.Name} retreats");
+                                        AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
                                         UpdateVision();
                                     }
                                     currentCombatant.MovementRemaining = 0;
@@ -3315,7 +3315,7 @@ public class Game1 : Game
                                 {
                                     _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
                                     FlushTurnMessages();
-                                    AddToCombatLog($"{currentCombatant.Name} moved");
+                                    AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
                                     UpdateVision();
                                     shouldEndTurn = false;
                                 }
@@ -3333,14 +3333,14 @@ public class Game1 : Game
 
                         if (newRound > prevRound)
                         {
-                            AddToCombatLog($"=== Round {newRound} ===");
+                            AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
                         }
                     }
                     
                     // Check if combat ended
                     if (!_combatManager.InCombat)
                     {
-                        AddToCombatLog("Combat ended!");
+                        AddToCombatLog(Loc.Tr("Combat ended!"));
                         if (_playerCreature != null && _currentCharacter != null)
                         {
                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3601,10 +3601,10 @@ public class Game1 : Game
 
         if (newRound > prevRound)
         {
-            AddToCombatLog($"=== Round {newRound} ===");
+            AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
         }
 
-        AddToCombatLog($"{currentCombatant.Name} ended turn");
+        AddToCombatLog(Loc.Tr("{0} ended turn", currentCombatant.Name));
         _selectedAction = CombatAction.Move;
     }
 
@@ -3619,7 +3619,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = Loc.Tr("Inventaire [C]");
+            string label = Loc.Tr("Inventory [C]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -3642,7 +3642,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = Loc.Tr(isCloseButton ? "Fermer map [M]" : "Ouvrir map [M]");
+            string label = Loc.Tr(isCloseButton ? "Close Map [M]" : "Open Map [M]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -4321,7 +4321,7 @@ public class Game1 : Game
 
                 int logX = _combatLogWindowRect.X + 8;
                 int logY = _combatLogWindowRect.Y + 6;
-                _spriteBatch.DrawString(_font, "Combat Log", new Vector2(logX, logY), Color.White * 0.8f, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, Loc.Tr("Combat Log"), new Vector2(logX, logY), Color.White * 0.8f, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
                 logY += 20;
                 
                 for (int i = Math.Max(0, _combatLog.Count - 5); i < _combatLog.Count; i++)
@@ -4334,16 +4334,20 @@ public class Game1 : Game
                 
                 
                 // Bottom screen hints (moved from top panel)
-                var hint = "Press Tab to toggle HUD | ESC for menu | PageUp/Down: Change level";
+                var hint = Loc.Tr("Gameplay Hints");
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, vp.Height - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 
                 
                 // Display current view level
-                var levelHint = $"View Level: Z{_currentViewLevel}";
+                string levelHint;
                 if (_playerCreature != null && _playerCreature.CanFly)
                 {
-                    levelHint += $" | Player: Z{_playerCreature.Z} {(_playerCreature.IsFlying ? "[FLYING]" : "[GROUND]")}";
+                    levelHint = Loc.Tr("View Level Detail", _currentViewLevel, _playerCreature.Z, Loc.Tr(_playerCreature.IsFlying ? "[FLYING]" : "[GROUND]"));
+                }
+                else
+                {
+                    levelHint = Loc.Tr("View Level: Z{0}", _currentViewLevel);
                 }
                 var levelHintSize = _font.MeasureString(levelHint);
                 _spriteBatch.DrawString(_font, levelHint, new Vector2(10, vp.Height - 25), Color.Cyan * 0.8f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
@@ -4370,12 +4374,12 @@ public class Game1 : Game
             
             var creature = _combatManager.GetCreatureAt(tx, ty, tz);
             
-            var tooltip = $"Tile ({tx}, {ty}, Z{tz}) [{tileType}] | Light: {lightLevel} | Visible: {isVisible}";
+            var tooltip = Loc.Tr("Tile Tooltip", tx, ty, tz, tileType, lightLevel, isVisible);
             if (creature != null && isVisible)
             {
                 var sizeDesc = SizeHelper.GetSpaceDescription(creature.Size);
-                var flyingStatus = creature.IsFlying ? " [FLYING]" : "";
-                tooltip += $" | {creature.Name} ({creature.Size}, {sizeDesc}) HP: {creature.CurrentHP}/{creature.MaxHP}{flyingStatus}";
+                var flyingStatus = creature.IsFlying ? Loc.Tr("Flying Status") : "";
+                tooltip += Loc.Tr("Creature Tooltip", creature.Name, creature.Size, sizeDesc, creature.CurrentHP, creature.MaxHP, flyingStatus);
             }
             
             var tooltipSize = _font.MeasureString(tooltip);
@@ -4473,17 +4477,17 @@ public class Game1 : Game
         sb.DrawString(_font, $"XP: {character.XP}", new Vector2(x, y), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
         y += 28;
 
-        sb.DrawString(_font, "Caracteristiques:", new Vector2(x, y), Color.Orange, 0f, Vector2.Zero, 0.68f, SpriteEffects.None, 0f);
+        sb.DrawString(_font, Loc.Tr("Abilities:"), new Vector2(x, y), Color.Orange, 0f, Vector2.Zero, 0.68f, SpriteEffects.None, 0f);
         y += 26;
 
         string[] stats =
         {
-            $"STR {character.Strength} ({FormatModifier(character.GetAbilityModifier(character.Strength))})",
-            $"DEX {character.Dexterity} ({FormatModifier(character.GetAbilityModifier(character.Dexterity))})",
-            $"CON {character.Constitution} ({FormatModifier(character.GetAbilityModifier(character.Constitution))})",
-            $"INT {character.Intelligence} ({FormatModifier(character.GetAbilityModifier(character.Intelligence))})",
-            $"WIS {character.Wisdom} ({FormatModifier(character.GetAbilityModifier(character.Wisdom))})",
-            $"CHA {character.Charisma} ({FormatModifier(character.GetAbilityModifier(character.Charisma))})"
+            $"{Loc.Tr("STR")} {character.Strength} ({FormatModifier(character.GetAbilityModifier(character.Strength))})",
+            $"{Loc.Tr("DEX")} {character.Dexterity} ({FormatModifier(character.GetAbilityModifier(character.Dexterity))})",
+            $"{Loc.Tr("CON")} {character.Constitution} ({FormatModifier(character.GetAbilityModifier(character.Constitution))})",
+            $"{Loc.Tr("INT")} {character.Intelligence} ({FormatModifier(character.GetAbilityModifier(character.Intelligence))})",
+            $"{Loc.Tr("WIS")} {character.Wisdom} ({FormatModifier(character.GetAbilityModifier(character.Wisdom))})",
+            $"{Loc.Tr("CHA")} {character.Charisma} ({FormatModifier(character.GetAbilityModifier(character.Charisma))})"
         };
 
         foreach (var stat in stats)
@@ -4494,14 +4498,14 @@ public class Game1 : Game
 
         y += 6;
         string survival = character.DarkvisionRange > 0
-            ? $"Vision nocturne: {character.DarkvisionRange} ft"
-            : "Vision nocturne: aucune";
+            ? Loc.Tr("Darkvision: {0} ft", character.DarkvisionRange)
+            : Loc.Tr("Darkvision: none");
         sb.DrawString(_font, survival, new Vector2(x, y), Color.Yellow, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
         y += 22;
 
         if (character.HasSunlightSensitivity)
         {
-            sb.DrawString(_font, "Sensibilite au soleil", new Vector2(x, y), Color.OrangeRed, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Sunlight Sensitivity"), new Vector2(x, y), Color.OrangeRed, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
         }
     }
 
@@ -4636,12 +4640,12 @@ public class Game1 : Game
 
         return
             $"{creature.Name} ({creature.Type})\n" +
-            $"Alignement: {AlignmentHelper.GetDescription(creature.Alignment)}\n" +
-            $"Taille: {creature.Size} ({SizeHelper.GetSpaceDescription(creature.Size)})\n" +
-            $"PV: {creature.CurrentHP}/{creature.MaxHP} | CA: {creature.ArmorClass} | Vitesse: {creature.Speed}ft\n" +
-            $"Attaque: {creature.AttackName} +{creature.AttackBonus} ({creature.DamageDice}+{creature.DamageBonus} {creature.CurrentDamageType})\n" +
-            $"Sens: {senses} | Perception passive: {creature.PassivePerception}\n" +
-            $"Conditions: {activeConditions}";
+            Loc.Tr("Alignment: {0}", AlignmentHelper.GetDescription(creature.Alignment)) + "\n" +
+            Loc.Tr("Size: {0} ({1})", creature.Size, SizeHelper.GetSpaceDescription(creature.Size)) + "\n" +
+            Loc.Tr("HP: {0}/{1}", creature.CurrentHP, creature.MaxHP) + $" | AC: {creature.ArmorClass} | " + Loc.Tr("Speed: {0} ft.", creature.Speed) + "\n" +
+            $"Attack: {creature.AttackName} +{creature.AttackBonus} ({creature.DamageDice}+{creature.DamageBonus} {creature.CurrentDamageType})\n" +
+            Loc.Tr("Senses: {0} | Passive Perception: {1}", senses, creature.PassivePerception) + "\n" +
+            Loc.Tr("Conditions: {0}", activeConditions);
     }
 
     private void DrawEnemyContextMenu(Viewport viewport)
@@ -4658,7 +4662,7 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixel, _enemyContextMenuRect, new Color(20, 20, 20, 240));
         DrawBorder(_spriteBatch, _pixel, _enemyContextMenuRect, Color.White, 2);
         _spriteBatch.Draw(_pixel, _enemyExamineOptionRect, isHovered ? Color.DarkGoldenrod : Color.DarkSlateGray);
-        _spriteBatch.DrawString(_font, "Examiner", new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        _spriteBatch.DrawString(_font, Loc.Tr("Examine"), new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
     private void DrawEnemyExaminePopup(Viewport viewport)

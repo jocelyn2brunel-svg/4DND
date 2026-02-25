@@ -215,7 +215,7 @@ namespace _4DND
                     {
                         RestManager.LongRest(c);
                     }
-                    SetTravelMessage("Le groupe a pris un repos long (8h).");
+                    SetTravelMessage(Loc.Tr("The party took a long rest (8h)."));
                 }
                 else
                 {
@@ -270,8 +270,8 @@ namespace _4DND
             
             // Background (Day/Night)
             Color bgColor = Color.Black * 0.9f;
-            if (campaign.GameHour < 6 || campaign.GameHour >= 20) bgColor = new Color(10, 10, 30) * 0.95f; // Nuit
-            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // CrÃ©puscule/Aube
+            if (campaign.GameHour < 6 || campaign.GameHour >= 20) bgColor = new Color(10, 10, 30) * 0.95f; // Night
+            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // Twilight/Dawn
 
             sb.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), bgColor);
             
@@ -776,7 +776,7 @@ namespace _4DND
                 if (isHovered) btnColor = _isTraveling ? Color.Red : Color.DarkGreen;
 
                 sb.Draw(_pixel, travelBtn, btnColor);
-                string btnLabel = _isTraveling ? "Annuler le voyage" : "Voyager ici";
+                string btnLabel = Loc.Tr(_isTraveling ? "Cancel Travel" : "Travel Here");
                 sb.DrawString(_font, btnLabel, new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
 
@@ -787,7 +787,7 @@ namespace _4DND
                 var mouse = Mouse.GetState();
                 bool isHovered = restBtn.Contains(mouse.Position);
                 sb.Draw(_pixel, restBtn, isHovered ? Color.DarkBlue : Color.Blue);
-                sb.DrawString(_font, "Repos Long (8h)", new Vector2(restBtn.X + 10, restBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr("Long Rest (8h)"), new Vector2(restBtn.X + 10, restBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
 
         }
@@ -807,7 +807,7 @@ namespace _4DND
 
             if (_font != null)
             {
-                sb.DrawString(_font, "GROUPE", pos + new Vector2(-20, -30 * _zoom), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr("PARTY"), pos + new Vector2(-20, -30 * _zoom), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
         }
         
@@ -845,7 +845,7 @@ namespace _4DND
                             if (c.ExhaustionLevel < 6)
                             {
                                 c.ExhaustionLevel++;
-                                SetTravelMessage($"{c.Name} est epuise par la marche forcee (Jet CON DC {dc} echoue) !");
+                                SetTravelMessage(Loc.Tr("{0} is exhausted by the forced march (CON Save DC {1} failed)!", c.Name, dc));
                             }
                         }
                     }
@@ -873,7 +873,7 @@ namespace _4DND
                             if (character.DaysWithoutFood > 3 + DndMath.GetAbilityModifier(character.Constitution))
                             {
                                 character.ExhaustionLevel++;
-                                SetTravelMessage($"{character.Name} souffre de la faim !");
+                                SetTravelMessage(Loc.Tr("{0} suffers from hunger!", character.Name));
                             }
                         }
                     }
@@ -884,19 +884,19 @@ namespace _4DND
 
                     RestManager.ResetLongRestTracker(character);
                 }
-                SetTravelMessage($"Une nouvelle journÃ©e commence. Jour {currentDay}.");
+                SetTravelMessage(Loc.Tr("A new day begins. Day {0}.", currentDay));
             }
         }
 
         private void CheckRandomEncounters(Campaign campaign, float gameMinutesPassed)
         {
             _minutesSinceLastEncounterCheck += gameMinutesPassed;
-            if (_minutesSinceLastEncounterCheck >= 4 * 60) // Toutes les 4 heures
+            if (_minutesSinceLastEncounterCheck >= 4 * 60) // Every 4 hours
             {
                 _minutesSinceLastEncounterCheck = 0;
-                if (_random.Next(1, 21) >= 19) // 10% de chance
+                if (_random.Next(1, 21) >= 19) // 10% chance
                 {
-                    SetTravelMessage("Rencontre alÃ©atoire ! Le voyage s'arrÃªte.");
+                    SetTravelMessage(Loc.Tr("Random encounter! Travel stops."));
                     _isTraveling = false;
                 }
             }
@@ -918,7 +918,7 @@ namespace _4DND
             sb.Draw(_pixel, new Rectangle(barRect.X, barRect.Y, (int)(barRect.Width * progress), barRect.Height), Color.LimeGreen);
             DrawBorder(sb, barRect, Color.White, 1);
 
-            string msg = $"Voyage en cours... {progress:P0}";
+            string msg = Loc.Tr("Traveling... {0}", progress.ToString("P0"));
             if (_font != null)
             {
                 var size = _font.MeasureString(msg) * 0.8f;

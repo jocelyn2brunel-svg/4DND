@@ -210,7 +210,7 @@ public static class RestManager
             case "Bard":
                 character.BardicInspirationUsesRemaining = character.BardicInspirationMax;
                 result.BardicInspirationRestored = true;
-                result.Log.Add($"Bardic Inspiration uses restored: {character.BardicInspirationMax}.");
+                result.Log.Add(Loc.Tr("Bardic Inspiration uses restored: {0}.", character.BardicInspirationMax));
 
                 result.SpellSlotsRestored = new int[character.SpellSlotsMax.Length];
                 for (int i = 0; i < character.SpellSlotsMax.Length; i++)
@@ -219,7 +219,7 @@ public static class RestManager
                     character.SpellSlotsRemaining[i] = character.SpellSlotsMax[i];
                 }
                 if (result.SpellSlotsRestored.Any(s => s > 0))
-                    result.Log.Add("Spell slots fully restored.");
+                    result.Log.Add(Loc.Tr("Spell slots fully restored."));
                 break;
 
             case "Cleric":
@@ -230,12 +230,12 @@ public static class RestManager
                     character.SpellSlotsRemaining[i] = character.SpellSlotsMax[i];
                 }
                 if (result.SpellSlotsRestored.Any(s => s > 0))
-                    result.Log.Add("Spell slots fully restored.");
+                    result.Log.Add(Loc.Tr("Spell slots fully restored."));
 
                 if (character.ChannelDivinityUsesMax > 0)
                 {
                     character.ChannelDivinityUsesRemaining = character.ChannelDivinityUsesMax;
-                    result.Log.Add($"Channel Divinity uses restored ({character.ChannelDivinityUsesMax}).");
+                    result.Log.Add(Loc.Tr("Channel Divinity uses restored ({0}).", character.ChannelDivinityUsesMax));
                 }
                 break;
         }

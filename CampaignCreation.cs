@@ -734,16 +734,17 @@ namespace _4DND
             int y = menuRect.Y + 20;
             
             // Title
-            string title = "Create Campaign - " + (_step switch
+            string stepName = _step switch
             {
-                0 => "Campaign Name",
-                1 => "Home Base",
-                2 => "Local Region",
-                3 => "Adventure Hook",
-                4 => "Adventure Middle",
-                5 => "Adventure Ending",
+                0 => Loc.Tr("Campaign Name"),
+                1 => Loc.Tr("Home Base"),
+                2 => Loc.Tr("Local Region"),
+                3 => Loc.Tr("Adventure Hook"),
+                4 => Loc.Tr("Adventure Middle"),
+                5 => Loc.Tr("Adventure Ending"),
                 _ => ""
-            });
+            };
+            string title = Loc.Tr("Create Campaign - {0}", stepName);
             
             var titleSize = _font.MeasureString(title);
             spriteBatch.DrawString(_font, title, new Vector2(menuRect.X + (menuWidth - titleSize.X) / 2, y), Color.Yellow, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
@@ -855,7 +856,7 @@ namespace _4DND
         
         private void DrawStep0_CampaignName(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
-            string prompt = "Enter a name for your campaign:";
+            string prompt = Loc.Tr("Enter a name for your campaign:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
             
@@ -872,7 +873,7 @@ namespace _4DND
                 DrawBorder(sb, inputRect, Color.Yellow, 2);
             }
             
-            string displayText = string.IsNullOrEmpty(_campaignName) ? "(Click to type)" : _campaignName;
+            string displayText = string.IsNullOrEmpty(_campaignName) ? "(" + Loc.Tr("Click to type") + ")" : _campaignName;
             if (_isTyping && _campaignName.Length > 0)
                 displayText += "_";
             
@@ -880,14 +881,14 @@ namespace _4DND
             y += 60;
             
             // Info
-            sb.DrawString(_font, "This will be the name of your adventure.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Campaign name info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 30;
-            sb.DrawString(_font, "Examples: 'Lost Mine of Phandelver', 'Dragon's Curse'", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Example campaigns"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
         
         private void DrawStep1_HomeBase(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
-            string prompt = "Name your home base:";
+            string prompt = Loc.Tr("Name your home base:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 30;
             
@@ -904,7 +905,7 @@ namespace _4DND
                 DrawBorder(sb, inputRect, Color.Yellow, 2);
             }
             
-            string displayText = string.IsNullOrEmpty(_homeBaseName) ? "(Click to type)" : _homeBaseName;
+            string displayText = string.IsNullOrEmpty(_homeBaseName) ? "(" + Loc.Tr("Click to type") + ")" : _homeBaseName;
             if (_isTyping && _typingField == "homebase" && _homeBaseName.Length > 0)
                 displayText += "_";
             
@@ -912,7 +913,7 @@ namespace _4DND
             y += 60;
             
             // Settlement type
-            sb.DrawString(_font, "Choose settlement type:", new Vector2(menuRect.X + 20, y), Color.White);
+            sb.DrawString(_font, Loc.Tr("Select the type of settlement:"), new Vector2(menuRect.X + 20, y), Color.White);
             y += 30;
             
             var mouse2 = Mouse.GetState();
@@ -926,14 +927,14 @@ namespace _4DND
                 else if (isItemHovered)
                     sb.Draw(_pixel, itemRect, Color.LightBlue * 0.2f);
                 
-                sb.DrawString(_font, _settlementTypes[i], new Vector2(itemRect.X + 10, itemRect.Y + 8), i == _selectedTypeIndex ? Color.Yellow : (isItemHovered ? Color.LightYellow : Color.White));
+                sb.DrawString(_font, Loc.Tr(_settlementTypes[i]), new Vector2(itemRect.X + 10, itemRect.Y + 8), i == _selectedTypeIndex ? Color.Yellow : (isItemHovered ? Color.LightYellow : Color.White));
                 y += 37;
             }
         }
         
         private void DrawStep2_Region(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
-            string prompt = $"The {_homeBaseName} is in a region of:";
+            string prompt = Loc.Tr("Describe the local region terrain:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
             
@@ -948,23 +949,23 @@ namespace _4DND
                 else if (isHovered)
                     sb.Draw(_pixel, itemRect, Color.LightGreen * 0.2f);
                 
-                sb.DrawString(_font, _terrainTypes[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedTerrainIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White));
+                sb.DrawString(_font, Loc.Tr(_terrainTypes[i]), new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedTerrainIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White));
                 y += 42;
             }
             
             y += 20;
-            sb.DrawString(_font, "This defines the local area around your home base.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Region terrain info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
         
         private void DrawStep3_Hook(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "hook")
             {
-                DrawCustomInput(sb, menuRect, ref y, "Enter custom adventure hook:", _adventureHook);
+                DrawCustomInput(sb, menuRect, ref y, Loc.Tr("Enter an adventure hook:"), _adventureHook);
                 return;
             }
 
-            string prompt = "Choose your adventure hook:";
+            string prompt = Loc.Tr("Select an adventure hook:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
 
@@ -979,23 +980,23 @@ namespace _4DND
                 else if (isHovered)
                     sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
 
-                sb.DrawString(_font, _adventureHooks[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedHookIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr(_adventureHooks[i]), new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedHookIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 y += 42;
             }
 
             y += 20;
-            sb.DrawString(_font, "Next: Choose what happens in the middle", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Adventure hook info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         }
 
         private void DrawStep4_Middle(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "middle")
             {
-                DrawCustomInput(sb, menuRect, ref y, "Enter custom middle events:", _adventureMiddle);
+                DrawCustomInput(sb, menuRect, ref y, Loc.Tr("Select the middle development:"), _adventureMiddle);
                 return;
             }
 
-            string prompt = "What happens during the adventure?";
+            string prompt = Loc.Tr("Select the middle development:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
 
@@ -1010,23 +1011,23 @@ namespace _4DND
                 else if (isHovered)
                     sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
 
-                sb.DrawString(_font, _adventureMiddles[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedMiddleIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr(_adventureMiddles[i]), new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedMiddleIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 y += 42;
             }
 
             y += 20;
-            sb.DrawString(_font, "Next: Choose the adventure's climax", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Middle development info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         }
 
         private void DrawStep5_Ending(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "ending")
             {
-                DrawCustomInput(sb, menuRect, ref y, "Enter custom adventure ending:", _adventureEnding);
+                DrawCustomInput(sb, menuRect, ref y, Loc.Tr("Select the adventure conclusion:"), _adventureEnding);
                 return;
             }
 
-            string prompt = "How does the adventure end?";
+            string prompt = Loc.Tr("Select the adventure conclusion:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
             y += 40;
             
@@ -1041,12 +1042,12 @@ namespace _4DND
                 else if (isHovered)
                     sb.Draw(_pixel, itemRect, Color.Orange * 0.2f);
                 
-                sb.DrawString(_font, _adventureEndings[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedEndingIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr(_adventureEndings[i]), new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedEndingIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White), 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 y += 42;
             }
             
             y += 20;
-            sb.DrawString(_font, "Click to create your campaign!", new Vector2(menuRect.X + 20, y), Color.LightGreen, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Adventure conclusion info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
 
         private void DrawCustomInput(SpriteBatch sb, Rectangle menuRect, ref int y, string prompt, string value)
@@ -1062,7 +1063,7 @@ namespace _4DND
             sb.DrawString(_font, wrappedText, new Vector2(inputRect.X + 10, inputRect.Y + 10), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
 
             y += 120;
-            sb.DrawString(_font, "Press Enter to confirm custom text", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Type name, then press Enter"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
 
         private string WrapText(SpriteFont font, string text, float maxLineWidth)
