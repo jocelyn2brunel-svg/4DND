@@ -228,6 +228,7 @@ public class Game1 : Game
         _luteMusic = new LuteProceduralMusic(_luteSynth);
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
+        _campaignMapViewer.VisionSystem = _visionSystem;
 
         Initialize3DRendering();
         _combatManager.TacticalMap = _tacticalMap;
@@ -418,6 +419,11 @@ public class Game1 : Game
     {
         if (_playerCreature != null)
         {
+            if (_currentCampaign != null)
+            {
+                _visionSystem.WorldOffset = new Vector2(_currentCampaign.PartyX, _currentCampaign.PartyY);
+            }
+
             int originalX = _playerCreature.X;
             int originalY = _playerCreature.Y;
             int originalZ = _playerCreature.Z;
@@ -2292,7 +2298,6 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
-                    _visionSystem.ResetExploration();
                     PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;
@@ -2308,7 +2313,6 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
-                    _visionSystem.ResetExploration();
                     PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;

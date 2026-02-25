@@ -9,10 +9,11 @@ namespace _4DND;
 
 public class VisionSystem
 {
-    private const int MaxExploredTiles = 120000;
-    private const int ExploredRetentionRadius = 120;
+    private const int MaxExploredTiles = 1000000;
+    private const int ExploredRetentionRadius = 10000; // Increased for world-wide persistence
 
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
+    public Vector2 WorldOffset { get; set; } = Vector2.Zero;
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
     
@@ -240,11 +241,14 @@ public class VisionSystem
         if (_exploredTiles.Count <= MaxExploredTiles)
             return;
 
+        int worldObsX = observer.X + (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
+        int worldObsY = observer.Y + (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
+
         var toRemove = new List<(int, int, int)>();
         foreach (var tile in _exploredTiles)
         {
             int distance = Math.Max(
-                Math.Max(Math.Abs(tile.Item1 - observer.X), Math.Abs(tile.Item2 - observer.Y)),
+                Math.Max(Math.Abs(tile.Item1 - worldObsX), Math.Abs(tile.Item2 - worldObsY)),
                 Math.Abs(tile.Item3 - observer.Z));
 
             if (distance > ExploredRetentionRadius)
@@ -257,11 +261,14 @@ public class VisionSystem
 
     private void CastVisibilityRay(Creature observer, int tx, int ty, int tz)
     {
+        int worldXOffset = (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
+        int worldYOffset = (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
+
         int dist = Math.Max(Math.Max(Math.Abs(tx - observer.X), Math.Abs(ty - observer.Y)), Math.Abs(tz - observer.Z));
         if (dist == 0)
         {
             _visibleTiles.Add((observer.X, observer.Y, observer.Z));
-            _exploredTiles.Add((observer.X, observer.Y, observer.Z));
+            _exploredTiles.Add((observer.X + worldXOffset, observer.Y + worldYOffset, observer.Z));
             return;
         }
 
@@ -280,7 +287,7 @@ public class VisionSystem
             int cz = (int)curZ;
 
             _visibleTiles.Add((cx, cy, cz));
-            _exploredTiles.Add((cx, cy, cz));
+            _exploredTiles.Add((cx + worldXOffset, cy + worldYOffset, cz));
 
             if (TacticalMap != null && TacticalMap.Get(cx, cy, cz) == TileType.Wall)
                 break;
@@ -313,6 +320,8 @@ public class VisionSystem
     
     private void AddBlindsightVision(Creature observer)
     {
+        int worldXOffset = (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
+        int worldYOffset = (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
         int visionTiles = Math.Min(observer.BlindSightRange / 5, 30); // Limit to reasonable range
         
         for (int dz = -visionTiles; dz <= visionTiles; dz++)
@@ -330,7 +339,7 @@ public class VisionSystem
                     if (distance <= visionTiles)
                     {
                         _visibleTiles.Add((tx, ty, tz));
-                        _exploredTiles.Add((tx, ty, tz));
+                        _exploredTiles.Add((tx + worldXOffset, ty + worldYOffset, tz));
                     }
                 }
             }
@@ -339,6 +348,8 @@ public class VisionSystem
     
     private void AddTremorsenseVision(Creature observer)
     {
+        int worldXOffset = (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
+        int worldYOffset = (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
         int visionTiles = Math.Min(observer.TremorsenseRange / 5, 30); // Limit to reasonable range
         
         for (int dz = -visionTiles; dz <= visionTiles; dz++)
@@ -356,7 +367,7 @@ public class VisionSystem
                     if (distance <= visionTiles)
                     {
                         _visibleTiles.Add((tx, ty, tz));
-                        _exploredTiles.Add((tx, ty, tz));
+                        _exploredTiles.Add((tx + worldXOffset, ty + worldYOffset, tz));
                     }
                 }
             }
@@ -422,7 +433,42 @@ public class VisionSystem
     
     public bool IsExplored(int x, int y, int z = 0)
     {
-        return _exploredTiles.Contains((x, y, z));
+        int wx = x + (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
+        int wy = y + (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
+        return _exploredTiles.Contains((wx, wy, z));
+    }
+
+    public void RevealPath(Vector2 startMiles, Vector2 endMiles, float radiusFeet = 100f)
+    {
+        Vector2 startTactical = startMiles * Campaign.TacticalUnitsPerMile;
+        Vector2 endTactical = endMiles * Campaign.TacticalUnitsPerMile;
+
+        float dist = Vector2.Distance(startTactical, endTactical);
+        // Step every 10 feet to balance performance and coverage
+        int steps = (int)Math.Ceiling(dist / 10f);
+
+        int radiusTiles = (int)Math.Max(1, radiusFeet / 5f);
+
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = steps == 0 ? 0 : (float)i / steps;
+            Vector2 pos = Vector2.Lerp(startTactical, endTactical, t);
+
+            int cx = (int)Math.Round(pos.X);
+            int cy = (int)Math.Round(pos.Y);
+
+            // Reveal a square/circle around this point in world coordinates
+            for (int dy = -radiusTiles; dy <= radiusTiles; dy++)
+            {
+                for (int dx = -radiusTiles; dx <= radiusTiles; dx++)
+                {
+                    if (dx*dx + dy*dy <= radiusTiles*radiusTiles)
+                    {
+                        _exploredTiles.Add((cx + dx, cy + dy, 0));
+                    }
+                }
+            }
+        }
     }
     
     public Color GetFogOfWarTint(int x, int y, int z, bool isCurrentlyVisible, Creature observer)

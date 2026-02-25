@@ -14,6 +14,7 @@ namespace _4DND
     {
         private SpriteFont _font;
         private Texture2D _pixel;
+        public VisionSystem VisionSystem { get; set; } = null!;
         
         private Vector2 _cameraOffset = Vector2.Zero;
         private float _zoom = 1.0f;
@@ -74,9 +75,9 @@ namespace _4DND
 
                 if (_isTraveling) // Might have been stopped by encounter or fatigue
                 {
-                    Vector2 currentPos = new Vector2(campaign.PartyX, campaign.PartyY);
+                    Vector2 startPos = new Vector2(campaign.PartyX, campaign.PartyY);
                     Vector2 targetPos = new Vector2(_targetPartyX, _targetPartyY);
-                    float dist = Vector2.Distance(currentPos, targetPos);
+                    float dist = Vector2.Distance(startPos, targetPos);
 
                     float mph = GetTravelSpeedMPH(_travelPace);
                     float milesPerMinute = mph / 60f;
@@ -92,11 +93,14 @@ namespace _4DND
                     }
                     else
                     {
-                        Vector2 dir = Vector2.Normalize(targetPos - currentPos);
+                        Vector2 dir = Vector2.Normalize(targetPos - startPos);
                         campaign.PartyX += dir.X * moveAmount;
                         campaign.PartyY += dir.Y * moveAmount;
                         TravelOccurred = true; // Refresh tactical map if we stop traveling
                     }
+
+                    Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
+                    VisionSystem?.RevealPath(startPos, endPos);
                 }
             }
 
