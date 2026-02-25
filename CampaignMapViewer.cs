@@ -107,8 +107,9 @@ namespace _4DND
                     {
                         // Travel to selected location
                         // Convert axial to cartesian miles
-                        campaign.PartyX = (float)Math.Sqrt(3) * (_selectedLocation.X + _selectedLocation.Y / 2f);
-                        campaign.PartyY = 1.5f * _selectedLocation.Y;
+                        var (pmilesX, pmilesY) = Campaign.AxialToMiles(_selectedLocation.X, _selectedLocation.Y);
+                        campaign.PartyX = pmilesX;
+                        campaign.PartyY = pmilesY;
                         TravelOccurred = true;
                         System.Console.WriteLine($"Traveled to {_selectedLocation.Name} at ({campaign.PartyX:F1}, {campaign.PartyY:F1}) miles");
                     }
@@ -310,14 +311,7 @@ namespace _4DND
                     
                     // Determine biome at this hex
                     // We need Cartesian miles for WorldGenerator
-                    // axial (q, r) to cartesian (x, y):
-                    // x = sqrt(3) * (q + r/2)
-                    // y = 1.5 * r
-                    // This is in "hex units". Multiply by hexSizeInMiles to get miles.
-                    float hq = q;
-                    float hr = r;
-                    float x_miles = (float)Math.Sqrt(3) * (hq + hr / 2f) * hexSizeInMiles;
-                    float y_miles = 1.5f * hr * hexSizeInMiles;
+                    var (x_miles, y_miles) = Campaign.AxialToMiles((float)q * hexSizeInMiles, (float)r * hexSizeInMiles);
 
                     BiomeType biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
                     Color biomeColor = WorldGenerator.GetBiomeColor(biome);
@@ -530,15 +524,10 @@ namespace _4DND
         private void DrawPartyMarker(SpriteBatch sb, Vector2 center, Campaign campaign)
         {
             // Convert cartesian miles back to axial for HexToScreen
-            // q = x / sqrt(3) - y / 3
-            // r = 2/3 * y
-            float x = campaign.PartyX;
-            float y = campaign.PartyY;
-            float r = (2f/3f) * y;
-            float q = x / (float)Math.Sqrt(3) - y / 3f;
+            var (q_miles, r_miles) = Campaign.MilesToAxial(campaign.PartyX, campaign.PartyY);
 
             float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
-            var pos = HexToScreen(q / scaleDivisor, r / scaleDivisor, center);
+            var pos = HexToScreen(q_miles / scaleDivisor, r_miles / scaleDivisor, center);
 
             // Draw a party icon (circle with a cross)
             int size = (int)(24 * _zoom);
