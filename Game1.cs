@@ -3875,16 +3875,16 @@ public class Game1 : Game
 
             if (_currentMenuView == MenuView.Main)
             {
-                DrawMainMenu(_mainMenuItems, _mainMenuIndex, MenuView.Main);
+                DrawMainMenu(_cachedMainMenuItems, _mainMenuIndex, MenuView.Main);
             }
             else if (_currentMenuView == MenuView.Options)
             {
-                DrawMainMenu(_optionsMenuItems, _mainMenuIndex, MenuView.Options);
+                DrawMainMenu(_cachedOptionsMenuItems, _mainMenuIndex, MenuView.Options);
             }
             else if (_currentMenuView == MenuView.Language)
             {
-                DrawMainMenu(_optionsMenuItems, 0, MenuView.Options, true);
-                DrawMainMenu(_languageMenuItems, _mainMenuIndex, MenuView.Language);
+                DrawMainMenu(_cachedOptionsMenuItems, 0, MenuView.Options, true);
+                DrawMainMenu(_cachedLanguageMenuItems, _mainMenuIndex, MenuView.Language);
             }
 
             DrawDeleteConfirmationDialog();
@@ -4433,16 +4433,16 @@ public class Game1 : Game
 
             if (_currentMenuView == MenuView.Main)
             {
-                DrawPauseMenu(_menuItems, _menuIndex, MenuView.Main);
+                DrawPauseMenu(_cachedPauseMenuItems, _menuIndex, MenuView.Main);
             }
             else if (_currentMenuView == MenuView.Options)
             {
-                DrawPauseMenu(_optionsMenuItems, _menuIndex, MenuView.Options);
+                DrawPauseMenu(_cachedOptionsMenuItems, _menuIndex, MenuView.Options);
             }
             else if (_currentMenuView == MenuView.Language)
             {
-                DrawPauseMenu(_optionsMenuItems, 0, MenuView.Options, true);
-                DrawPauseMenu(_languageMenuItems, _menuIndex, MenuView.Language);
+                DrawPauseMenu(_cachedOptionsMenuItems, 0, MenuView.Options, true);
+                DrawPauseMenu(_cachedLanguageMenuItems, _menuIndex, MenuView.Language);
             }
         }
 
