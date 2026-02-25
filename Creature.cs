@@ -509,6 +509,12 @@ public class Creature
     /// <summary>Maximum spell slots per level (indices 0–8 for spell levels 1–9).</summary>
     public int[] SpellSlotsMax { get; set; } = new int[9];
 
+    // Cleric-specific
+    /// <summary>Channel Divinity uses remaining (recharges on short or long rest).</summary>
+    public int ChannelDivinityUsesRemaining { get; set; } = 0;
+    /// <summary>Maximum Channel Divinity uses at current level.</summary>
+    public int ChannelDivinityUsesMax { get; set; } = 0;
+
     // Survival / Nourishment
     /// <summary>Current exhaustion level (0 = none, 1–5 = cumulative penalties, 6 = death).</summary>
     public int ExhaustionLevel { get; set; } = 0;
@@ -1344,6 +1350,14 @@ public class Creature
             creature.SpellSlotsMax = (int[])character.SpellSlotsMax.Clone();
         }
 
+        if (character.Class == "Cleric")
+        {
+            creature.SpellSlotsRemaining = (int[])character.SpellSlotsRemaining.Clone();
+            creature.SpellSlotsMax = (int[])character.SpellSlotsMax.Clone();
+            creature.ChannelDivinityUsesRemaining = character.ChannelDivinityUsesRemaining;
+            creature.ChannelDivinityUsesMax = character.ChannelDivinityUsesMax;
+        }
+
         return creature;
     }
     
@@ -1360,6 +1374,12 @@ public class Creature
         {
             character.BardicInspirationUsesRemaining = BardicInspirationUsesRemaining;
             character.SpellSlotsRemaining = (int[])SpellSlotsRemaining.Clone();
+        }
+
+        if (character.Class == "Cleric")
+        {
+            character.SpellSlotsRemaining = (int[])SpellSlotsRemaining.Clone();
+            character.ChannelDivinityUsesRemaining = ChannelDivinityUsesRemaining;
         }
     }
 }

@@ -91,6 +91,13 @@ public static class RestManager
             result.Log.Add($"Font of Inspiration: Bardic Inspiration uses restored ({character.BardicInspirationMax}).");
         }
 
+        // Cleric: Channel Divinity recharges on a short rest
+        if (character.Class == "Cleric" && character.ChannelDivinityUsesMax > 0)
+        {
+            character.ChannelDivinityUsesRemaining = character.ChannelDivinityUsesMax;
+            result.Log.Add($"Channel Divinity uses restored ({character.ChannelDivinityUsesMax}).");
+        }
+
         result.Success = true;
         string summary = diceToSpend > 0
             ? $"{character.Name} takes a short rest, spending {diceToSpend} Hit {(diceToSpend == 1 ? "Die" : "Dice")} and regaining {result.HPRestored} HP."
@@ -213,6 +220,23 @@ public static class RestManager
                 }
                 if (result.SpellSlotsRestored.Any(s => s > 0))
                     result.Log.Add("Spell slots fully restored.");
+                break;
+
+            case "Cleric":
+                result.SpellSlotsRestored = new int[character.SpellSlotsMax.Length];
+                for (int i = 0; i < character.SpellSlotsMax.Length; i++)
+                {
+                    result.SpellSlotsRestored[i] = character.SpellSlotsMax[i] - character.SpellSlotsRemaining[i];
+                    character.SpellSlotsRemaining[i] = character.SpellSlotsMax[i];
+                }
+                if (result.SpellSlotsRestored.Any(s => s > 0))
+                    result.Log.Add("Spell slots fully restored.");
+
+                if (character.ChannelDivinityUsesMax > 0)
+                {
+                    character.ChannelDivinityUsesRemaining = character.ChannelDivinityUsesMax;
+                    result.Log.Add($"Channel Divinity uses restored ({character.ChannelDivinityUsesMax}).");
+                }
                 break;
         }
     }

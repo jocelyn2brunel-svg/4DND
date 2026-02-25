@@ -13,6 +13,14 @@ public record ClassLevelData(int Level, string Features, int Rages, int RageDama
 public record BardLevelData(int Level, string Features, int BardicInspirationDice, int CantripsKnown, int SpellsKnown, int[] SpellSlots);
 
 /// <summary>
+/// Cleric level progression data following D&amp;D 5e rules.
+/// CantripsKnown is the number of cantrips known.
+/// SpellSlots is a per-level array [slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9].
+/// ChannelDivinityUses is the number of Channel Divinity uses per rest (0 if not yet unlocked).
+/// </summary>
+public record ClericLevelData(int Level, string Features, int CantripsKnown, int[] SpellSlots, int ChannelDivinityUses);
+
+/// <summary>
 /// Determines how a class accesses its spells.
 /// Known-spell casters (Bard, Sorcerer, Warlock, Ranger) always have their learned spells available to cast.
 /// Prepared-spell casters (Cleric, Druid, Paladin, Wizard) must choose which spells to prepare after a long rest;
@@ -39,6 +47,7 @@ public class ClassData
     public List<string> SkillChoiceOptions { get; set; } = new();
     public List<ClassLevelData> LevelProgression { get; set; } = new();
     public List<BardLevelData> BardLevelProgression { get; set; } = new();
+    public List<ClericLevelData> ClericLevelProgression { get; set; } = new();
     /// <summary>How this class accesses its spells (None for non-casters, Known for Bard/Sorcerer/Warlock/Ranger, Prepared for Cleric/Druid/Paladin/Wizard).</summary>
     public SpellcastingType SpellcastingType { get; set; } = SpellcastingType.None;
     /// <summary>The ability score used for spellcasting ("Intelligence", "Wisdom", or "Charisma"). Empty for non-casters.</summary>
@@ -54,6 +63,13 @@ public class ClassData
     public BardLevelData GetBardLevelData(int level)
     {
         foreach (var entry in BardLevelProgression)
+            if (entry.Level == level) return entry;
+        return null;
+    }
+
+    public ClericLevelData GetClericLevelData(int level)
+    {
+        foreach (var entry in ClericLevelProgression)
             if (entry.Level == level) return entry;
         return null;
     }
@@ -182,8 +198,37 @@ public class ClassData
             SavingThrowProficiencies = new List<string> { "Wisdom", "Charisma" },
             ArmorProficiencies = new List<string> { "Light armor", "Medium armor", "Shields" },
             WeaponProficiencies = new List<string> { "Simple weapons" },
+            SkillChoicesCount = 2,
+            SkillChoiceOptions = new List<string>
+            {
+                "History", "Insight", "Medicine", "Persuasion", "Religion"
+            },
             SpellcastingType = SpellcastingType.Prepared,
-            SpellcastingAbility = "Wisdom"
+            SpellcastingAbility = "Wisdom",
+            ClericLevelProgression = new List<ClericLevelData>
+            {
+                //                                                              Cantrips  Slots: 1  2  3  4  5  6  7  8  9   Channel
+                new(1,  "Spellcasting, Divine Domain",                         3, new[] { 2, 0, 0, 0, 0, 0, 0, 0, 0 }, 0),
+                new(2,  "Channel Divinity (1/rest), Divine Domain feature",    3, new[] { 3, 0, 0, 0, 0, 0, 0, 0, 0 }, 1),
+                new(3,  "—",                                                   3, new[] { 4, 2, 0, 0, 0, 0, 0, 0, 0 }, 1),
+                new(4,  "Ability Score Improvement",                           4, new[] { 4, 3, 0, 0, 0, 0, 0, 0, 0 }, 1),
+                new(5,  "Destroy Undead (CR 1/2)",                             4, new[] { 4, 3, 2, 0, 0, 0, 0, 0, 0 }, 1),
+                new(6,  "Channel Divinity (2/rest), Divine Domain feature",    4, new[] { 4, 3, 3, 0, 0, 0, 0, 0, 0 }, 2),
+                new(7,  "—",                                                   4, new[] { 4, 3, 3, 1, 0, 0, 0, 0, 0 }, 2),
+                new(8,  "Ability Score Improvement, Destroy Undead (CR 1), Divine Domain feature", 4, new[] { 4, 3, 3, 2, 0, 0, 0, 0, 0 }, 2),
+                new(9,  "—",                                                   4, new[] { 4, 3, 3, 3, 1, 0, 0, 0, 0 }, 2),
+                new(10, "Divine Intervention",                                 5, new[] { 4, 3, 3, 3, 2, 0, 0, 0, 0 }, 2),
+                new(11, "Destroy Undead (CR 2)",                               5, new[] { 4, 3, 3, 3, 2, 1, 0, 0, 0 }, 2),
+                new(12, "Ability Score Improvement",                           5, new[] { 4, 3, 3, 3, 2, 1, 0, 0, 0 }, 2),
+                new(13, "—",                                                   5, new[] { 4, 3, 3, 3, 2, 1, 1, 0, 0 }, 2),
+                new(14, "Destroy Undead (CR 3)",                               5, new[] { 4, 3, 3, 3, 2, 1, 1, 0, 0 }, 2),
+                new(15, "—",                                                   5, new[] { 4, 3, 3, 3, 2, 1, 1, 1, 0 }, 2),
+                new(16, "Ability Score Improvement",                           5, new[] { 4, 3, 3, 3, 2, 1, 1, 1, 0 }, 2),
+                new(17, "Destroy Undead (CR 4), Divine Domain feature",        5, new[] { 4, 3, 3, 3, 2, 1, 1, 1, 1 }, 2),
+                new(18, "Channel Divinity (3/rest)",                           5, new[] { 4, 3, 3, 3, 3, 1, 1, 1, 1 }, 3),
+                new(19, "Ability Score Improvement",                           5, new[] { 4, 3, 3, 3, 3, 2, 1, 1, 1 }, 3),
+                new(20, "Divine Intervention improvement",                     5, new[] { 4, 3, 3, 3, 3, 2, 2, 1, 1 }, 3),
+            }
         };
 
         _classDatabase["Druid"] = new ClassData

@@ -786,7 +786,8 @@ public class CombatManager
     {
         var bestPath = FindPathToAdjacent(creature, target);
 
-        if (bestPath == null)
+        // Path with only 1 node means creature is already adjacent to the target
+        if (bestPath == null || bestPath.Count < 2)
             return null;
 
         var step = bestPath[1];
