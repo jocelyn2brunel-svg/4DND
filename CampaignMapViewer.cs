@@ -37,7 +37,7 @@ namespace _4DND
         private string _travelMessage = "";
         private float _travelMessageTimer = 0f;
 
-        private const float TimeScale = 20f; // 1 seconde réelle = 20 minutes de jeu
+        private const float TimeScale = 20f; // 1 seconde rÃ©elle = 20 minutes de jeu
 
         // Miles par heure selon l'allure (PHB p.182)
         private static float GetTravelSpeedMPH(TravelPace pace) => pace switch
@@ -89,14 +89,10 @@ namespace _4DND
                         campaign.PartyY = _targetPartyY;
                         _isTraveling = false;
                         TravelOccurred = true;
-                        SetTravelMessage("Arrivé à destination.");
-                    }
-                    else
-                    {
-                        Vector2 dir = Vector2.Normalize(targetPos - startPos);
-                        campaign.PartyX += dir.X * moveAmount;
-                        campaign.PartyY += dir.Y * moveAmount;
-                        TravelOccurred = true; // Refresh tactical map if we stop traveling
+            var center = new Vector2(1280 / 2f, 720 / 2f); // Default center for input handling
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + 0.1f, 0.5f, 2.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom - 0.1f, 0.5f, 2.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + scrollDelta * 0.001f, 0.3f, 3.0f);
                     }
 
                     Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
@@ -247,11 +243,9 @@ namespace _4DND
                     // 2. If no location selected, select the hex under mouse
                     if (_selectedLocation == null)
                     {
-                        float size = _tileSize * _zoom;
-                        Vector2 mouseRel = mouse.Position.ToVector2() - center - _cameraOffset;
-
-                        float r_click = mouseRel.Y / (1.5f * size);
-                        float q_click = (mouseRel.X / (size * (float)Math.Sqrt(3))) - r_click / 2f;
+                        Vector2 mouseWorld = ScreenToHexWorld(mouse.Position.ToVector2(), center);
+                        float q_click = mouseWorld.X;
+                        float r_click = mouseWorld.Y;
 
                         var (qh, rh) = Campaign.RoundToHex(q_click, r_click);
                         _selectedHex = (qh, rh);
@@ -278,7 +272,7 @@ namespace _4DND
             // Background (Day/Night)
             Color bgColor = Color.Black * 0.9f;
             if (campaign.GameHour < 6 || campaign.GameHour >= 20) bgColor = new Color(10, 10, 30) * 0.95f; // Nuit
-            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // Crépuscule/Aube
+            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // CrÃ©puscule/Aube
 
             sb.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), bgColor);
             
@@ -353,7 +347,7 @@ namespace _4DND
             var paces = new[]
             {
                 (TravelPace.Fast,   "[F4] Fast  ", 400, 4, 30, "-5 passive Percep."),
-                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, "�"),
+                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, ""),
                 (TravelPace.Slow,   "[F6] Slow  ", 200, 2, 18, "Stealth available"),
             };
 
@@ -481,12 +475,9 @@ namespace _4DND
         {
             // Calculate which hexes are visible based on camera offset
             float size = _tileSize * _zoom;
-            float focusX = -_cameraOffset.X;
-            float focusY = -_cameraOffset.Y;
-            
-            // Reverse of axial to cartesian conversion
-            float r_focus = focusY / (1.5f * size);
-            float q_focus = (focusX / (size * (float)Math.Sqrt(3))) - r_focus / 2f;
+            Vector2 focusWorld = ScreenToHexWorld(center, center);
+            float q_focus = focusWorld.X;
+            float r_focus = focusWorld.Y;
 
             int iq_focus = (int)Math.Round(q_focus);
             int ir_focus = (int)Math.Round(r_focus);
@@ -894,7 +885,7 @@ namespace _4DND
 
                     RestManager.ResetLongRestTracker(character);
                 }
-                SetTravelMessage($"Une nouvelle journée commence. Jour {currentDay}.");
+                SetTravelMessage($"Une nouvelle journÃ©e commence. Jour {currentDay}.");
             }
         }
 
@@ -906,7 +897,7 @@ namespace _4DND
                 _minutesSinceLastEncounterCheck = 0;
                 if (_random.Next(1, 21) >= 19) // 10% de chance
                 {
-                    SetTravelMessage("Rencontre aléatoire ! Le voyage s'arrête.");
+                    SetTravelMessage("Rencontre alÃ©atoire ! Le voyage s'arrÃªte.");
                     _isTraveling = false;
                 }
             }
@@ -950,13 +941,36 @@ namespace _4DND
 
         private Vector2 HexToScreen(float q, float r, Vector2 center)
         {
-            // Convert axial hex coordinates (q, r) to screen position (pointy-top hexagons)
+            return HexWorldToScreen(new Vector2(q, r), center);
+        }
+
+        private void ZoomAtScreenPosition(Vector2 screenPosition, Vector2 center, float targetZoom, float minZoom, float maxZoom)
+        {
+            Vector2 worldUnderCursor = ScreenToHexWorld(screenPosition, center);
+            _zoom = MathHelper.Clamp(targetZoom, minZoom, maxZoom);
+
+            Vector2 withoutCamera = HexWorldToScreen(worldUnderCursor, center, includeCameraOffset: false);
+            _cameraOffset = screenPosition - withoutCamera;
+        }
+
+        private Vector2 ScreenToHexWorld(Vector2 screenPosition, Vector2 center)
+        {
             float size = _tileSize * _zoom;
-            
-            float screenX = size * ((float)Math.Sqrt(3) * q + (float)Math.Sqrt(3) / 2f * r);
-            float screenY = size * (1.5f * r);
-            
-            return center + _cameraOffset + new Vector2(screenX, screenY);
+            Vector2 mouseRelative = screenPosition - center - _cameraOffset;
+
+            float r = mouseRelative.Y / (1.5f * size);
+            float q = (mouseRelative.X / (size * (float)Math.Sqrt(3))) - r / 2f;
+            return new Vector2(q, r);
+        }
+
+        private Vector2 HexWorldToScreen(Vector2 worldPosition, Vector2 center, bool includeCameraOffset = true)
+        {
+            float size = _tileSize * _zoom;
+            float screenX = size * ((float)Math.Sqrt(3) * worldPosition.X + (float)Math.Sqrt(3) / 2f * worldPosition.Y);
+            float screenY = size * (1.5f * worldPosition.Y);
+
+            Vector2 camera = includeCameraOffset ? _cameraOffset : Vector2.Zero;
+            return center + camera + new Vector2(screenX, screenY);
         }
         
         private void DrawHexagon(SpriteBatch sb, Vector2 center, float size, Color color, float thickness = 1f)
