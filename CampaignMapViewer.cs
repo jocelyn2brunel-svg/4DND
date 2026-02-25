@@ -472,27 +472,34 @@ namespace _4DND
         
         private void DrawGrid(SpriteBatch sb, Vector2 center, Campaign campaign)
         {
-            // Calculate which hexes are visible based on camera offset
             float size = _tileSize * _zoom;
-            Vector2 focusWorld = ScreenToHexWorld(center, center);
-            float q_focus = focusWorld.X;
-            float r_focus = focusWorld.Y;
+            float horizontalSpacing = size * (float)Math.Sqrt(3);
+            float verticalSpacing = size * 1.5f;
 
-            int iq_focus = (int)Math.Round(q_focus);
-            int ir_focus = (int)Math.Round(r_focus);
+            // Determine visible range of r
+            float minY = -center.Y - _cameraOffset.Y;
+            float maxY = center.Y - _cameraOffset.Y;
 
-            // Grid range depends on zoom and screen size
-            int gridRangeQ = (int)(center.X / (size * (float)Math.Sqrt(3))) + 2;
-            int gridRangeR = (int)(center.Y / (size * 1.5f)) + 2;
+            int minR = (int)Math.Floor(minY / verticalSpacing) - 1;
+            int maxR = (int)Math.Ceiling(maxY / verticalSpacing) + 1;
 
             int hexSizeInMiles = Campaign.GetHexSize(campaign.CurrentScale);
 
-            for (int q = iq_focus - gridRangeQ; q <= iq_focus + gridRangeQ; q++)
+            for (int r = minR; r <= maxR; r++)
             {
-                for (int r = ir_focus - gridRangeR; r <= ir_focus + gridRangeR; r++)
+                // For a given r, screenX = horizontalSpacing * (q + r/2.0f)
+                // We want screenX + _cameraOffset.X between -center.X and +center.X
+                float minX = -center.X - _cameraOffset.X;
+                float maxX = center.X - _cameraOffset.X;
+
+                // q = screenX / horizontalSpacing - r/2.0f
+                int minQ = (int)Math.Floor(minX / horizontalSpacing - r / 2f) - 1;
+                int maxQ = (int)Math.Ceiling(maxX / horizontalSpacing - r / 2f) + 1;
+
+                for (int q = minQ; q <= maxQ; q++)
                 {
                     var pos = HexToScreen(q, r, center);
-                    
+
                     // Determine biome at this hex (with cache)
                     var cacheKey = (q, r, campaign.Seed, campaign.CurrentScale);
                     if (!_biomeCache.TryGetValue(cacheKey, out BiomeType biome))
