@@ -20,10 +20,16 @@ namespace _4DND
         private int _tileSize = 30;
         
         private Location _selectedLocation = null;
+        private (int q, int r)? _selectedHex = null;
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
         public bool TravelOccurred { get; set; } = false;
+
+        private bool _isTraveling = false;
+        private float _targetPartyX;
+        private float _targetPartyY;
+        private const float TravelSpeed = 20f; // Miles per second
 
         // Caches for procedural map data
         private System.Collections.Generic.Dictionary<(int q, int r, int seed, MapScale scale), BiomeType> _biomeCache = new();
@@ -35,9 +41,36 @@ namespace _4DND
             _pixel = pixel;
         }
         
-        public void Update(Campaign campaign, MouseState mouse, KeyboardState kb, KeyboardState prevKb)
+        public void Update(Campaign campaign, MouseState mouse, KeyboardState kb, KeyboardState prevKb, GameTime gameTime)
         {
             if (campaign == null) return;
+
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Handle travel movement
+            if (_isTraveling)
+            {
+                Vector2 currentPos = new Vector2(campaign.PartyX, campaign.PartyY);
+                Vector2 targetPos = new Vector2(_targetPartyX, _targetPartyY);
+                float dist = Vector2.Distance(currentPos, targetPos);
+                float moveAmount = TravelSpeed * dt;
+
+                if (dist <= moveAmount)
+                {
+                    campaign.PartyX = _targetPartyX;
+                    campaign.PartyY = _targetPartyY;
+                    _isTraveling = false;
+                    TravelOccurred = true;
+                    System.Console.WriteLine("Arrived at destination.");
+                }
+                else
+                {
+                    Vector2 dir = Vector2.Normalize(targetPos - currentPos);
+                    campaign.PartyX += dir.X * moveAmount;
+                    campaign.PartyY += dir.Y * moveAmount;
+                    TravelOccurred = true; // Refresh tactical map if we stop traveling
+                }
+            }
 
             var vp = new Rectangle(0, 0, 1280, 720); // Default if device not accessible here, but we should use passed one if possible
             // We'll use a simplified check or pass the viewport if needed
@@ -81,41 +114,80 @@ namespace _4DND
                 System.Console.WriteLine($"Switched to Continent scale (1 hex = {Campaign.GetHexSize(MapScale.Continent)} miles)");
             }
             
-            // Click to select location
+            // Click to select location or hex
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
-                // Selection logic - find location near mouse
-                _selectedLocation = null;
                 var center = new Vector2(1280 / 2f, 720 / 2f); // Assuming default 720p for logic
 
-                foreach (var loc in campaign.AllLocations)
+                // Handle UI button clicks first
+                var panelRect = new Rectangle(10, 10, 350, 250); // Match DrawInfoPanel
+                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 180, 30);
+
+                if (travelBtn.Contains(mouse.Position))
                 {
-                    if (!loc.IsDiscovered) continue;
-
-                    float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
-                    var pos = HexToScreen(loc.X / scaleDivisor, loc.Y / scaleDivisor, center);
-
-                    if (Vector2.Distance(mouse.Position.ToVector2(), pos) < 30 * _zoom)
+                    if (_isTraveling)
                     {
-                        _selectedLocation = loc;
-                        break;
+                        // Cancel travel
+                        _isTraveling = false;
+                        System.Console.WriteLine("Travel cancelled.");
+                    }
+                    else if (_selectedLocation != null || _selectedHex != null)
+                    {
+                        // Start Travel
+                        float tx, ty;
+                        if (_selectedLocation != null)
+                        {
+                            var miles = Campaign.AxialToMiles(_selectedLocation.X, _selectedLocation.Y);
+                            tx = miles.x;
+                            ty = miles.y;
+                        }
+                        else
+                        {
+                            int hexSizeInMiles = Campaign.GetHexSize(campaign.CurrentScale);
+                            var miles = Campaign.AxialToMiles(_selectedHex.Value.q * hexSizeInMiles, _selectedHex.Value.r * hexSizeInMiles);
+                            tx = miles.x;
+                            ty = miles.y;
+                        }
+
+                        _targetPartyX = tx;
+                        _targetPartyY = ty;
+                        _isTraveling = true;
+                        System.Console.WriteLine($"Traveling to ({tx:F1}, {ty:F1}) miles");
                     }
                 }
-
-                // Handle Travel button click if a location is selected
-                if (_selectedLocation != null)
+                else
                 {
-                    var panelRect = new Rectangle(10, 10, 350, 250); // Match DrawInfoPanel
-                    var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 150, 30);
-                    if (travelBtn.Contains(mouse.Position))
+                    // Map Selection logic
+                    _selectedLocation = null;
+                    _selectedHex = null;
+
+                    // 1. Try selecting a location first
+                    foreach (var loc in campaign.AllLocations)
                     {
-                        // Travel to selected location
-                        // Convert axial to cartesian miles
-                        var (pmilesX, pmilesY) = Campaign.AxialToMiles(_selectedLocation.X, _selectedLocation.Y);
-                        campaign.PartyX = pmilesX;
-                        campaign.PartyY = pmilesY;
-                        TravelOccurred = true;
-                        System.Console.WriteLine($"Traveled to {_selectedLocation.Name} at ({campaign.PartyX:F1}, {campaign.PartyY:F1}) miles");
+                        if (!loc.IsDiscovered) continue;
+
+                        float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
+                        var pos = HexToScreen(loc.X / scaleDivisor, loc.Y / scaleDivisor, center);
+
+                        if (Vector2.Distance(mouse.Position.ToVector2(), pos) < 30 * _zoom)
+                        {
+                            _selectedLocation = loc;
+                            _selectedHex = Campaign.RoundToHex(loc.X / scaleDivisor, loc.Y / scaleDivisor); // Store hex for highlighting
+                            break;
+                        }
+                    }
+
+                    // 2. If no location selected, select the hex under mouse
+                    if (_selectedLocation == null)
+                    {
+                        float size = _tileSize * _zoom;
+                        Vector2 mouseRel = mouse.Position.ToVector2() - center - _cameraOffset;
+
+                        float r_click = mouseRel.Y / (1.5f * size);
+                        float q_click = (mouseRel.X / (size * (float)Math.Sqrt(3))) - r_click / 2f;
+
+                        var (qh, rh) = Campaign.RoundToHex(q_click, r_click);
+                        _selectedHex = (qh, rh);
                     }
                 }
             }
@@ -142,6 +214,13 @@ namespace _4DND
             // Draw grid
             DrawGrid(sb, center, campaign);
             
+            // Draw Selected Hex Highlight
+            if (_selectedHex.HasValue)
+            {
+                var pos = HexToScreen(_selectedHex.Value.q, _selectedHex.Value.r, center);
+                DrawHexagon(sb, pos, _tileSize * _zoom, Color.Yellow, 4f);
+            }
+
             // Draw regions at current scale
             var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
             foreach (var region in regionsAtScale)
@@ -567,18 +646,34 @@ namespace _4DND
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             }
 
-            if (_selectedLocation != null)
+            if (_selectedLocation != null || _selectedHex != null)
             {
                 y += 18;
-                sb.DrawString(_font, $"Selected: {_selectedLocation.Name}", new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
-                y += 18;
+                string selectedName = _selectedLocation != null ? _selectedLocation.Name : $"Hex ({_selectedHex.Value.q}, {_selectedHex.Value.r})";
+                sb.DrawString(_font, $"Selected: {selectedName}", new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
 
-                // Travel Button
-                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 150, 30);
+                if (_selectedLocation == null && _selectedHex.HasValue)
+                {
+                    y += 18;
+                    int hexSize = Campaign.GetHexSize(campaign.CurrentScale);
+                    var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * hexSize, _selectedHex.Value.r * hexSize);
+                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
+                    sb.DrawString(_font, $"Terrain: {biome}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                }
+
+                y += 25;
+
+                // Travel / Cancel Button
+                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 180, 30);
                 var mouse = Mouse.GetState();
                 bool isHovered = travelBtn.Contains(mouse.Position);
-                sb.Draw(_pixel, travelBtn, isHovered ? Color.DarkGreen : Color.Green);
-                sb.DrawString(_font, "Voyager ici", new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+                Color btnColor = _isTraveling ? Color.DarkRed : Color.Green;
+                if (isHovered) btnColor = _isTraveling ? Color.Red : Color.DarkGreen;
+
+                sb.Draw(_pixel, travelBtn, btnColor);
+                string btnLabel = _isTraveling ? "Annuler le voyage" : "Voyager ici";
+                sb.DrawString(_font, btnLabel, new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
 
         }
@@ -613,7 +708,7 @@ namespace _4DND
             return center + _cameraOffset + new Vector2(screenX, screenY);
         }
         
-        private void DrawHexagon(SpriteBatch sb, Vector2 center, float size, Color color)
+        private void DrawHexagon(SpriteBatch sb, Vector2 center, float size, Color color, float thickness = 1f)
         {
             for (int i = 0; i < 6; i++)
             {
@@ -623,7 +718,7 @@ namespace _4DND
                 var p1 = center + new Vector2((float)Math.Cos(angle1) * size, (float)Math.Sin(angle1) * size);
                 var p2 = center + new Vector2((float)Math.Cos(angle2) * size, (float)Math.Sin(angle2) * size);
                 
-                DrawLine(sb, p1, p2, color, 1f);
+                DrawLine(sb, p1, p2, color, thickness);
             }
         }
         
