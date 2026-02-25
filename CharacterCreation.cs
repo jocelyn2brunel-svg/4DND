@@ -9,7 +9,7 @@ namespace _4DND;
 public class CharacterCreation
 {
     private string _createName = string.Empty;
-    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: skills, 4: abilities, 5: final review
+    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: tool proficiency (dwarves), 4: skills, 5: abilities, 6: final review
     private List<string> _races = Race.GetAllRaceNames();
     private readonly string[] _classes = new[] { "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard" };
     private int _raceIndex = 0;
@@ -17,6 +17,7 @@ public class CharacterCreation
     private int _skillIndex = 0;
     private int[] _rolledAbilities = new int[6];
     private readonly string[] _abilityNames = new[] { "STR", "DEX", "CON", "INT", "WIS", "CHA" };
+    private int _selectedToolIndex = 0; // index of the chosen tool in the race's ToolProficiencyChoices
 
     private SpriteFont _font;
     private Texture2D _pixel;
@@ -160,18 +161,18 @@ public class CharacterCreation
         // Next button
         if (canGoNext && IsMouseClicked(mouse, _prevMouse, nextRect))
         {
-            if (_createStep == 3) // Before going to abilities, roll them
+            if (_createStep == 4) // Before going to abilities, roll them
             {
                 RollAbilities();
-                _createStep = 4; // Advance to abilities step
+                _createStep = 5; // Advance to abilities step
             }
-            else if (_createStep == 4) // After abilities, go to final review
+            else if (_createStep == 5) // After abilities, go to final review
             {
-                _createStep = 5;
+                _createStep = 6;
                 _prevMouse = mouse;
                 return true;
             }
-            else if (_createStep == 5) // Final confirmation
+            else if (_createStep == 6) // Final confirmation
             {
                 createdCharacter = CreateCharacterFromData();
                 _prevMouse = mouse;
@@ -329,8 +330,9 @@ public class CharacterCreation
             }
 
         }
-        // Step 3: Skill selection
-        else if (_createStep == 3)
+        // Step 3: Tool proficiency selection — interaction handled in DrawToolProficiencyStep
+        // Step 4: Skill selection
+        else if (_createStep == 4)
         {
             var selectedClass = ClassData.GetClass(_classes[_classIndex]);
             var skillsRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, 460, 420);
@@ -355,8 +357,8 @@ public class CharacterCreation
                 }
             }
         }
-        // Step 4: Ability rolls
-        else if (_createStep == 4)
+        // Step 5: Ability rolls
+        else if (_createStep == 5)
         {
             // Reroll button - position matches DrawAbilitiesStep
             var rerollRect = new Rectangle(menuRectC.X + menuWidthC / 2 - 80, menuRectC.Y + titleH + 250, 160, 40);
@@ -396,7 +398,7 @@ public class CharacterCreation
             var mouse = Mouse.GetState();
             
             // Title with step indicator
-            var title = $"Create Character - Step {_createStep + 1}/6";
+            var title = $"Create Character - Step {_createStep + 1}/7";
             var tsize = _font.MeasureString(title);
             spriteBatch.DrawString(_font, title, new Vector2(menuRectC.X + (menuWidthC - tsize.X) / 2, menuRectC.Y + 12), Color.Gold);
             
@@ -425,12 +427,15 @@ public class CharacterCreation
                     DrawClassStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 3:
-                    DrawSkillsStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
+                    DrawToolProficiencyStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 4:
-                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    DrawSkillsStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 5:
+                    DrawAbilitiesStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    break;
+                case 6:
                     DrawFinalReviewStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
             }
@@ -458,15 +463,15 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, barRect, Color.DarkGray * 0.5f);
         
         // Progress fill
-        float progress = (_createStep + 1) / 6f;
+        float progress = (_createStep + 1) / 7f;
         var fillRect = new Rectangle(barX, barY, (int)(barWidth * progress), barHeight);
         spriteBatch.Draw(_pixel, fillRect, Color.LightGreen);
         
         // Step labels
-        string[] stepLabels = { "Name", "Race", "Class", "Skills", "Abilities", "Review" };
-        for (int i = 0; i < 6; i++)
+        string[] stepLabels = { "Name", "Race", "Class", "Tools", "Skills", "Abilities", "Review" };
+        for (int i = 0; i < 7; i++)
         {
-            int stepX = barX + (barWidth * i / 5);
+            int stepX = barX + (barWidth * i / 6);
             var stepColor = i <= _createStep ? Color.Gold : Color.Gray;
             var stepLabel = stepLabels[i];
             var labelSize = _font.MeasureString(stepLabel);
@@ -611,6 +616,26 @@ public class CharacterCreation
             spriteBatch.DrawString(_font, "  - Dwarven Combat Training: proficiency with battleaxe, handaxe, light hammer, warhammer", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
+        
+        if (selectedRace.HasStonecunning)
+        {
+            spriteBatch.DrawString(_font, "  - Stonecunning: double proficiency bonus on History (stonework) checks", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
+        
+        if (selectedRace.ToolProficiencyChoices.Count > 0)
+        {
+            string choices = string.Join(", ", selectedRace.ToolProficiencyChoices);
+            spriteBatch.DrawString(_font, $"  - Tool Proficiency (choice): {choices}", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
+        
+        if (selectedRace.Languages.Count > 0)
+        {
+            string langs = string.Join(", ", selectedRace.Languages);
+            spriteBatch.DrawString(_font, $"  - Languages: {langs}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
     }
 
     private void DrawClassStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
@@ -650,13 +675,52 @@ public class CharacterCreation
         DrawClassDetails(spriteBatch, menuRect, padding, titleH, mouse);
     }
 
+    private void DrawToolProficiencyStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
+    {
+        var selectedRace = Race.GetRace(_races[_raceIndex]);
+        if (selectedRace.ToolProficiencyChoices.Count == 0)
+        {
+            // Race has no tool proficiency choice — skip this step automatically
+            _createStep = 4;
+            return;
+        }
+
+        spriteBatch.DrawString(_font, "Choose your Artisan Tool Proficiency:", new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, "(Smith's tools, Brewer's supplies, or Mason's tools)", new Vector2(menuRect.X + padding, menuRect.Y + titleH + 35), Color.LightGray, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+
+        var toolsRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 70, 460, selectedRace.ToolProficiencyChoices.Count * 52 + 10);
+        spriteBatch.Draw(_pixel, toolsRect, Color.Gray * 0.7f);
+        DrawBorder(spriteBatch, toolsRect, 2, Color.Gold * 0.4f);
+
+        for (int i = 0; i < selectedRace.ToolProficiencyChoices.Count; i++)
+        {
+            var item = new Rectangle(toolsRect.X + 4, toolsRect.Y + i * 52 + 4, 452, 46);
+            bool isSelected = (i == _selectedToolIndex);
+            bool isHovered = item.Contains(mouse.Position);
+
+            Color itemColor = isSelected ? Color.Gold * 0.8f : (isHovered ? Color.LightGray * 0.8f : Color.DarkGray);
+            spriteBatch.Draw(_pixel, item, itemColor);
+            if (isSelected)
+                DrawBorder(spriteBatch, item, 2, Color.Gold);
+
+            string toolName = selectedRace.ToolProficiencyChoices[i];
+            spriteBatch.DrawString(_font, toolName, new Vector2(item.X + 12, item.Y + 12), isSelected ? Color.Black : Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+
+            if (isHovered)
+            {
+                _tooltipText = $"Gain proficiency with {toolName}";
+                if (IsMouseClicked(mouse, _prevMouse, item))
+                    _selectedToolIndex = i;
+            }
+        }
+    }
+
     private void DrawSkillsStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
         var selectedClass = ClassData.GetClass(_classes[_classIndex]);
         var instructionText = $"Choose {selectedClass.SkillChoicesCount} skills for your {selectedClass.Name}:";
         spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
 
-        // Skills list (left side)
         var skillsRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 40, 460, 420);
         spriteBatch.Draw(_pixel, skillsRect, Color.Gray * 0.7f);
         DrawBorder(spriteBatch, skillsRect, 2, Color.Gold * 0.4f);
@@ -670,22 +734,26 @@ public class CharacterCreation
                 int row = i % 10;
                 var item = new Rectangle(skillsRect.X + 4 + col * 228, skillsRect.Y + row * 40 + 4, 224, 36);
 
-                bool isHovered = item.Contains(mouse.Position);
                 string skill = selectedClass.SkillChoiceOptions[i];
                 bool isSelected = selectedSkills.Contains(skill);
+                bool isHovered = item.Contains(mouse.Position);
 
-                Color itemColor = isSelected ? Color.ForestGreen * 0.8f : (isHovered ? Color.LightGray * 0.8f : Color.DarkGray);
+                Color itemColor = isSelected ? Color.Gold * 0.8f : (isHovered ? Color.LightGray * 0.8f : Color.DarkGray);
                 spriteBatch.Draw(_pixel, item, itemColor);
-
-                if (isHovered || (i == _skillIndex))
+                if (isSelected)
                     DrawBorder(spriteBatch, item, 2, Color.Gold);
 
-                var prefix = isSelected ? "[x] " : "[ ] ";
-                spriteBatch.DrawString(_font, prefix + skill, new Vector2(item.X + 10, item.Y + 6), isSelected ? Color.White : Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, skill, new Vector2(item.X + 8, item.Y + 10), isSelected ? Color.Black : Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+
+                if (isHovered)
+                {
+                    _skillIndex = i;
+                    if (IsMouseClicked(mouse, _prevMouse, item))
+                        ToggleSkillSelection(selectedClass.Name, skill, selectedClass.SkillChoicesCount);
+                }
             }
         }
 
-        // Skill details panel (right side)
         DrawSkillDetails(spriteBatch, menuRect, padding, titleH, mouse);
     }
 
@@ -817,6 +885,7 @@ public class CharacterCreation
             yOffset += 22;
             var skillsText = $"  You will choose {selectedClass.SkillChoicesCount} skills in the next step.";
             DrawWrappedText(spriteBatch, skillsText, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.5f);
+            yOffset += 40;
         }
     }
 
@@ -982,17 +1051,17 @@ public class CharacterCreation
         yOffset += 22;
         
         int equipCount = 0;
-        foreach (var item in startingEquipment.EquippedItems)
+        foreach (var itemName in startingEquipment.EquippedItems)
         {
             if (equipCount >= 3) break;
-            spriteBatch.DrawString(_font, $"  - {item} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {itemName} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
-        foreach (var item in startingEquipment.Items)
+        foreach (var itemName in startingEquipment.Items)
         {
             if (equipCount >= 6) break;
-            spriteBatch.DrawString(_font, $"  - {item}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, $"  - {itemName}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             yOffset += 18;
             equipCount++;
         }
@@ -1028,7 +1097,7 @@ public class CharacterCreation
             spriteBatch.Draw(_pixel, nextRect, nextColor);
             DrawBorder(spriteBatch, nextRect, 2, Color.LightGreen);
             
-            string nextText = _createStep == 4 ? "? Create!" : "Next >";
+            string nextText = _createStep == 6 ? "? Create!" : "Next >";
             var nextTextSize = _font.MeasureString(nextText);
             spriteBatch.DrawString(_font, nextText, new Vector2(nextRect.X + (nextRect.Width - nextTextSize.X * 0.7f) / 2, nextRect.Y + (nextRect.Height - nextTextSize.Y * 0.7f) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
@@ -1137,7 +1206,7 @@ public class CharacterCreation
 
     private bool CanProceedToNextStep()
     {
-        if (_createStep == 3)
+        if (_createStep == 4)
         {
             var selectedClass = ClassData.GetClass(_classes[_classIndex]);
             if (selectedClass.SkillChoicesCount <= 0)
@@ -1151,9 +1220,10 @@ public class CharacterCreation
             0 => !string.IsNullOrWhiteSpace(_createName),
             1 => true,
             2 => true,
-            3 => false,
-            4 => !_isRolling,
-            5 => true,
+            3 => true,
+            4 => false,
+            5 => !_isRolling,
+            6 => true,
             _ => false
         };
     }
@@ -1164,10 +1234,11 @@ public class CharacterCreation
         {
             0 => "Proceed to race selection",
             1 => "Proceed to class selection",
-            2 => "Proceed to skill selection",
-            3 => "Choose class skills then roll ability scores",
-            4 => "Review your character",
-            5 => "Finalize and create character",
+            2 => "Proceed to tool proficiency",
+            3 => "Proceed to skill selection",
+            4 => "Choose class skills then roll ability scores",
+            5 => "Review your character",
+            6 => "Finalize and create character",
             _ => "Next"
         };
     }
@@ -1335,14 +1406,14 @@ public class CharacterCreation
     {
         var selectedRace = Race.GetRace(_races[_raceIndex]);
         var selectedClass = ClassData.GetClass(_classes[_classIndex]);
-        
-        var c = new Character 
-        { 
-            Name = _createName.Trim(), 
-            CreatedAt = DateTime.UtcNow, 
-            Race = selectedRace.Name, 
-            Class = selectedClass.Name, 
-            Level = 1, 
+
+        var c = new Character
+        {
+            Name = _createName.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            Race = selectedRace.Name,
+            Class = selectedClass.Name,
+            Level = 1,
             XP = 0,
             Strength = _rolledAbilities[0],
             Dexterity = _rolledAbilities[1],
@@ -1351,7 +1422,7 @@ public class CharacterCreation
             Wisdom = _rolledAbilities[4],
             Charisma = _rolledAbilities[5]
         };
-        
+
         // Apply racial bonuses
         c.Strength += selectedRace.StrengthBonus;
         c.Dexterity += selectedRace.DexterityBonus;
@@ -1360,20 +1431,22 @@ public class CharacterCreation
         c.Wisdom += selectedRace.WisdomBonus;
         c.Charisma += selectedRace.CharismaBonus;
         c.Speed = selectedRace.BaseSpeed;
-        
+
         // Set hit dice type and calculate HP
         c.HitDiceType = selectedClass.HitDice;
         int conMod = c.GetAbilityModifier(c.Constitution);
         c.MaxHP = selectedClass.HitDice + conMod;
         c.HitDiceTotal = 1;
         c.HitDiceRemaining = 1;
-        
+
         // Apply armor and weapon proficiencies from class
         c.ArmorProficiencies = new List<string>(selectedClass.ArmorProficiencies);
         c.WeaponProficiencies = new List<string>(selectedClass.WeaponProficiencies);
-        
+
         // Apply racial traits
         c.HasDwarvenResilience = selectedRace.HasDwarvenResilience;
+        c.HasStonecunning = selectedRace.HasStonecunning;
+        c.Languages = new List<string>(selectedRace.Languages);
         if (selectedRace.HasDwarvenCombatTraining)
         {
             foreach (var w in new[] { "Battleaxe", "Handaxe", "Light Hammer", "Warhammer" })
@@ -1382,54 +1455,46 @@ public class CharacterCreation
                     c.WeaponProficiencies.Add(w);
             }
         }
-        
+        if (selectedRace.ToolProficiencyChoices.Count > 0)
+        {
+            int chosenIdx = Math.Clamp(_selectedToolIndex, 0, selectedRace.ToolProficiencyChoices.Count - 1);
+            c.ToolProficiencies.Add(selectedRace.ToolProficiencyChoices[chosenIdx]);
+        }
+        foreach (var tool in selectedClass.ToolProficiencies)
+        {
+            if (!c.ToolProficiencies.Contains(tool))
+                c.ToolProficiencies.Add(tool);
+        }
+
         // Apply saving throw proficiencies from class
         foreach (var save in selectedClass.SavingThrowProficiencies)
         {
             switch (save)
             {
-                case "Strength":
-                    c.StrengthSaveProficiency = true;
-                    break;
-                case "Dexterity":
-                    c.DexteritySaveProficiency = true;
-                    break;
-                case "Constitution":
-                    c.ConstitutionSaveProficiency = true;
-                    break;
-                case "Intelligence":
-                    c.IntelligenceSaveProficiency = true;
-                    break;
-                case "Wisdom":
-                    c.WisdomSaveProficiency = true;
-                    break;
-                case "Charisma":
-                    c.CharismaSaveProficiency = true;
-                    break;
+                case "Strength":     c.StrengthSaveProficiency = true; break;
+                case "Dexterity":    c.DexteritySaveProficiency = true; break;
+                case "Constitution": c.ConstitutionSaveProficiency = true; break;
+                case "Intelligence": c.IntelligenceSaveProficiency = true; break;
+                case "Wisdom":       c.WisdomSaveProficiency = true; break;
+                case "Charisma":     c.CharismaSaveProficiency = true; break;
             }
         }
-        
+
         // Apply selected class skill proficiencies
         var selectedSkills = GetSelectedSkillsForClass(selectedClass);
         foreach (var skill in selectedSkills)
-        {
             ApplySkillProficiency(c, skill);
-        }
-        
+
         // Add starting equipment based on class
         var startingEquipment = StartingEquipment.GetStartingEquipment(c.Class);
         foreach (var itemName in startingEquipment.Items)
-        {
             c.InventoryData.AddItem(itemName);
-        }
         foreach (var itemName in startingEquipment.EquippedItems)
-        {
             c.InventoryData.EquipItem(itemName);
-        }
         c.GoldPieces = startingEquipment.GoldPieces;
-        
+
         c.CurrentHP = c.MaxHP;
-        
+
         // Calculate AC from equipment
         c.CalculateDerivedStats();
 
@@ -1470,7 +1535,7 @@ public class CharacterCreation
                 c.ChannelDivinityUsesMax = levelData.ChannelDivinityUses;
             }
         }
-        
+
         return c;
     }
 }

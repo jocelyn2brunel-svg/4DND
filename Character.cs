@@ -78,7 +78,13 @@ public class Character
     // Racial traits
     /// <summary>Dwarven Resilience: advantage on saving throws against poison, resistance to poison damage.</summary>
     public bool HasDwarvenResilience { get; set; } = false;
-    
+    /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
+    public bool HasStonecunning { get; set; } = false;
+    /// <summary>Languages this character can speak, read, and write.</summary>
+    public List<string> Languages { get; set; } = new();
+    /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
+    public List<string> ToolProficiencies { get; set; } = new();
+
     // Inventory system
     public Inventory InventoryData { get; set; } = new Inventory();
     
@@ -212,7 +218,12 @@ public class Character
             _ => 0
         };
         
-        return abilityMod + (proficient ? ProficiencyBonus : 0);
+        // Stonecunning: double proficiency bonus on History checks (treated as always proficient for stonework)
+        int profBonus = proficient ? ProficiencyBonus : 0;
+        if (HasStonecunning && skill == "History")
+            profBonus = proficient ? ProficiencyBonus * 2 : ProficiencyBonus;
+        
+        return abilityMod + profBonus;
     }
     
     public void SetAbilityScores(int[] scores)
@@ -244,6 +255,7 @@ public class Character
         DarkvisionRange = raceData.DarkvisionRange;
         HasSunlightSensitivity = raceData.HasSunlightSensitivity;
         HasDwarvenResilience = raceData.HasDwarvenResilience;
+        HasStonecunning = raceData.HasStonecunning;
     }
     
     public int GetPrimaryAbilityModifier()

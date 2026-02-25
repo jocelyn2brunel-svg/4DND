@@ -26,7 +26,13 @@ public class Race
     public bool HasDwarvenResilience { get; set; } = false;
     /// <summary>Dwarven Combat Training: proficiency with battleaxe, handaxe, light hammer, and warhammer.</summary>
     public bool HasDwarvenCombatTraining { get; set; } = false;
-    
+    /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
+    public bool HasStonecunning { get; set; } = false;
+    /// <summary>Languages this race speaks, reads, and writes.</summary>
+    public List<string> Languages { get; set; } = new();
+    /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
+    public List<string> ToolProficiencyChoices { get; set; } = new();
+
     public static readonly Dictionary<string, Race> AllRaces = new()
     {
         // Human
@@ -96,6 +102,9 @@ public class Race
             DarkvisionRange = 60,
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
+            HasStonecunning = true,
+            Languages = new List<string> { "Common", "Dwarvish" },
+            ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
             Description = "Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
         },
         ["Mountain Dwarf"] = new Race
@@ -109,6 +118,9 @@ public class Race
             DarkvisionRange = 60,
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
+            HasStonecunning = true,
+            Languages = new List<string> { "Common", "Dwarvish" },
+            ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
             Description = "Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
         },
         
