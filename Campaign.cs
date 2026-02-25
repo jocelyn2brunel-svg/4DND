@@ -165,6 +165,12 @@ namespace _4DND
         // Current map viewing scale
         public MapScale CurrentScale { get; set; } = MapScale.Province;
 
+        /// <summary>
+        /// Difficulty of the current (or most recent) combat encounter (DMG p.82).
+        /// Updated by <see cref="CombatManager.GetEncounterDifficulty"/> when combat starts.
+        /// </summary>
+        public EncounterDifficulty? CurrentEncounterDifficulty { get; set; }
+
         // Tactical scale constants
         public const int TacticalUnitsPerMile = 1056; // 1 mile = 5280 feet, 1 square = 5 feet => 1056 squares
         
