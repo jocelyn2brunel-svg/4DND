@@ -198,6 +198,16 @@ namespace _4DND
         }
 
         /// <summary>
+        /// Returns the XP required to reach the next level after <paramref name="currentLevel"/>.
+        /// Returns -1 if already at max level (20).
+        /// </summary>
+        public static int GetNextLevelXP(int currentLevel)
+        {
+            if (currentLevel >= 20) return -1;
+            return XPThresholds[Math.Clamp(currentLevel, 1, 19)];
+        }
+
+        /// <summary>
         /// Returns the character level (1–20) that corresponds to <paramref name="totalXP"/>.
         /// </summary>
         public static int GetLevelForXP(int totalXP)

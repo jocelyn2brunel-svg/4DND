@@ -357,7 +357,9 @@ public class CharacterSheet
         maxFieldHeight = Math.Max(maxFieldHeight, DrawHeaderField(spriteBatch, "PLAYER NAME", "", x + padding + fieldWidth * 2, infoStartY, fieldWidth - 5));
         maxFieldHeight = Math.Max(maxFieldHeight, DrawHeaderField(spriteBatch, "RACE", c.Race, x + padding + fieldWidth * 3, infoStartY, fieldWidth - 5));
         maxFieldHeight = Math.Max(maxFieldHeight, DrawHeaderField(spriteBatch, "ALIGNMENT", c.Alignment, x + padding + fieldWidth * 4, infoStartY, fieldWidth - 5));
-        maxFieldHeight = Math.Max(maxFieldHeight, DrawHeaderField(spriteBatch, "EXPERIENCE POINTS", c.XP.ToString(), x + padding + fieldWidth * 5, infoStartY, fieldWidth - 5));
+        int nextLevelXP = DndMath.GetNextLevelXP(c.Level);
+        string xpDisplay = nextLevelXP >= 0 ? $"{c.XP} / {nextLevelXP}" : $"{c.XP} (MAX)";
+        maxFieldHeight = Math.Max(maxFieldHeight, DrawHeaderField(spriteBatch, "EXPERIENCE POINTS", xpDisplay, x + padding + fieldWidth * 5, infoStartY, fieldWidth - 5));
         
         return padding + 50 + maxFieldHeight + 10;
     }
@@ -938,7 +940,7 @@ public class CharacterSheet
             var tempHpSize = _font.MeasureString(tempHpText);
             spriteBatch.DrawString(_font, tempHpText, new Vector2(x + (width - tempHpSize.X * 1.2f) / 2, y + 28), new Color(0, 80, 200), 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
         }
-        spriteBatch.DrawString(_font, "PV TEMPORAIRES", new Vector2(x + 10, y + 58), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, "PV TEMPORAIRES", new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         string tooltip = c.TempHP > 0
             ? $"PV temporaires: {c.TempHP}. Absorbent les dégâts avant les PV normaux. Expirent après un repos long."
             : "PV temporaires: aucun. Accordés par certains sorts ou capacités; absorbent les dégâts avant les PV normaux.";
