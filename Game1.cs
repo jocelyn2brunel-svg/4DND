@@ -47,8 +47,25 @@ public class Game1 : Game
     private enum AppState { MainMenu, CharacterSelect, CharacterCreate, CampaignSelect, CampaignCreate, Playing }
     private AppState _state = AppState.MainMenu;
 
+    private enum MenuView { Main, Options, Language }
+    private MenuView _currentMenuView = MenuView.Main;
+
     private bool _inMainMenu => _state == AppState.MainMenu;
-    private readonly string[] _mainMenuItems = new[] { "Single Player", "Multiplayer", "Options", "Desktop" };
+    private string[] _cachedMainMenuItems = null!;
+    private string[] _cachedOptionsMenuItems = null!;
+    private string[] _cachedLanguageMenuItems = null!;
+    private string[] _cachedPauseMenuItems = null!;
+    private Loc.Language _lastLanguage;
+
+    private void UpdateMenuCache()
+    {
+        _cachedMainMenuItems = new[] { Loc.Tr("Single Player"), Loc.Tr("Multiplayer"), Loc.Tr("Options"), Loc.Tr("Desktop") };
+        _cachedOptionsMenuItems = new[] { Loc.Tr("Language"), Loc.Tr("Back") };
+        _cachedLanguageMenuItems = new[] { Loc.Tr("English"), Loc.Tr("French") };
+        _cachedPauseMenuItems = new[] { Loc.Tr("Continue"), Loc.Tr("Options"), Loc.Tr("Main Menu"), Loc.Tr("Desktop") };
+        _lastLanguage = Loc.CurrentLanguage;
+    }
+
     private int _mainMenuIndex = 0;
 
     private List<Character> _characters = new();
@@ -75,7 +92,6 @@ public class Game1 : Game
 
     private bool _isMenuOpen = false;
     private int _menuIndex = 0;
-    private readonly string[] _menuItems = new[] { "Continue", "Options", "Main Menu", "Desktop" };
     
     private bool _showCampaignMap = false;
 
@@ -179,6 +195,7 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
+        UpdateMenuCache();
         // Keep a normal bordered window at startup
         Window.IsBorderless = false;
         _graphics.ApplyChanges();
@@ -1808,50 +1825,96 @@ public class Game1 : Game
     
     private void ExecuteMainMenuAction(int index)
     {
-        var sel = _mainMenuItems[index];
-        if (sel == "Single Player")
+        if (_currentMenuView == MenuView.Main)
         {
-            _isMultiplayerMode = false;
-            LoadCharacters();
-            _state = AppState.CharacterSelect;
+            if (index == 0) // Single Player
+            {
+                _isMultiplayerMode = false;
+                LoadCharacters();
+                _state = AppState.CharacterSelect;
+            }
+            else if (index == 1) // Multiplayer
+            {
+                _isMultiplayerMode = true;
+                LoadCharacters();
+                _state = AppState.CharacterSelect;
+            }
+            else if (index == 2) // Options
+            {
+                _currentMenuView = MenuView.Options;
+                _mainMenuIndex = 0;
+            }
+            else if (index == 3) // Desktop
+            {
+                Exit();
+            }
         }
-        else if (sel == "Multiplayer")
+        else if (_currentMenuView == MenuView.Options)
         {
-            _isMultiplayerMode = true;
-            LoadCharacters();
-            _state = AppState.CharacterSelect;
+            if (index == 0) // Language
+            {
+                _currentMenuView = MenuView.Language;
+                // No need to reset index, we want to stay on the language option maybe?
+                // Actually the language list will be to the right.
+            }
+            else if (index == 1) // Back
+            {
+                _currentMenuView = MenuView.Main;
+                _mainMenuIndex = 2; // Back to Options
+            }
         }
-        else if (sel == "Options")
+        else if (_currentMenuView == MenuView.Language)
         {
-            _isMenuOpen = true;
-            _menuIndex = 1;
-        }
-        else if (sel == "Desktop")
-        {
-            Exit();
+            if (index == 0) Loc.SetLanguage(Loc.Language.English);
+            else if (index == 1) Loc.SetLanguage(Loc.Language.French);
+            _currentMenuView = MenuView.Options;
+            _mainMenuIndex = 0;
         }
     }
 
     private void ExecuteMenuAction(int index)
     {
-        var sel = _menuItems[index];
-        if (sel == "Continue")
+        if (_currentMenuView == MenuView.Main)
         {
-            _isMenuOpen = false;
+            if (index == 0) // Continue
+            {
+                _isMenuOpen = false;
+            }
+            else if (index == 1) // Options
+            {
+                _currentMenuView = MenuView.Options;
+                _menuIndex = 0;
+            }
+            else if (index == 2) // Main Menu
+            {
+                _luteMusic.Stop();
+                _state = AppState.MainMenu;
+                _isMenuOpen = false;
+                _currentMenuView = MenuView.Main;
+            }
+            else if (index == 3) // Desktop
+            {
+                Exit();
+            }
         }
-        else if (sel == "Options")
+        else if (_currentMenuView == MenuView.Options)
         {
-            // placeholder
+            if (index == 0) // Language
+            {
+                _currentMenuView = MenuView.Language;
+            }
+            else if (index == 1) // Back
+            {
+                _currentMenuView = MenuView.Main;
+                _menuIndex = 1;
+            }
         }
-        else if (sel == "Main Menu")
+        else if (_currentMenuView == MenuView.Language)
         {
-            _luteMusic.Stop();
-            _state = AppState.MainMenu;
-            _isMenuOpen = false;
-        }
-        else if (sel == "Desktop")
-        {
-            Exit();
+            if (index == 0) Loc.SetLanguage(Loc.Language.English);
+            else if (index == 1) Loc.SetLanguage(Loc.Language.French);
+            _currentMenuView = MenuView.Options;
+            _menuIndex = 0;
         }
     }
     
@@ -1879,10 +1942,18 @@ public class Game1 : Game
         // MAIN MENU
         if (_state == AppState.MainMenu)
         {
+            if (Loc.CurrentLanguage != _lastLanguage) UpdateMenuCache();
+            var currentList = _currentMenuView switch
+            {
+                MenuView.Options => _cachedOptionsMenuItems,
+                MenuView.Language => _cachedLanguageMenuItems,
+                _ => _cachedMainMenuItems
+            };
+
             if (kb.IsKeyDown(Keys.Up) && !_prevKb.IsKeyDown(Keys.Up))
-                _mainMenuIndex = (_mainMenuIndex - 1 + _mainMenuItems.Length) % _mainMenuItems.Length;
+                _mainMenuIndex = (_mainMenuIndex - 1 + currentList.Length) % currentList.Length;
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
-                _mainMenuIndex = (_mainMenuIndex + 1) % _mainMenuItems.Length;
+                _mainMenuIndex = (_mainMenuIndex + 1) % currentList.Length;
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
                 ExecuteMainMenuAction(_mainMenuIndex);
 
@@ -1891,10 +1962,18 @@ public class Game1 : Game
             int itemHeight = 48;
             int padding = 12;
             int titleHeight = 120;
-            int menuHeight = titleHeight + _mainMenuItems.Length * (itemHeight + padding) + padding;
+            int menuHeight = titleHeight + currentList.Length * (itemHeight + padding) + padding;
             var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
-            for (int i = 0; i < _mainMenuItems.Length; i++)
+            if (_currentMenuView == MenuView.Language)
+            {
+                // Move menu to the right if language list
+                menuRect.X += 260;
+                // And we also want to be able to click back on the main menu?
+                // The user said "a list that appears to the right", suggesting the previous menu is still visible.
+            }
+
+            for (int i = 0; i < currentList.Length; i++)
             {
                 var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 if (itemRect.Contains(mouse.Position))
@@ -2366,10 +2445,18 @@ public class Game1 : Game
 
         if (_isMenuOpen)
         {
+            if (Loc.CurrentLanguage != _lastLanguage) UpdateMenuCache();
+            var currentList = _currentMenuView switch
+            {
+                MenuView.Options => _cachedOptionsMenuItems,
+                MenuView.Language => _cachedLanguageMenuItems,
+                _ => _cachedPauseMenuItems
+            };
+
             if (kb.IsKeyDown(Keys.Up) && !_prevKb.IsKeyDown(Keys.Up))
-                _menuIndex = (_menuIndex - 1 + _menuItems.Length) % _menuItems.Length;
+                _menuIndex = (_menuIndex - 1 + currentList.Length) % currentList.Length;
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
-                _menuIndex = (_menuIndex + 1) % _menuItems.Length;
+                _menuIndex = (_menuIndex + 1) % currentList.Length;
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
                 ExecuteMenuAction(_menuIndex);
 
@@ -2377,10 +2464,13 @@ public class Game1 : Game
             int menuWidth2 = 360;
             int itemHeight2 = 48;
             int padding2 = 12;
-            int menuHeight2 = _menuItems.Length * (itemHeight2 + padding2) + padding2;
+            int menuHeight2 = currentList.Length * (itemHeight2 + padding2) + padding2;
             var menuRect2 = new Rectangle((vp2.Width - menuWidth2) / 2, (vp2.Height - menuHeight2) / 2, menuWidth2, menuHeight2);
 
-            for (int i = 0; i < _menuItems.Length; i++)
+            if (_currentMenuView == MenuView.Language)
+                menuRect2.X += 200;
+
+            for (int i = 0; i < currentList.Length; i++)
             {
                 var itemRect = new Rectangle(menuRect2.X + padding2, menuRect2.Y + padding2 + i * (itemHeight2 + padding2), menuWidth2 - padding2 * 2, itemHeight2);
                 if (itemRect.Contains(mouse.Position))
@@ -2564,8 +2654,8 @@ public class Game1 : Game
                             if (_combatManager.InCombat && currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction)
                             {
                                 if (_combatManager.Dash(currentCombatant))
-                                    AddTooltip(currentCombatant, "Action : Foncer", Color.Cyan);
-                                AddToCombatLog($"{currentCombatant.Name} uses DASH via Move button.");
+                                    AddTooltip(currentCombatant, Loc.Tr("Action: Dash"), Color.Cyan);
+                                AddToCombatLog(Loc.Tr("{0} uses DASH via Move button.", currentCombatant.Name));
                             }
                             _selectedAction = CombatAction.Move;
                             _showBonusActionMenu = false;
@@ -2574,22 +2664,22 @@ public class Game1 : Game
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDashButtonRect.Contains(mouse.Position))
                         {
                             if (_combatManager.Dash(currentCombatant))
-                                AddTooltip(currentCombatant, "Action : Foncer", Color.Cyan);
+                                AddTooltip(currentCombatant, Loc.Tr("Action: Dash"), Color.Cyan);
                             FlushTurnMessages();
-                            AddToCombatLog($"{currentCombatant.Name} uses DASH.");
+                            AddToCombatLog(Loc.Tr("{0} uses DASH.", currentCombatant.Name));
                             clickedOnGameplayUiButton = true;
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDisengageButtonRect.Contains(mouse.Position))
                         {
                             if (_combatManager.Disengage(currentCombatant))
-                                AddTooltip(currentCombatant, "Action : Se désengager", Color.Cyan);
+                                AddTooltip(currentCombatant, Loc.Tr("Action: Disengage"), Color.Cyan);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
                         else if (_selectedAction == CombatAction.Move && (currentCombatant.HasAction || !_combatManager.InCombat) && combatDodgeButtonRect.Contains(mouse.Position))
                         {
                             if (_combatManager.Dodge(currentCombatant))
-                                AddTooltip(currentCombatant, "Action : Esquiver", Color.Cyan);
+                                AddTooltip(currentCombatant, Loc.Tr("Action: Dodge"), Color.Cyan);
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
                         }
@@ -2598,9 +2688,9 @@ public class Game1 : Game
                             if (_combatManager.Hide(currentCombatant, visionSystem: _visionSystem))
                             {
                                 if (currentCombatant.IsHidden)
-                                    AddTooltip(currentCombatant, "Caché !", Color.LimeGreen);
+                                    AddTooltip(currentCombatant, Loc.Tr("Hidden!"), Color.LimeGreen);
                                 else
-                                    AddTooltip(currentCombatant, "Raté !", Color.LightGray);
+                                    AddTooltip(currentCombatant, Loc.Tr("Missed!"), Color.LightGray);
                             }
                             FlushTurnMessages();
                             clickedOnGameplayUiButton = true;
@@ -2659,9 +2749,9 @@ public class Game1 : Game
                                 if (_combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem))
                                 {
                                     if (currentCombatant.IsHidden)
-                                        AddTooltip(currentCombatant, "Caché !", Color.LimeGreen);
+                                    AddTooltip(currentCombatant, Loc.Tr("Hidden!"), Color.LimeGreen);
                                     else
-                                        AddTooltip(currentCombatant, "Raté !", Color.LightGray);
+                                    AddTooltip(currentCombatant, Loc.Tr("Missed!"), Color.LightGray);
                                 }
                                 FlushTurnMessages();
                             }
@@ -2958,19 +3048,19 @@ public class Game1 : Game
 
                                     string atkSign = attackerBonus >= 0 ? $"+{attackerBonus}" : $"{attackerBonus}";
                                     string defSign = defenderBonus >= 0 ? $"+{defenderBonus}" : $"{defenderBonus}";
-                                    AddToCombatLog($"Grapple: {currentCombatant.Name} {attackerRoll}{atkSign}={attackerTotal} vs {target.Name} {defenderRoll}{defSign}={defenderTotal}");
+                                    AddToCombatLog(Loc.Tr("Grapple: {0} {1}{2}={3} vs {4} {5}{6}={7}", currentCombatant.Name, attackerRoll, atkSign, attackerTotal, target.Name, defenderRoll, defSign, defenderTotal));
 
-                                    AddTooltip(currentCombatant, "Action : Lutte", Color.Cyan);
+                                    AddTooltip(currentCombatant, Loc.Tr("Action: Grapple"), Color.Cyan);
                                     if (attackerTotal >= defenderTotal)
                                     {
                                         target.Conditions = target.Conditions.AddCondition(Condition.Grappled);
-                                        AddTooltip(target, "Agrippé !", Color.Orange);
-                                        AddToCombatLog($"{target.Name} is GRAPPLED! (Speed=0)");
+                                        AddTooltip(target, Loc.Tr("Grappled!"), Color.Orange);
+                                        AddToCombatLog(Loc.Tr("{0} is GRAPPLED! (Speed=0)", target.Name));
                                     }
                                     else
                                     {
-                                        AddTooltip(target, "Résiste !", Color.LightGray);
-                                        AddToCombatLog($"{target.Name} resists the grapple!");
+                                        AddTooltip(target, Loc.Tr("Resists!"), Color.LightGray);
+                                        AddToCombatLog(Loc.Tr("{0} resists the grapple!", target.Name));
                                     }
 
                                     if (_combatManager.InCombat)
@@ -3507,9 +3597,9 @@ public class Game1 : Game
         if (xpEarned > 0 && _currentCharacter != null)
         {
             bool leveledUp = _currentCharacter.GainXP(xpEarned);
-            AddToCombatLog($"Gained {xpEarned} XP!");
+                AddToCombatLog(Loc.Tr("Gained {0} XP!", xpEarned));
             if (leveledUp)
-                AddToCombatLog($"Level up! Now level {_currentCharacter.Level}!");
+                    AddToCombatLog(Loc.Tr("Level up! Now level {0}!", _currentCharacter.Level));
         }
 
         if (newRound > prevRound)
@@ -3532,7 +3622,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = "Inventaire [C]";
+            string label = Loc.Tr("Inventaire [C]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -3555,7 +3645,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = isCloseButton ? "Fermer map [M]" : "Ouvrir map [M]";
+            string label = Loc.Tr(isCloseButton ? "Fermer map [M]" : "Ouvrir map [M]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -3743,43 +3833,58 @@ public class Game1 : Game
         {
             _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.85f);
 
-            int menuWidth = 480;
-            int itemHeight = 48;
-            int padding = 12;
-            int titleHeight = 120;
-            int menuHeight = titleHeight + _mainMenuItems.Length * (itemHeight + padding) + padding;
-            var menuRect = new Rectangle((vp.Width - menuWidth) / 2, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
-
-            _spriteBatch.Draw(_pixel, menuRect, Color.DarkSlateGray * 0.95f);
-
-            if (_font != null)
+            void DrawMainMenu(string[] items, int selectedIndex, MenuView view, bool dim = false)
             {
-                string title = "4DND";
-                var titleSize = _font.MeasureString(title);
-                const float titleScale = 2f;
-                var titlePos = new Vector2(menuRect.X + (menuWidth - titleSize.X * titleScale) / 2, menuRect.Y + 12);
-                _spriteBatch.DrawString(_font, title, titlePos, Color.White, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
-            }
-            else
-            {
-                var titleBar = new Rectangle(menuRect.X + 12, menuRect.Y + 12, menuWidth - 24, titleHeight - 24);
-                _spriteBatch.Draw(_pixel, titleBar, Color.Gray);
-            }
+                int menuWidth = 480;
+                int itemHeight = 48;
+                int padding = 12;
+                int titleHeight = 120;
+                int menuHeight = titleHeight + items.Length * (itemHeight + padding) + padding;
+                int x = (vp.Width - menuWidth) / 2;
+                if (view == MenuView.Language) x += 260;
+                var menuRect = new Rectangle(x, (vp.Height - menuHeight) / 2, menuWidth, menuHeight);
 
-            for (int i = 0; i < _mainMenuItems.Length; i++)
-            {
-                var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
-                var col = (i == _mainMenuIndex) ? Color.LightGray : Color.Gray;
-                _spriteBatch.Draw(_pixel, itemRect, col);
+                Color baseColor = dim ? Color.DarkSlateGray * 0.5f : Color.DarkSlateGray * 0.95f;
+                _spriteBatch.Draw(_pixel, menuRect, baseColor);
 
                 if (_font != null)
                 {
-                    var text = _mainMenuItems[i];
-                    var size = _font.MeasureString(text);
-                    var pos = new Vector2(itemRect.X + (itemRect.Width - size.X) / 2, itemRect.Y + (itemRect.Height - size.Y) / 2);
-                    var textCol = (i == _mainMenuIndex) ? Color.Black : Color.White;
-                    _spriteBatch.DrawString(_font, text, pos, textCol);
+                    string title = view == MenuView.Main ? "4DND" : (view == MenuView.Options ? Loc.Tr("Options") : Loc.Tr("Language"));
+                    var titleSize = _font.MeasureString(title);
+                    float titleScale = view == MenuView.Main ? 2f : 1.2f;
+                    var titlePos = new Vector2(menuRect.X + (menuWidth - titleSize.X * titleScale) / 2, menuRect.Y + 12);
+                    _spriteBatch.DrawString(_font, title, titlePos, Color.White * (dim ? 0.5f : 1.0f), 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
                 }
+
+                for (int i = 0; i < items.Length; i++)
+                {
+                    var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
+                    var col = (i == selectedIndex && !dim) ? Color.LightGray : Color.Gray * (dim ? 0.5f : 1.0f);
+                    _spriteBatch.Draw(_pixel, itemRect, col);
+
+                    if (_font != null)
+                    {
+                        var text = items[i];
+                        var size = _font.MeasureString(text);
+                        var pos = new Vector2(itemRect.X + (itemRect.Width - size.X) / 2, itemRect.Y + (itemRect.Height - size.Y) / 2);
+                        var textCol = (i == selectedIndex && !dim) ? Color.Black : Color.White * (dim ? 0.5f : 1.0f);
+                        _spriteBatch.DrawString(_font, text, pos, textCol);
+                    }
+                }
+            }
+
+            if (_currentMenuView == MenuView.Main)
+            {
+                DrawMainMenu(_mainMenuItems, _mainMenuIndex, MenuView.Main);
+            }
+            else if (_currentMenuView == MenuView.Options)
+            {
+                DrawMainMenu(_optionsMenuItems, _mainMenuIndex, MenuView.Options);
+            }
+            else if (_currentMenuView == MenuView.Language)
+            {
+                DrawMainMenu(_optionsMenuItems, 0, MenuView.Options, true);
+                DrawMainMenu(_languageMenuItems, _mainMenuIndex, MenuView.Language);
             }
 
             DrawDeleteConfirmationDialog();
@@ -3809,7 +3914,7 @@ public class Game1 : Game
 
             if (_font != null)
             {
-                var title = _isMultiplayerMode ? "Choose a Character (Multiplayer)" : "Choose a Character (Single Player)";
+                var title = _isMultiplayerMode ? Loc.Tr("Choose a Character (Multiplayer)") : Loc.Tr("Choose a Character (Single Player)");
                 var size = _font.MeasureString(title);
                 var pos = new Vector2(menuRect.X + (menuWidth - size.X) / 2, menuRect.Y + 12);
                 _spriteBatch.DrawString(_font, title, pos, Color.White);
@@ -3819,12 +3924,12 @@ public class Game1 : Game
                 var mouse = Mouse.GetState();
                 var backColor = backRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, backRect, backColor);
-                var backText = "< Back";
+                var backText = "< " + Loc.Tr("Back");
                 var backTextSize = _font.MeasureString(backText);
                 _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
 
                 // Hint at bottom
-                var hint = "Click Delete button to remove character | Esc to go back";
+                var hint = Loc.Tr("Click Delete button to remove character | Esc to go back");
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (listWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
             }
@@ -3837,7 +3942,7 @@ public class Game1 : Game
 
                 if (_font != null)
                 {
-                    string label = IsExistingCharacterIndex(i) ? _characters[i].Name : "Create New Character";
+                    string label = IsExistingCharacterIndex(i) ? _characters[i].Name : Loc.Tr("Create New Character");
                     var m = _font.MeasureString(label);
                     var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
                     var textCol = (i == _characterIndex) ? Color.Black : Color.White;
@@ -3851,7 +3956,7 @@ public class Game1 : Game
                         var deleteColor = deleteRect.Contains(mouse.Position) ? Color.DarkRed : Color.Red * 0.7f;
                         _spriteBatch.Draw(_pixel, deleteRect, deleteColor);
                         
-                        var deleteText = "Delete";
+                        var deleteText = Loc.Tr("Delete");
                         var deleteSize = _font.MeasureString(deleteText);
                         _spriteBatch.DrawString(_font, deleteText, new Vector2(deleteRect.X + (deleteRect.Width - deleteSize.X) / 2, deleteRect.Y + (deleteRect.Height - deleteSize.Y) / 2), Color.White);
                     }
@@ -3867,9 +3972,9 @@ public class Game1 : Game
             }
             else if (_font != null)
             {
-                var previewTitle = "Apercu du personnage";
+                var previewTitle = Loc.Tr("Preview");
                 _spriteBatch.DrawString(_font, previewTitle, new Vector2(previewRect.X + 14, previewRect.Y + 12), Color.Gold, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-                var message = "Selectionne un personnage existant pour voir son profil rapide (classe, race, stats et survie).";
+                var message = Loc.Tr("Select an existing character to see their quick profile.");
                 DrawWrappedText(message, previewRect.X + 14, previewRect.Y + 48, previewRect.Width - 28, Color.White * 0.9f, 0.65f);
             }
 
@@ -3906,7 +4011,7 @@ public class Game1 : Game
 
             if (_font != null)
             {
-                var title = "Select a Campaign";
+                var title = Loc.Tr("Select a Campaign");
                 var size = _font.MeasureString(title);
                 var pos = new Vector2(menuRect.X + (menuWidth - size.X) / 2, menuRect.Y + 12);
                 _spriteBatch.DrawString(_font, title, pos, Color.White);
@@ -3916,12 +4021,12 @@ public class Game1 : Game
                 var mouse = Mouse.GetState();
                 var backColor = backRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
                 _spriteBatch.Draw(_pixel, backRect, backColor);
-                var backText = "< Back";
+                var backText = "< " + Loc.Tr("Back");
                 var backTextSize = _font.MeasureString(backText);
                 _spriteBatch.DrawString(_font, backText, new Vector2(backRect.X + (backRect.Width - backTextSize.X) / 2, backRect.Y + (backRect.Height - backTextSize.Y) / 2), Color.White);
 
                 // Hint at bottom
-                var hint = "Click Delete button to remove campaign | Esc to go back";
+                var hint = Loc.Tr("Click Delete button to remove campaign | Esc to go back");
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(menuRect.X + (menuWidth - hintSize.X) / 2, menuRect.Y + menuHeight - 28), Color.White * 0.7f);
             }
@@ -3946,7 +4051,7 @@ public class Game1 : Game
                     var deleteColor = deleteRect.Contains(Mouse.GetState().Position) ? Color.DarkRed : Color.Red * 0.7f;
                     _spriteBatch.Draw(_pixel, deleteRect, deleteColor);
                     
-                    var deleteText = "Delete";
+                    var deleteText = Loc.Tr("Delete");
                     var deleteSize = _font.MeasureString(deleteText);
                     _spriteBatch.DrawString(_font, deleteText, new Vector2(deleteRect.X + (deleteRect.Width - deleteSize.X) / 2, deleteRect.Y + (deleteRect.Height - deleteSize.Y) / 2), Color.White);
                 }
@@ -3961,7 +4066,7 @@ public class Game1 : Game
 
                 if (_font != null)
                 {
-                    var label = "Create New Campaign";
+                    var label = Loc.Tr("Create New Campaign");
                     var m = _font.MeasureString(label);
                     var p = new Vector2(itemRect.X + 12, itemRect.Y + (itemRect.Height - m.Y) / 2);
                     var textCol = (newIndex == _campaignIndex) ? Color.Black : Color.White;
@@ -3981,7 +4086,7 @@ public class Game1 : Game
                 DrawBorder(_spriteBatch, _pixel, summaryRect, Color.Yellow * 0.5f, 2);
 
                 int sy = summaryRect.Y + 20;
-                _spriteBatch.DrawString(_font, "Adventure Summary", new Vector2(summaryRect.X + 20, sy), Color.Yellow);
+                _spriteBatch.DrawString(_font, Loc.Tr("Adventure Summary"), new Vector2(summaryRect.X + 20, sy), Color.Yellow);
                 sy += 40;
 
                 DrawSummarySection("HOOK", selCampaign.AdventureHook, summaryRect.X + 20, ref sy, summaryWidth - 40);
@@ -4022,7 +4127,7 @@ public class Game1 : Game
                 int y = 10;
                 
                 // Round counter
-                var roundText = _combatManager.InCombat ? $"=== ROUND {_combatManager.CurrentRound} ===" : "=== EXPLORATION ===";
+                var roundText = _combatManager.InCombat ? Loc.Tr("=== ROUND {0} ===", _combatManager.CurrentRound) : Loc.Tr("=== EXPLORATION ===");
                 var roundSize = _font.MeasureString(roundText);
                 _spriteBatch.DrawString(_font, roundText, new Vector2((vp.Width - roundSize.X) / 2, y), Color.Gold);
                 y += 30;
@@ -4031,8 +4136,8 @@ public class Game1 : Game
                 var currentCombatant = _combatManager.InCombat ? _combatManager.CurrentCombatant : _playerCreature;
                 if (currentCombatant != null)
                 {
-                    var turnLabel = _combatManager.InCombat ? "Turn:" : "Active:";
-                    var turnText = $"{turnLabel} {SafeString(currentCombatant.Name)} (HP: {currentCombatant.CurrentHP}/{currentCombatant.MaxHP})";
+                    var turnLabel = Loc.Tr(_combatManager.InCombat ? "Turn:" : "Active:");
+                    var turnText = $"{turnLabel} {SafeString(currentCombatant.Name)} ({Loc.Tr("HP: {0}/{1}", currentCombatant.CurrentHP, currentCombatant.MaxHP)})";
                     _spriteBatch.DrawString(_font, turnText, new Vector2(10, y), Color.Yellow);
                     y += 25;
                     
@@ -4042,9 +4147,9 @@ public class Game1 : Game
                     bool showReactionReady = currentCombatant.HasReaction || !_combatManager.InCombat;
                     bool showMovementReady = currentCombatant.MovementRemaining > 0 || !_combatManager.InCombat;
 
-                    var actionStatus = showActionReady ? "Ready" : "Used";
-                    var bonusStatus = showBonusReady ? "Ready" : "Used";
-                    var reactionStatus = showReactionReady ? "Ready" : "Used";
+                    var actionStatus = Loc.Tr(showActionReady ? "Ready" : "Used");
+                    var bonusStatus = Loc.Tr(showBonusReady ? "Ready" : "Used");
+                    var reactionStatus = Loc.Tr(showReactionReady ? "Ready" : "Used");
                     var movementText = _combatManager.InCombat
                         ? $"{currentCombatant.MovementRemaining}/{currentCombatant.Speed}ft"
                         : $"{currentCombatant.Speed}/{currentCombatant.Speed}ft";
@@ -4054,19 +4159,19 @@ public class Game1 : Game
                     var reactionColor = showReactionReady ? Color.Green : Color.DarkGray;
                     var movementColor = showMovementReady ? Color.LimeGreen : Color.DarkGray;
                     
-                    _spriteBatch.DrawString(_font, "Action:", new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, Loc.Tr("Action:"), new Vector2(10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, SafeString(actionStatus), new Vector2(80, y), actionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
-                    _spriteBatch.DrawString(_font, "Bonus:", new Vector2(130, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, Loc.Tr("Bonus:"), new Vector2(130, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, SafeString(bonusStatus), new Vector2(200, y), bonusColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
-                    _spriteBatch.DrawString(_font, "Reaction:", new Vector2(250, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, Loc.Tr("Reaction:"), new Vector2(250, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, SafeString(reactionStatus), new Vector2(340, y), reactionColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     
-                    _spriteBatch.DrawString(_font, "Move:", new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                    _spriteBatch.DrawString(_font, Loc.Tr("Move:"), new Vector2(390, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     _spriteBatch.DrawString(_font, movementText, new Vector2(450, y), movementColor, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     if (currentCombatant.IsHidden)
-                        _spriteBatch.DrawString(_font, "[HIDDEN]", new Vector2(540, y), Color.LimeGreen, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                        _spriteBatch.DrawString(_font, Loc.Tr("[HIDDEN]"), new Vector2(540, y), Color.LimeGreen, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                     y += 25;
                     
                     // Initiative order
@@ -4298,32 +4403,46 @@ public class Game1 : Game
         {
             _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), Color.Black * 0.6f);
 
-            int menuWidth2 = 360;
-            int itemHeight2 = 48;
-            int padding2 = 12;
-            int menuHeight2 = _menuItems.Length * (itemHeight2 + padding2) + padding2;
-            var menuRect2 = new Rectangle((vp.Width - menuWidth2) / 2, (vp.Height - menuHeight2) / 2, menuWidth2, menuHeight2);
-
-            _spriteBatch.Draw(_pixel, menuRect2, Color.DarkSlateGray * 0.95f);
-
-            for (int i = 0; i < _menuItems.Length; i++)
+            void DrawPauseMenu(string[] items, int selectedIndex, MenuView view, bool dim = false)
             {
-                var itemRect = new Rectangle(menuRect2.X + padding2, menuRect2.Y + padding2 + i * (itemHeight2 + padding2), menuWidth2 - padding2 * 2, itemHeight2);
-                var col = (i == _menuIndex) ? Color.LightGray : Color.Gray;
-                _spriteBatch.Draw(_pixel, itemRect, col);
-                var barRect = new Rectangle(itemRect.X + 6, itemRect.Y + 6, 8, itemRect.Height - 12);
-                _spriteBatch.Draw(_pixel, barRect, (i == _menuIndex) ? Color.Orange : Color.DarkOrange);
-                if (_font != null)
+                int menuWidth2 = 360;
+                int itemHeight2 = 48;
+                int padding2 = 12;
+                int menuHeight2 = items.Length * (itemHeight2 + padding2) + padding2;
+                int x = (vp.Width - menuWidth2) / 2;
+                if (view == MenuView.Language) x += 200;
+                var menuRect2 = new Rectangle(x, (vp.Height - menuHeight2) / 2, menuWidth2, menuHeight2);
+
+                _spriteBatch.Draw(_pixel, menuRect2, Color.DarkSlateGray * (dim ? 0.5f : 0.95f));
+
+                for (int i = 0; i < items.Length; i++)
                 {
-                    var textPos = new Vector2(itemRect.X + 24 + 8, itemRect.Y + (itemRect.Height - _font.LineSpacing) / 2);
-                    var textCol = (i == _menuIndex) ? Color.Black : Color.White;
-                    _spriteBatch.DrawString(_font, _menuItems[i], textPos, textCol);
+                    var itemRect = new Rectangle(menuRect2.X + padding2, menuRect2.Y + padding2 + i * (itemHeight2 + padding2), menuWidth2 - padding2 * 2, itemHeight2);
+                    var col = (i == selectedIndex && !dim) ? Color.LightGray : Color.Gray * (dim ? 0.5f : 1.0f);
+                    _spriteBatch.Draw(_pixel, itemRect, col);
+                    var barRect = new Rectangle(itemRect.X + 6, itemRect.Y + 6, 8, itemRect.Height - 12);
+                    _spriteBatch.Draw(_pixel, barRect, (i == selectedIndex && !dim) ? Color.Orange : Color.DarkOrange * (dim ? 0.5f : 1.0f));
+                    if (_font != null)
+                    {
+                        var textPos = new Vector2(itemRect.X + 24 + 8, itemRect.Y + (itemRect.Height - _font.LineSpacing) / 2);
+                        var textCol = (i == selectedIndex && !dim) ? Color.Black : Color.White * (dim ? 0.5f : 1.0f);
+                        _spriteBatch.DrawString(_font, items[i], textPos, textCol);
+                    }
                 }
-                else
-                {
-                    var placeholderRect = new Rectangle(itemRect.X + 24, itemRect.Y + 8, itemRect.Width - 24 - 16, itemRect.Height - 16);
-                    _spriteBatch.Draw(_pixel, placeholderRect, (i == _menuIndex) ? Color.Black * 0.7f : Color.White * 0.2f);
-                }
+            }
+
+            if (_currentMenuView == MenuView.Main)
+            {
+                DrawPauseMenu(_menuItems, _menuIndex, MenuView.Main);
+            }
+            else if (_currentMenuView == MenuView.Options)
+            {
+                DrawPauseMenu(_optionsMenuItems, _menuIndex, MenuView.Options);
+            }
+            else if (_currentMenuView == MenuView.Language)
+            {
+                DrawPauseMenu(_optionsMenuItems, 0, MenuView.Options, true);
+                DrawPauseMenu(_languageMenuItems, _menuIndex, MenuView.Language);
             }
         }
 
@@ -4340,7 +4459,7 @@ public class Game1 : Game
         int x = previewRect.X + 14;
         int y = previewRect.Y + 12;
 
-        sb.DrawString(_font, "Apercu du personnage", new Vector2(x, y), Color.Gold, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+        sb.DrawString(_font, Loc.Tr("Preview"), new Vector2(x, y), Color.Gold, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         y += 34;
 
         sb.DrawString(_font, character.Name, new Vector2(x, y), Color.White, 0f, Vector2.Zero, 0.95f, SpriteEffects.None, 0f);
@@ -4409,11 +4528,11 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixel, dialogRect, Color.DarkSlateGray);
         DrawBorder(_spriteBatch, _pixel, dialogRect, Color.White * 0.6f, 2);
 
-        var entityType = _pendingDeleteType == PendingDeleteType.Character ? "character" : "campaign";
-        var title = "Confirm deletion";
-        var message = $"Delete {entityType} '{GetPendingDeleteEntityName()}'?";
-        var warning = "This action cannot be undone.";
-        var controls = "Click Delete to confirm, Esc = cancel";
+        var entityType = Loc.Tr(_pendingDeleteType == PendingDeleteType.Character ? "character" : "campaign");
+        var title = Loc.Tr("Confirm deletion");
+        var message = Loc.Tr("Delete {0} '{1}'?", entityType, GetPendingDeleteEntityName());
+        var warning = Loc.Tr("This action cannot be undone.");
+        var controls = Loc.Tr("Click Delete to confirm, Esc = cancel");
 
         const int textPaddingX = 20;
         const int textTopPadding = 16;
@@ -4435,8 +4554,8 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixel, confirmRect, confirmColor);
         _spriteBatch.Draw(_pixel, cancelRect, cancelColor);
 
-        const string confirmText = "Delete";
-        const string cancelText = "Cancel";
+        string confirmText = Loc.Tr("Delete");
+        string cancelText = Loc.Tr("Cancel");
         var confirmSize = _font.MeasureString(confirmText);
         var cancelSize = _font.MeasureString(cancelText);
 

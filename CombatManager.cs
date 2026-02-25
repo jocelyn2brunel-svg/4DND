@@ -2289,13 +2289,13 @@ public class AttackResult
         if (HasDisadvantage) advantageText = " (DIS)";
         
         if (IsCriticalMiss)
-            return $"{Attacker.Name} critically missed {Target.Name}!{advantageText}";
+            return Loc.Tr("{0} critically missed {1}!{2}", Attacker.Name, Target.Name, advantageText);
         if (IsCritical)
-            return $"{Attacker.Name} critically hit {Target.Name} for {Damage} damage!{advantageText}";
+            return Loc.Tr("{0} critically hit {1} for {2} damage!{3}", Attacker.Name, Target.Name, Damage, advantageText);
         if (IsHit)
-            return $"{Attacker.Name} hit {Target.Name} for {Damage} damage! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
+            return Loc.Tr("{0} hit {1} for {2} damage! (AC {3}, rolled {4}+{5}={6}){7}", Attacker.Name, Target.Name, Damage, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText);
         
-        return $"{Attacker.Name} missed {Target.Name}! (AC {Target.ArmorClass}, rolled {AttackRoll}+{TotalAttackBonus}={TotalToHit}){advantageText}";
+        return Loc.Tr("{0} missed {1}! (AC {2}, rolled {3}+{4}={5}){6}", Attacker.Name, Target.Name, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText);
     }
 }
 
