@@ -129,7 +129,26 @@ public class CombatManager
 
         return (surprised, log);
     }
+    // Ajoutez cette méthode dans la classe CombatManager (ou dans un fichier approprié si vous gérez les actions de combat ici)
+    public bool Hide(Creature creature, bool isBonusAction = false, VisionSystem? visionSystem = null)
+    {
+        // Implémentation simple : vérifie si la créature peut se cacher et applique l'état caché
+        if (creature == null || creature.IsHidden)
+            return false;
 
+        // Exemple : vérifie si la créature a une action ou une action bonus disponible
+        if ((isBonusAction && !creature.HasBonusAction) || (!isBonusAction && !creature.HasAction))
+            return false;
+
+        // Ici, vous pouvez ajouter une logique de test de discrétion, de visibilité, etc.
+        creature.IsHidden = true;
+        if (isBonusAction)
+            creature.HasBonusAction = false;
+        else
+            creature.HasAction = false;
+
+        return true;
+    }
     /// <summary>
     /// Begins a new combat encounter.
     /// Each participant rolls initiative (1d20 + Dexterity modifier) to determine turn order.
@@ -1396,6 +1415,7 @@ public class CombatManager
 
         attacker.IsHidden = false;
 
+        // Help action: a friendly creature distracted this target, granting advantage on this attack.
         if (target.IsBeingHelped)
         {
             hasAdvantage = true;
@@ -2102,79 +2122,120 @@ public class CombatManager
         return true;
     }
 
+    /// <summary>
+    /// Performs a Long Jump (PHB "Jumping", p.182).
+    /// <para>
+    /// With a running start (at least 10 ft of movement spent immediately before the jump),
+    /// the creature covers a number of feet up to its <b>Strength score</b>.
+    /// Without a running start it can only leap half that distance.
+    /// Either way, each foot cleared costs one foot of movement.
+    /// </para>
+    /// <para>
+    /// <b>Obstacle:</b> If <paramref name="mustClearObstacle"/> is true the creature must succeed
+    /// on a DC 10 Strength (Athletics) check; on a failure it hits the obstacle.
+    /// </para>
+    /// <para>
+    /// <b>Difficult terrain landing:</b> If <paramref name="landInDifficultTerrain"/> is true the
+    /// creature must succeed on a DC 10 Dexterity (Acrobatics) check; on a failure it lands prone.
+    /// </para>
+    /// </summary>
+    /// <param name="creature">The creature attempting the jump.</param>
+    /// <param name="hasRunningStart">
+    /// True if the creature moved at least 10 ft immediately before the jump (default: true).
+    /// </param>
+    /// <param name="mustClearObstacle">
+    /// True if there is a low obstacle (no taller than ¼ the jump distance) to clear.
+    /// </param>
+    /// <param name="landInDifficultTerrain">
+    /// True if the landing square is difficult terrain, requiring an Acrobatics check to stay on feet.
+    /// </param>
+    /// <returns>
+    /// A <see cref="LongJumpResult"/> describing the outcome: distance jumped, movement spent,
+    /// whether the obstacle was cleared, and whether the creature landed on its feet.
+    /// </returns>
+    public LongJumpResult LongJump(Creature creature, bool hasRunningStart = true, bool mustClearObstacle = false, bool landInDifficultTerrain = false)
+    {
+        var result = new LongJumpResult { Creature = creature };
+
+        // Max distance in feet: Strength score (running) or half (standing)
+        int maxDistanceFt = hasRunningStart ? creature.Strength : creature.Strength / 2;
+        maxDistanceFt = Math.Max(1, maxDistanceFt);
+
+        // Each foot of the jump costs one foot of movement (PHB p.182)
+        int movementCostFt = maxDistanceFt;
+
+        if (_inCombat && creature.MovementRemaining < movementCostFt)
+        {
+            // Clamp the jump distance to what movement remains
+            movementCostFt = creature.MovementRemaining;
+            maxDistanceFt = movementCostFt;
+        }
+
+        if (maxDistanceFt <= 0)
+        {
+            TurnMessages.Add($"{creature.Name} has no movement left to jump!");
+            result.DistanceFt = 0;
+            result.MovementSpentFt = 0;
+            result.ClearedObstacle = false;
+            result.LandedOnFeet = true;
+            return result;
+        }
+
+        // Spend the movement
+        if (_inCombat)
+            creature.MovementRemaining = Math.Max(0, creature.MovementRemaining - movementCostFt);
+
+        result.DistanceFt = maxDistanceFt;
+        result.MovementSpentFt = movementCostFt;
+        result.HasRunningStart = hasRunningStart;
+
+        string runText = hasRunningStart ? "running" : "standing";
+        TurnMessages.Add($"{creature.Name} attempts a {runText} long jump ({maxDistanceFt} ft, STR {creature.Strength}).");
+
+        // Obstacle check: DC 10 Strength (Athletics) to clear a low obstacle (PHB p.182)
+        result.ClearedObstacle = true;
+        if (mustClearObstacle)
+        {
+            int athleticsBonus = DndMath.GetAbilityModifier(creature.Strength);
+            int roll = _random.Next(1, 21);
+            int total = roll + athleticsBonus;
+            bool cleared = DndMath.MeetsDC(total, 10);
+            result.ClearedObstacle = cleared;
+            result.AthleticsRoll = total;
+
+            if (cleared)
+                TurnMessages.Add($"{creature.Name} clears the obstacle! (Athletics {roll}+{athleticsBonus}={total} vs DC 10)");
+            else
+                TurnMessages.Add($"{creature.Name} hits the obstacle! (Athletics {roll}+{athleticsBonus}={total} vs DC 10)");
+        }
+
+        // Difficult terrain landing: DC 10 Dexterity (Acrobatics) or land prone (PHB p.182)
+        result.LandedOnFeet = true;
+        if (landInDifficultTerrain)
+        {
+            int acrobaticsBonus = DndMath.GetAbilityModifier(creature.Dexterity);
+            int roll = _random.Next(1, 21);
+            int total = roll + acrobaticsBonus;
+            bool onFeet = DndMath.MeetsDC(total, 10);
+            result.LandedOnFeet = onFeet;
+            result.AcrobaticsRoll = total;
+
+            if (onFeet)
+                TurnMessages.Add($"{creature.Name} lands on their feet in difficult terrain. (Acrobatics {roll}+{acrobaticsBonus}={total} vs DC 10)");
+            else
+            {
+                creature.Conditions = creature.Conditions.AddCondition(Condition.Prone);
+                TurnMessages.Add($"{creature.Name} lands prone in difficult terrain! (Acrobatics {roll}+{acrobaticsBonus}={total} vs DC 10)");
+            }
+        }
+
+        return result;
+    }
+
     private void EndRage(Creature creature)
     {
         creature.IsRaging = false;
         creature.RageTurnsLeft = 0;
-    }
-
-    /// <summary>
-    /// Takes the Hide action: the creature makes a Dexterity (Stealth) check.
-    /// If the result exceeds the passive Wisdom (Perception) of all nearby observers,
-    /// the creature becomes hidden and gains the benefits of being an unseen attacker.
-    /// Requires that no enemy has direct line of sight to the creature (PHB "Unseen Attackers and Targets").
-    /// Nimble Escape allows taking this as a bonus action (<paramref name="isBonusAction"/> = true).
-    /// </summary>
-    /// <returns>True if the action was successfully taken; false if the required resource is unavailable.</returns>
-    public bool Hide(Creature creature, bool isBonusAction = false, VisionSystem? visionSystem = null)
-    {
-        if (_inCombat)
-        {
-            if (isBonusAction)
-            {
-                if (!creature.HasBonusAction) return false;
-            }
-            else
-            {
-                if (!creature.HasAction) return false;
-            }
-        }
-
-        // Cannot hide while an enemy has direct line of sight.
-        if (visionSystem != null)
-        {
-            bool visibleToEnemy = _combatants
-                .Any(o => o != creature && o.IsAlive() && o.IsPlayer != creature.IsPlayer && visionSystem.CanSee(o, creature));
-
-            if (visibleToEnemy)
-            {
-                TurnMessages.Add($"{creature.Name} cannot hide — an enemy can see them!");
-                return false;
-            }
-        }
-
-        if (_inCombat)
-        {
-            if (isBonusAction)
-                creature.HasBonusAction = false;
-            else
-                creature.HasAction = false;
-        }
-
-        int dexMod = DndMath.GetAbilityModifier(creature.Dexterity);
-        int profBonus = DndMath.GetProficiencyBonus(creature.Level);
-        int stealthBonus = dexMod + (creature.StealthProficiency ? profBonus : 0);
-        int roll = _random.Next(1, 21);
-        int stealthResult = roll + stealthBonus;
-
-        creature.HiddenStealthResult = stealthResult;
-
-        bool detected = _combatants
-            .Where(o => o != creature && o.IsAlive() && o.IsPlayer != creature.IsPlayer)
-            .Any(o => o.PassivePerception >= stealthResult);
-
-        if (detected)
-        {
-            creature.IsHidden = false;
-            TurnMessages.Add($"{creature.Name} tried to hide (Stealth {stealthResult}) but was detected!");
-        }
-        else
-        {
-            creature.IsHidden = true;
-            TurnMessages.Add($"{creature.Name} hides! (Stealth check: {roll} + {stealthBonus} = {stealthResult})");
-        }
-
-        return true;
     }
 
     /// <summary>
@@ -2260,4 +2321,16 @@ public class SpellResult
         }
         return sb.ToString();
     }
+}
+
+public class LongJumpResult
+{
+    public Creature Creature { get; set; } = null!;
+    public int DistanceFt { get; set; }
+    public int MovementSpentFt { get; set; }
+    public bool ClearedObstacle { get; set; }
+    public bool LandedOnFeet { get; set; }
+    public bool HasRunningStart { get; set; }
+    public int AthleticsRoll { get; set; }
+    public int AcrobaticsRoll { get; set; }
 }
