@@ -19,41 +19,52 @@ public class VisionSystem
     private Dictionary<(int, int, int), LightType> _lightMap = new();
     private HashSet<(int, int, int)> _visibleTiles = new();
     private HashSet<(int, int, int)> _exploredTiles = new();
+    private bool _lightingNeedsUpdate = true;
     
     public bool GlobalDaylight { get; set; } = false;
+
+    public void MarkLightingDirty() => _lightingNeedsUpdate = true;
     
     public void AddLightSource(LightSource source)
     {
         _lightSources.Add(source);
+        _lightingNeedsUpdate = true;
     }
     
     public void RemoveLightSource(LightSource source)
     {
         _lightSources.Remove(source);
+        _lightingNeedsUpdate = true;
     }
     
     public void ClearLightSources()
     {
         _lightSources.Clear();
+        _lightingNeedsUpdate = true;
     }
     
     public void AddAreaEffect(AreaEffect effect)
     {
         _areaEffects.Add(effect);
+        _lightingNeedsUpdate = true;
     }
     
     public void RemoveAreaEffect(AreaEffect effect)
     {
         _areaEffects.Remove(effect);
+        _lightingNeedsUpdate = true;
     }
     
     public void ClearAreaEffects()
     {
         _areaEffects.Clear();
+        _lightingNeedsUpdate = true;
     }
     
     public void CalculateLighting()
     {
+        if (!_lightingNeedsUpdate && !GlobalDaylight) return;
+
         _lightMap.Clear();
         
         if (GlobalDaylight)
@@ -580,6 +591,7 @@ public class VisionSystem
 
     public void UpdateAreaEffects()
     {
+        int countBefore = _areaEffects.Count;
         _areaEffects.RemoveAll(effect =>
         {
             if (effect.Duration > 0)
@@ -589,6 +601,10 @@ public class VisionSystem
             }
             return false;
         });
+        if (_areaEffects.Count != countBefore)
+        {
+            _lightingNeedsUpdate = true;
+        }
     }
 
     public bool IsLightlyObscured(int x, int y, int z, Creature observer)

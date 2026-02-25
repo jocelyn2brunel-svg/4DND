@@ -35,6 +35,12 @@ public class Game1 : Game
     private VertexBuffer _tileVertexBuffer = null!;
     private IndexBuffer _tileIndexBuffer = null!;
 
+    // Reusable rendering buffers to avoid per-frame allocations
+    private List<VertexPositionNormalColor> _reusableWallVertices = new();
+    private List<VertexPositionNormalColor> _reusableTileVertices = new();
+    private List<VertexPositionColor> _reusableLineVertices = new();
+    private List<(int x, int y, int z, TileType type)> _reusableVegetation = new();
+
     private int _prevScrollValue = 0;
     private int _currentViewLevel = 0; // Current Z-level being viewed
 
@@ -138,7 +144,7 @@ public class Game1 : Game
         Window.IsBorderless = false;
         _graphics.ApplyChanges();
 
-        _tacticalMap = new InfiniteGrid3D<TileType>(GetProceduralTile);
+        _tacticalMap = new InfiniteGrid3D<TileType>(GetProceduralTile) { AutoCache = true };
         
         _prevKb = Keyboard.GetState();
         _prevMouse = Mouse.GetState();
@@ -800,9 +806,10 @@ public class Game1 : Game
         _basicEffect.LightingEnabled = true;
         _basicEffect.DiffuseColor = Vector3.One;
 
-        List<VertexPositionNormalColor> wallVertices = new();
-        List<VertexPositionNormalColor> tileVertices = new();
-        List<(int x, int y, int z, TileType type)> vegetation = new();
+        _reusableWallVertices.Clear();
+        _reusableTileVertices.Clear();
+        _reusableLineVertices.Clear();
+        _reusableVegetation.Clear();
 
         // 1. Draw procedural ground around camera
         int viewDist = 40; // View radius in tiles
@@ -823,22 +830,21 @@ public class Game1 : Game
 
                 if (type == TileType.Wall)
                 {
-                    AddThinWallVertices(wallVertices, x, y, 0, color);
+                    AddThinWallVertices(_reusableWallVertices, x, y, 0, color);
                 }
                 else if (type == TileType.Tree || type == TileType.Shrub)
                 {
                     // Draw grass under vegetation
                     Color groundColor = GetTileColor(TileType.Grass, x, y, 0, zLevel);
-                    AddTileVertices(tileVertices, x, y, 0, TileType.Grass, groundColor);
-                    vegetation.Add((x, y, 0, type));
+                    AddTileVertices(_reusableTileVertices, x, y, 0, TileType.Grass, groundColor);
+                    _reusableVegetation.Add((x, y, 0, type));
                 }
                 else
                 {
-                    AddTileVertices(tileVertices, x, y, 0, type, color);
+                    AddTileVertices(_reusableTileVertices, x, y, 0, type, color);
                     if (type == TileType.DifficultTerrain)
                     {
-                        Draw3DLine(new Vector3(x - 0.2f, y - 0.2f, 0.01f), new Vector3(x + 0.2f, y + 0.2f, 0.01f), Color.Black * 0.5f);
-                        Draw3DLine(new Vector3(x - 0.2f, y + 0.2f, 0.01f), new Vector3(x + 0.2f, y - 0.2f, 0.01f), Color.Black * 0.5f);
+                        AddDifficultTerrainLines(_reusableLineVertices, x, y, 0);
                     }
                 }
             }
@@ -852,6 +858,9 @@ public class Game1 : Game
             // Skip cells already drawn in the view box at z=0
             if (cz == 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) continue;
 
+            // Culling: Skip cells too far from camera
+            if (cx < minX - 5 || cx > maxX + 5 || cy < minY - 5 || cy > maxY + 5) continue;
+
             if (cz > zLevel || cell.Value == TileType.Empty) continue;
 
             Color color = GetTileColor(cell.Value, cx, cy, cz, zLevel);
@@ -859,50 +868,61 @@ public class Game1 : Game
 
             if (cell.Value == TileType.Wall)
             {
-                AddThinWallVertices(wallVertices, cx, cy, cz, color);
+                AddThinWallVertices(_reusableWallVertices, cx, cy, cz, color);
             }
             else if (cell.Value == TileType.Tree || cell.Value == TileType.Shrub)
             {
                 // Draw floor under vegetation if it's above ground, otherwise grass
                 TileType baseType = cz > 0 ? TileType.Floor : TileType.Grass;
                 Color groundColor = GetTileColor(baseType, cx, cy, cz, zLevel);
-                AddTileVertices(tileVertices, cx, cy, cz, baseType, groundColor);
-                vegetation.Add((cx, cy, cz, cell.Value));
+                AddTileVertices(_reusableTileVertices, cx, cy, cz, baseType, groundColor);
+                _reusableVegetation.Add((cx, cy, cz, cell.Value));
             }
             else
             {
-                AddTileVertices(tileVertices, cx, cy, cz, cell.Value, color);
+                AddTileVertices(_reusableTileVertices, cx, cy, cz, cell.Value, color);
                 if (cell.Value == TileType.DifficultTerrain)
                 {
-                    Draw3DLine(new Vector3(cx - 0.2f, cy - 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy + 0.2f, cz + 0.01f), Color.Black * 0.5f);
-                    Draw3DLine(new Vector3(cx - 0.2f, cy + 0.2f, cz + 0.01f), new Vector3(cx + 0.2f, cy - 0.2f, cz + 0.01f), Color.Black * 0.5f);
+                    AddDifficultTerrainLines(_reusableLineVertices, cx, cy, cz);
                 }
             }
         }
 
         // 3. Render batches
-        if (wallVertices.Count > 0)
+        if (_reusableWallVertices.Count > 0)
         {
             _basicEffect.World = Matrix.Identity;
             foreach (var pass in _basicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
-                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, wallVertices.ToArray(), 0, wallVertices.Count / 3);
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, _reusableWallVertices.ToArray(), 0, _reusableWallVertices.Count / 3);
             }
         }
 
-        if (tileVertices.Count > 0)
+        if (_reusableTileVertices.Count > 0)
         {
             _basicEffect.World = Matrix.Identity;
             foreach (var pass in _basicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
-                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, tileVertices.ToArray(), 0, tileVertices.Count / 3);
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, _reusableTileVertices.ToArray(), 0, _reusableTileVertices.Count / 3);
             }
+        }
+
+        if (_reusableLineVertices.Count > 0)
+        {
+            _basicEffect.World = Matrix.Identity;
+            _basicEffect.LightingEnabled = false;
+            foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, _reusableLineVertices.ToArray(), 0, _reusableLineVertices.Count / 2);
+            }
+            _basicEffect.LightingEnabled = true;
         }
 
         // 4. Draw vegetation volumes
-        foreach (var v in vegetation)
+        foreach (var v in _reusableVegetation)
         {
             if (v.type == TileType.Tree)
                 Draw3DTree(v.x, v.y, v.z, zLevel);
@@ -994,6 +1014,33 @@ public class Game1 : Game
             baseColor = new Color((byte)(baseColor.R * tint.R / 255), (byte)(baseColor.G * tint.G / 255), (byte)(baseColor.B * tint.B / 255), (byte)(baseColor.A * tint.A / 255));
         }
         return baseColor;
+    }
+
+    private void AddDifficultTerrainLines(List<VertexPositionColor> vertices, int x, int y, int z)
+    {
+        const float elevation = 0.015f;
+        Color color = Color.Black * 0.5f;
+        vertices.Add(new VertexPositionColor(new Vector3(x - 0.2f, y - 0.2f, z + elevation), color));
+        vertices.Add(new VertexPositionColor(new Vector3(x + 0.2f, y + 0.2f, z + elevation), color));
+        vertices.Add(new VertexPositionColor(new Vector3(x - 0.2f, y + 0.2f, z + elevation), color));
+        vertices.Add(new VertexPositionColor(new Vector3(x + 0.2f, y - 0.2f, z + elevation), color));
+    }
+
+    private void AddGridOutlineVertices(List<VertexPositionColor> vertices, int x, int y, int z, Color color)
+    {
+        const float halfTile = 0.5f;
+        const float elevation = 0.01f;
+        float zPos = z + elevation;
+
+        Vector3 tl = new Vector3(x - halfTile, y - halfTile, zPos);
+        Vector3 tr = new Vector3(x + halfTile, y - halfTile, zPos);
+        Vector3 br = new Vector3(x + halfTile, y + halfTile, zPos);
+        Vector3 bl = new Vector3(x - halfTile, y + halfTile, zPos);
+
+        vertices.Add(new VertexPositionColor(tl, color)); vertices.Add(new VertexPositionColor(tr, color));
+        vertices.Add(new VertexPositionColor(tr, color)); vertices.Add(new VertexPositionColor(br, color));
+        vertices.Add(new VertexPositionColor(br, color)); vertices.Add(new VertexPositionColor(bl, color));
+        vertices.Add(new VertexPositionColor(bl, color)); vertices.Add(new VertexPositionColor(tl, color));
     }
 
     private void AddTileVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, TileType type, Color baseColor)
@@ -1142,51 +1189,47 @@ public class Game1 : Game
     private void Draw3DGridOutlines(int zLevel)
     {
         Color gridOutlineColor = new Color(40, 50, 60);
-        List<VertexPositionColor> vertices = new();
+        _reusableLineVertices.Clear();
 
-        foreach (var cell in _tacticalMap.EnumerateNonEmpty())
+        int viewDist = 40;
+        int minX = (int)Math.Floor(_cameraTarget.X - viewDist);
+        int maxX = (int)Math.Ceiling(_cameraTarget.X + viewDist);
+        int minY = (int)Math.Floor(_cameraTarget.Y - viewDist);
+        int maxY = (int)Math.Ceiling(_cameraTarget.Y + viewDist);
+
+        for (int cz = Math.Max(0, zLevel - 1); cz <= zLevel; cz++)
         {
-            int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
-            if (cz > zLevel || cell.Value == TileType.Empty) continue;
-
-            // Only draw grid for the current level and one level below
-            if (cz < zLevel - 1) continue;
-
-            Color color = gridOutlineColor;
-            if (cz < zLevel) color *= 0.5f;
-
-            if (_showVisionOverlay && _playerCreature != null)
+            for (int y = minY; y <= maxY; y++)
             {
-                bool isVisible = _visionSystem.IsVisible(cx, cy, cz);
-                Color tint = _visionSystem.GetFogOfWarTint(cx, cy, cz, isVisible, _playerCreature);
-                if (tint == Color.Black) continue;
-                color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255), (byte)(color.A * tint.A / 255));
+                for (int x = minX; x <= maxX; x++)
+                {
+                    TileType type = _tacticalMap.Get(x, y, cz);
+                    if (type == TileType.Empty) continue;
+
+                    Color color = gridOutlineColor;
+                    if (cz < zLevel) color *= 0.5f;
+
+                    if (_showVisionOverlay && _playerCreature != null)
+                    {
+                        bool isVisible = _visionSystem.IsVisible(x, y, cz);
+                        Color tint = _visionSystem.GetFogOfWarTint(x, y, cz, isVisible, _playerCreature);
+                        if (tint == Color.Black) continue;
+                        color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255), (byte)(color.A * tint.A / 255));
+                    }
+
+                    AddGridOutlineVertices(_reusableLineVertices, x, y, cz, color);
+                }
             }
-
-            const float halfTile = 0.5f;
-            const float elevation = 0.01f; // Closer to tile surface to avoid looking like it floats
-            float zPos = cz + elevation;
-
-            Vector3 tl = new Vector3(cx - halfTile, cy - halfTile, zPos);
-            Vector3 tr = new Vector3(cx + halfTile, cy - halfTile, zPos);
-            Vector3 br = new Vector3(cx + halfTile, cy + halfTile, zPos);
-            Vector3 bl = new Vector3(cx - halfTile, cy + halfTile, zPos);
-
-            // Add 4 lines for the square
-            vertices.Add(new VertexPositionColor(tl, color)); vertices.Add(new VertexPositionColor(tr, color));
-            vertices.Add(new VertexPositionColor(tr, color)); vertices.Add(new VertexPositionColor(br, color));
-            vertices.Add(new VertexPositionColor(br, color)); vertices.Add(new VertexPositionColor(bl, color));
-            vertices.Add(new VertexPositionColor(bl, color)); vertices.Add(new VertexPositionColor(tl, color));
         }
 
-        if (vertices.Count > 0)
+        if (_reusableLineVertices.Count > 0)
         {
             _basicEffect.World = Matrix.Identity;
-            _basicEffect.LightingEnabled = false; // Grids don't need lighting
+            _basicEffect.LightingEnabled = false;
             foreach (var pass in _basicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
-                GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices.ToArray(), 0, vertices.Count / 2);
+                GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, _reusableLineVertices.ToArray(), 0, _reusableLineVertices.Count / 2);
             }
             _basicEffect.LightingEnabled = true;
         }
