@@ -229,14 +229,20 @@ namespace _4DND
                 CurrentScale = MapScale.Province, // Start at province scale (local)
                 Seed = new Random().Next()
             };
+
+            // Find a safe starting location on land
+            var (startQ, startR) = FindStartingLandHex(campaign.Seed);
+            var (pmilesX, pmilesY) = AxialToMiles(startQ, startR);
+            campaign.PartyX = pmilesX;
+            campaign.PartyY = pmilesY;
             
-            // Create home base (starting at origin)
+            // Create home base
             campaign.HomeBase = new Location
             {
                 Name = homeBaseName,
                 Type = homeBaseType,
-                X = 0,
-                Y = 0,
+                X = startQ,
+                Y = startR,
                 IsHomeBase = true,
                 IsDiscovered = true,
                 Description = GetDefaultDescription(homeBaseType),
@@ -249,8 +255,8 @@ namespace _4DND
             {
                 Name = $"{homeBaseName} Region",
                 Description = "The area surrounding your home base.",
-                CenterX = 0,
-                CenterY = 0,
+                CenterX = startQ,
+                CenterY = startR,
                 Radius = 30,
                 Terrain = "Mixed",
                 Scale = MapScale.Province
@@ -316,21 +322,78 @@ namespace _4DND
         }
 
         /// <summary>
-        /// Converts Cartesian coordinates to axial hex coordinates (pointy-top).
-        /// Assumes 1 hex unit = distance between centers (horizontal).
+        /// Converts Cartesian coordinates (miles) to axial hex coordinates.
+        /// Assumes 1 hex unit = 1 mile distance between centers.
         /// </summary>
         public static (int q, int r) CartesianToAxial(float x, float y)
         {
-            // For pointy-top hexes with unit spacing (distance between centers = 1.0)
-            // x = sqrt(3) * (q + r/2)
-            // y = 1.5 * r / sqrt(3)  Wait, if we want distance between centers to be 1.0:
-            // The distance between centers of (0,0) and (1,0) is sqrt(3)*L.
-            // If we want this distance to be 1.0, then sqrt(3)*L = 1.0 => L = 1/sqrt(3).
-            // Then y = 1.5 * L * r = 1.5 / sqrt(3) * r = sqrt(3)/2 * r.
-
-            float r_float = y / ((float)Math.Sqrt(3) / 2f);
-            float q_float = x - r_float / 2f;
+            var (q_float, r_float) = MilesToAxial(x, y);
             return RoundToHex(q_float, r_float);
+        }
+
+        /// <summary>
+        /// Converts Cartesian miles to fractional axial coordinates.
+        /// </summary>
+        public static (float q, float r) MilesToAxial(float x, float y)
+        {
+            // Inverse of AxialToMiles:
+            // y = r * sqrt(3)/2  => r = y / (sqrt(3)/2)
+            // x = q + r/2        => q = x - r/2
+            float r = y / ((float)Math.Sqrt(3) / 2f);
+            float q = x - r / 2f;
+            return (q, r);
+        }
+
+        /// <summary>
+        /// Converts axial hex coordinates to Cartesian miles.
+        /// Assumes 1 hex unit = 1 mile distance between centers.
+        /// </summary>
+        public static (float x, float y) AxialToMiles(float q, float r)
+        {
+            // Standard pointy-top hex math with distance between centers = 1.0
+            // The horizontal distance between centers is 1.0.
+            // The vertical distance between centers is sqrt(3)/2.
+            float x = q + r / 2f;
+            float y = r * ((float)Math.Sqrt(3) / 2f);
+            return (x, y);
+        }
+
+        /// <summary>
+        /// Finds a starting hex that is on land (not in an Ocean biome).
+        /// Searches in expanding rings around (0,0).
+        /// </summary>
+        public static (int q, int r) FindStartingLandHex(int seed)
+        {
+            // Search up to 500 miles away
+            for (int radius = 0; radius < 500; radius++)
+            {
+                // Simple axial spiral/ring search
+                for (int q = -radius; q <= radius; q++)
+                {
+                    int r1 = Math.Max(-radius, -q - radius);
+                    int r2 = Math.Min(radius, -q + radius);
+
+                    // Check boundaries of the hex "ring" at this radius
+                    foreach (int r in new[] { r1, r2 })
+                    {
+                        var (x, y) = AxialToMiles(q, r);
+                        if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Ocean)
+                            return (q, r);
+                    }
+
+                    if (q == -radius || q == radius)
+                    {
+                        for (int r = r1 + 1; r < r2; r++)
+                        {
+                            var (x, y) = AxialToMiles(q, r);
+                            if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Ocean)
+                                return (q, r);
+                        }
+                    }
+                }
+            }
+
+            return (0, 0); // Fallback to origin
         }
 
         /// <summary>
@@ -338,7 +401,7 @@ namespace _4DND
         /// </summary>
         public static (int q, int r) TacticalToHex(int x, int y)
         {
-            // We want one hex to be TacticalUnitsPerMile wide (center-to-center horizontally).
+            // We want one hex to be TacticalUnitsPerMile wide (center-to-center).
             return CartesianToAxial((float)x / TacticalUnitsPerMile, (float)y / TacticalUnitsPerMile);
         }
         

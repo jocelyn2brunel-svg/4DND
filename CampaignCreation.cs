@@ -573,8 +573,8 @@ namespace _4DND
                 {
                     Name = locData.Name,
                     Type = locData.Type,
-                    X = q,
-                    Y = r,
+                    X = campaign.HomeBase.X + q,
+                    Y = campaign.HomeBase.Y + r,
                     Description = locData.Type == SettlementType.Dungeon ? "A mysterious location awaits exploration." : "A notable settlement in the region.",
                     IsDiscovered = true
                 });
