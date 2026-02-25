@@ -13,5 +13,7 @@ public enum TileType
     Snow,
     Ice,
     Mud,
-    Rock
+    Rock,
+    Tree,
+    Shrub
 }

@@ -97,17 +97,17 @@ namespace _4DND
 
                 BiomeType.Coast => detailNoise > 0.7f ? TileType.Water : TileType.Sand,
 
-                BiomeType.Desert => localNoise > 0.8f ? TileType.Rock : TileType.Sand,
+                BiomeType.Desert => localNoise > 0.95f ? TileType.Shrub : (localNoise > 0.8f ? TileType.Rock : TileType.Sand),
 
-                BiomeType.Plains => localNoise > 0.85f ? TileType.DifficultTerrain : (localNoise > 0.4f ? TileType.Grass : TileType.Floor),
+                BiomeType.Plains => localNoise > 0.97f ? TileType.Tree : (localNoise > 0.92f ? TileType.Shrub : (localNoise > 0.85f ? TileType.DifficultTerrain : (localNoise > 0.4f ? TileType.Grass : TileType.Floor))),
 
-                BiomeType.Forest => localNoise > 0.4f ? TileType.DifficultTerrain : TileType.Grass,
+                BiomeType.Forest => localNoise > 0.85f ? TileType.Tree : (localNoise > 0.75f ? TileType.Shrub : (localNoise > 0.4f ? TileType.DifficultTerrain : TileType.Grass)),
 
-                BiomeType.Swamp => detailNoise > 0.6f ? TileType.Water : (localNoise > 0.5f ? TileType.Mud : TileType.DifficultTerrain),
+                BiomeType.Swamp => localNoise > 0.92f ? TileType.Tree : (localNoise > 0.85f ? TileType.Shrub : (detailNoise > 0.6f ? TileType.Water : (localNoise > 0.5f ? TileType.Mud : TileType.DifficultTerrain))),
 
-                BiomeType.Tundra => detailNoise > 0.7f ? TileType.Ice : TileType.Snow,
+                BiomeType.Tundra => localNoise > 0.98f ? TileType.Shrub : (detailNoise > 0.7f ? TileType.Ice : TileType.Snow),
 
-                BiomeType.Mountain => localNoise > 0.6f ? TileType.Rock : TileType.DifficultTerrain,
+                BiomeType.Mountain => localNoise > 0.95f ? TileType.Tree : (localNoise > 0.6f ? TileType.Rock : TileType.DifficultTerrain),
 
                 BiomeType.SnowMountain => localNoise > 0.5f ? TileType.Snow : TileType.Rock,
 
