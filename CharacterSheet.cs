@@ -114,7 +114,7 @@ public class CharacterSheet
             if (_showItemContextMenu)
             {
                 var option = GetContextMenuOptionAt(_mousePosition);
-                if (option == Loc.Tr("Equip"))
+                switch (option)
                 {
                     case "Equip":
                         if (!string.IsNullOrEmpty(_contextItemName))
@@ -166,32 +166,10 @@ public class CharacterSheet
                     case "Inspect":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            character.CalculateDerivedStats();
-                            hasCharacterChanges = true;
+                            _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
                         }
-                    }
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Play"))
-                {
-                    PlayLuteRequested = true;
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Examine"))
-                {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
-                    }
-                    _showItemContextMenu = false;
-                }
-                else
-                {
-                    if (!_itemContextMenuRect.Contains(_mousePosition))
-                    {
                         _showItemContextMenu = false;
-                    }
-                }
+                        break;
                     default:
                         if (!_itemContextMenuRect.Contains(_mousePosition))
                         {
