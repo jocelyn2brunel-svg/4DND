@@ -55,6 +55,22 @@ public class CombatManager
     public int CurrentRound => _currentRound;
     
     /// <summary>
+    /// Calculates the difficulty of an encounter (DMG p.82-84) given the player characters
+    /// and enemy creatures involved.
+    /// </summary>
+    /// <param name="playerCreatures">The player characters participating in the encounter.</param>
+    /// <param name="enemyCreatures">The enemy creatures in the encounter.</param>
+    /// <returns>A full difficulty breakdown including thresholds and adjusted XP.</returns>
+    public static EncounterDifficultyResult GetEncounterDifficulty(
+        IEnumerable<Creature> playerCreatures,
+        IEnumerable<Creature> enemyCreatures)
+    {
+        var partyLevels = playerCreatures.Select(c => c.Level);
+        var monsterXP = enemyCreatures.Select(c => c.XPReward);
+        return DndMath.CalculateEncounterDifficulty(partyLevels, monsterXP);
+    }
+
+    /// <summary>
     /// Determines which creatures are surprised at the start of an encounter.
     /// 
     /// The DM compares the Dexterity (Stealth) check of any hiding creature
@@ -1850,22 +1866,20 @@ public class CombatManager
                 int attackerTileY = attacker.Y + ay;
                 
                 for (int tx = 0; tx < targetWidth; tx++)
+                for (int ty = 0; ty < targetHeight; ty++)
                 {
-                    for (int ty = 0; ty < targetHeight; ty++)
+                    int targetTileX = target.X + tx;
+                    int targetTileY = target.Y + ty;
+                    
+                    // Check if these tiles are adjacent (including diagonally)
+                    int dx = Math.Abs(attackerTileX - targetTileX);
+                    int dy = Math.Abs(attackerTileY - targetTileY);
+                    int dz = Math.Abs(attacker.Z - target.Z);
+                    
+                    // Adjacent if within 1 square on each axis (includes diagonals)
+                    if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
                     {
-                        int targetTileX = target.X + tx;
-                        int targetTileY = target.Y + ty;
-                        
-                        // Check if these tiles are adjacent (including diagonally)
-                        int dx = Math.Abs(attackerTileX - targetTileX);
-                        int dy = Math.Abs(attackerTileY - targetTileY);
-                        int dz = Math.Abs(attacker.Z - target.Z);
-                        
-                        // Adjacent if within 1 square on each axis (includes diagonals)
-                        if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }

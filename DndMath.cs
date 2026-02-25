@@ -1,7 +1,47 @@
 using System;
+using System.Collections.Generic;
 
 namespace _4DND
 {
+    /// <summary>
+    /// The four encounter difficulty categories from the DMG (p.82).
+    /// </summary>
+    public enum EncounterDifficulty
+    {
+        /// <summary>Doesn't tax character resources; victory is almost guaranteed.</summary>
+        Easy,
+        /// <summary>One or two scary moments; party should emerge victorious.</summary>
+        Medium,
+        /// <summary>Could go badly; weaker characters might fall, slim chance of death.</summary>
+        Hard,
+        /// <summary>Could be lethal; survival requires tactics and quick thinking.</summary>
+        Deadly
+    }
+
+    /// <summary>
+    /// Result returned by <see cref="DndMath.CalculateEncounterDifficulty"/>.
+    /// </summary>
+    public sealed class EncounterDifficultyResult
+    {
+        /// <summary>Overall difficulty category of the encounter.</summary>
+        public EncounterDifficulty Difficulty { get; init; }
+
+        /// <summary>Raw sum of all monster XP rewards.</summary>
+        public int TotalMonsterXP { get; init; }
+
+        /// <summary>Adjusted XP after applying the monster-count multiplier (used for comparison).</summary>
+        public int AdjustedXP { get; init; }
+
+        /// <summary>Multiplier applied to the raw XP total based on the number of monsters.</summary>
+        public float Multiplier { get; init; }
+
+        /// <summary>XP thresholds for the party at each difficulty tier.</summary>
+        public int EasyThreshold { get; init; }
+        public int MediumThreshold { get; init; }
+        public int HardThreshold { get; init; }
+        public int DeadlyThreshold { get; init; }
+    }
+
     /// <summary>
     /// Utility class for D&D 5e mathematical operations.
     /// Follows the core rule: "Whenever you divide a number in the game,
@@ -172,6 +212,137 @@ namespace _4DND
                 }
             }
             return level;
+        }
+
+        /// <summary>
+        /// Encounter XP thresholds per character level (DMG p.82).
+        /// Outer index = level - 1 (0-based).  Inner index: 0=Easy, 1=Medium, 2=Hard, 3=Deadly.
+        /// </summary>
+        private static readonly int[,] EncounterXPThresholds = new int[20, 4]
+        {
+            //  Easy  Medium  Hard  Deadly
+            {    25,     50,   75,    100 }, // Level  1
+            {    50,    100,  150,    200 }, // Level  2
+            {    75,    150,  225,    400 }, // Level  3
+            {   125,    250,  375,    500 }, // Level  4
+            {   250,    500,  750,  1_100 }, // Level  5
+            {   300,    600,  900,  1_400 }, // Level  6
+            {   350,    750, 1100,  1_700 }, // Level  7
+            {   450,    900, 1400,  2_100 }, // Level  8
+            {   550,  1_100, 1600,  2_400 }, // Level  9
+            {   600,  1_200, 1900,  2_800 }, // Level 10
+            {   800,  1_600, 2400,  3_600 }, // Level 11
+            {  1000,  2_000, 3000,  4_500 }, // Level 12
+            {  1100,  2_200, 3400,  5_100 }, // Level 13
+            {  1250,  2_500, 3800,  5_700 }, // Level 14
+            {  1400,  2_800, 4300,  6_400 }, // Level 15
+            {  1600,  3_200, 4800,  7_200 }, // Level 16
+            {  2000,  3_900, 5900,  8_800 }, // Level 17
+            {  2100,  4_200, 6300,  9_500 }, // Level 18
+            {  2400,  4_900, 7300, 10_900 }, // Level 19
+            {  2800,  5_700, 8500, 12_700 }, // Level 20
+        };
+
+        /// <summary>
+        /// XP multipliers by number of monsters (DMG p.82).
+        /// </summary>
+        private static float GetMonsterCountMultiplier(int monsterCount, int partySize)
+        {
+            // Adjust multiplier bracket when party is very small (&lt;=2) or very large (>=6)
+            float[] multipliers = monsterCount switch
+            {
+                1 => new[] { 1.0f, 1.0f, 1.5f },
+                2 => new[] { 1.0f, 1.5f, 2.0f },
+                <= 6 => new[] { 1.5f, 2.0f, 2.5f },
+                <= 10 => new[] { 2.0f, 2.5f, 3.0f },
+                <= 14 => new[] { 2.5f, 3.0f, 4.0f },
+                _ => new[] { 3.0f, 4.0f, 5.0f },
+            };
+
+            // Index 0 = small party (1-2), 1 = standard party (3-5), 2 = large party (6+)
+            int bracket = partySize <= 2 ? 0 : partySize >= 6 ? 2 : 1;
+            return multipliers[bracket];
+        }
+
+        /// <summary>
+        /// Returns the Easy/Medium/Hard/Deadly XP threshold for a character of the given level.
+        /// </summary>
+        /// <param name="level">Character level (1–20).</param>
+        /// <param name="difficulty">Which tier to retrieve.</param>
+        public static int GetEncounterXPThreshold(int level, EncounterDifficulty difficulty)
+        {
+            int index = Math.Clamp(level, 1, 20) - 1;
+            return EncounterXPThresholds[index, (int)difficulty];
+        }
+
+        /// <summary>
+        /// Calculates the difficulty of a combat encounter following DMG p.82-84.
+        ///
+        /// <para>Steps performed:</para>
+        /// <list type="number">
+        ///   <item>Sum all party XP thresholds at each tier to get party thresholds.</item>
+        ///   <item>Sum raw monster XP rewards.</item>
+        ///   <item>Multiply by the monster-count multiplier (adjusted for party size).</item>
+        ///   <item>Compare adjusted XP against party thresholds to determine difficulty.</item>
+        /// </list>
+        /// </summary>
+        /// <param name="partyLevels">Level of each player character in the party.</param>
+        /// <param name="monsterXPRewards">XP reward of each monster in the encounter.</param>
+        /// <returns>A <see cref="EncounterDifficultyResult"/> with full breakdown.</returns>
+        public static EncounterDifficultyResult CalculateEncounterDifficulty(
+            IEnumerable<int> partyLevels,
+            IEnumerable<int> monsterXPRewards)
+        {
+            // 1. Compute cumulative party thresholds
+            int easyThreshold = 0, mediumThreshold = 0, hardThreshold = 0, deadlyThreshold = 0;
+            int partySize = 0;
+            foreach (int level in partyLevels)
+            {
+                int idx = Math.Clamp(level, 1, 20) - 1;
+                easyThreshold += EncounterXPThresholds[idx, 0];
+                mediumThreshold += EncounterXPThresholds[idx, 1];
+                hardThreshold += EncounterXPThresholds[idx, 2];
+                deadlyThreshold += EncounterXPThresholds[idx, 3];
+                partySize++;
+            }
+
+            // 2. Sum raw monster XP
+            int totalMonsterXP = 0;
+            int monsterCount = 0;
+            foreach (int xp in monsterXPRewards)
+            {
+                totalMonsterXP += xp;
+                monsterCount++;
+            }
+
+            // 3. Apply multiplier
+            float multiplier = monsterCount == 0
+                ? 1.0f
+                : GetMonsterCountMultiplier(monsterCount, partySize);
+            int adjustedXP = (int)(totalMonsterXP * multiplier);
+
+            // 4. Determine difficulty
+            EncounterDifficulty difficulty;
+            if (adjustedXP >= deadlyThreshold)
+                difficulty = EncounterDifficulty.Deadly;
+            else if (adjustedXP >= hardThreshold)
+                difficulty = EncounterDifficulty.Hard;
+            else if (adjustedXP >= mediumThreshold)
+                difficulty = EncounterDifficulty.Medium;
+            else
+                difficulty = EncounterDifficulty.Easy;
+
+            return new EncounterDifficultyResult
+            {
+                Difficulty = difficulty,
+                TotalMonsterXP = totalMonsterXP,
+                AdjustedXP = adjustedXP,
+                Multiplier = multiplier,
+                EasyThreshold = easyThreshold,
+                MediumThreshold = mediumThreshold,
+                HardThreshold = hardThreshold,
+                DeadlyThreshold = deadlyThreshold,
+            };
         }
     }
 }
