@@ -12,6 +12,19 @@ namespace _4DND
         Kingdom,     // 1 hex = 6 miles (regional travel)
         Continent    // 1 hex = 60 miles (continental overview)
     }
+
+    /// <summary>
+    /// Travel pace for overland movement (PHB p.182).
+    /// Fast: 4 miles/hour, 30 miles/day, -5 penalty to passive Perception.
+    /// Normal: 3 miles/hour, 24 miles/day, no effect.
+    /// Slow: 2 miles/hour, 18 miles/day, able to use stealth.
+    /// </summary>
+    public enum TravelPace
+    {
+        Fast,    // 4 miles/hour, 30 miles/day
+        Normal,  // 3 miles/hour, 24 miles/day
+        Slow     // 2 miles/hour, 18 miles/day
+    }
     
     /// <summary>
     /// Represents the type of settlement in the campaign world.

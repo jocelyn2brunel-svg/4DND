@@ -29,7 +29,16 @@ namespace _4DND
         private bool _isTraveling = false;
         private float _targetPartyX;
         private float _targetPartyY;
-        private const float TravelSpeed = 20f; // Miles per second
+        private TravelPace _travelPace = TravelPace.Normal;
+
+        // Miles per real-time second at each pace (visual animation speed, proportional to D&D miles/hour)
+        private static float GetTravelSpeed(TravelPace pace) => pace switch
+        {
+            TravelPace.Fast   => 30f,
+            TravelPace.Normal => 20f,
+            TravelPace.Slow   => 13f,
+            _ => 20f
+        };
 
         // Caches for procedural map data
         private System.Collections.Generic.Dictionary<(int q, int r, int seed, MapScale scale), BiomeType> _biomeCache = new();
@@ -53,7 +62,7 @@ namespace _4DND
                 Vector2 currentPos = new Vector2(campaign.PartyX, campaign.PartyY);
                 Vector2 targetPos = new Vector2(_targetPartyX, _targetPartyY);
                 float dist = Vector2.Distance(currentPos, targetPos);
-                float moveAmount = TravelSpeed * dt;
+                float moveAmount = GetTravelSpeed(_travelPace) * dt;
 
                 if (dist <= moveAmount)
                 {
@@ -114,6 +123,23 @@ namespace _4DND
                 System.Console.WriteLine($"Switched to Continent scale (1 hex = {Campaign.GetHexSize(MapScale.Continent)} miles)");
             }
             
+            // Switch travel pace with F4/F5/F6 keys
+            if (kb.IsKeyDown(Keys.F4) && !prevKb.IsKeyDown(Keys.F4))
+            {
+                _travelPace = TravelPace.Fast;
+                System.Console.WriteLine("Travel pace: Fast (4 mi/h, 30 mi/day, -5 passive Perception)");
+            }
+            if (kb.IsKeyDown(Keys.F5) && !prevKb.IsKeyDown(Keys.F5))
+            {
+                _travelPace = TravelPace.Normal;
+                System.Console.WriteLine("Travel pace: Normal (3 mi/h, 24 mi/day)");
+            }
+            if (kb.IsKeyDown(Keys.F6) && !prevKb.IsKeyDown(Keys.F6))
+            {
+                _travelPace = TravelPace.Slow;
+                System.Console.WriteLine("Travel pace: Slow (2 mi/h, 18 mi/day, stealth available)");
+            }
+
             // Click to select location or hex
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
@@ -249,13 +275,50 @@ namespace _4DND
                 DrawAdventureDetails(sb, vp, campaign);
             }
 
+            // Draw travel pace panel
+            DrawTravelPacePanel(sb, vp);
+
             // Instructions
             if (_font != null)
             {
-                sb.DrawString(_font, "WASD: Pan | Zoom: Wheel | [1][2][3]: Scale | J: Journal | M: Close", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, "WASD: Pan | Zoom: Wheel | [1][2][3]: Scale | [F4]Fast [F5]Normal [F6]Slow: Pace | J: Journal | M: Close", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
         }
         
+        private void DrawTravelPacePanel(SpriteBatch sb, Viewport vp)
+        {
+            if (_font == null) return;
+
+            // Position below the scale indicator panel (top-right area)
+            var panelRect = new Rectangle(vp.Width - 320, 240, 310, 130);
+            sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
+            DrawBorder(sb, panelRect, Color.SaddleBrown, 2);
+
+            int y = panelRect.Y + 10;
+            sb.DrawString(_font, "Travel Pace", new Vector2(panelRect.X + 10, y), new Color(205, 133, 63), 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            y += 22;
+
+            // Header row
+            sb.DrawString(_font, "Pace       ft/min  mi/hr  mi/day  Effect", new Vector2(panelRect.X + 10, y), Color.Gray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            y += 14;
+
+            var paces = new[]
+            {
+                (TravelPace.Fast,   "[F4] Fast  ", 400, 4, 30, "-5 passive Percep."),
+                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, "—"),
+                (TravelPace.Slow,   "[F6] Slow  ", 200, 2, 18, "Stealth available"),
+            };
+
+            foreach (var (pace, label, ftMin, miHr, miDay, effect) in paces)
+            {
+                bool isCurrent = pace == _travelPace;
+                Color color = isCurrent ? Color.Yellow : Color.LightGray;
+                string row = $"{label}  {ftMin,3}     {miHr}      {miDay,2}     {effect}";
+                sb.DrawString(_font, row, new Vector2(panelRect.X + 10, y), color, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                y += 14;
+            }
+        }
+
         private void DrawScaleIndicator(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
             var panelRect = new Rectangle(vp.Width - 320, 10, 310, 220);
@@ -605,25 +668,25 @@ namespace _4DND
             var panelRect = new Rectangle(10, 10, 350, 250);
             sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
             DrawBorder(sb, panelRect, Color.Gold, 2);
-            
+
             if (_font == null) return;
-            
+
             int y = panelRect.Y + 10;
-            
+
             sb.DrawString(_font, campaign.Name, new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
             y += 25;
-            
+
             sb.DrawString(_font, $"Home Base: {campaign.HomeBase.Name}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
-            
+
             // Show location count for current scale
             var visibleLocations = campaign.GetLocationsAtScale(campaign.CurrentScale);
             sb.DrawString(_font, $"Locations (visible): {visibleLocations.Count} / {campaign.AllLocations.Count}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
-            
+
             sb.DrawString(_font, $"Session: {campaign.SessionCount}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
-            
+
             // Current scale info
             string scaleName = campaign.CurrentScale switch
             {
@@ -632,15 +695,15 @@ namespace _4DND
                 MapScale.Continent => "Continent",
                 _ => "Unknown"
             };
-            int hexSize = Campaign.GetHexSize(campaign.CurrentScale);
-            sb.DrawString(_font, $"Scale: {scaleName} ({hexSize}mi/hex)", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            int currentHexSize = Campaign.GetHexSize(campaign.CurrentScale);
+            sb.DrawString(_font, $"Scale: {scaleName} ({currentHexSize}mi/hex)", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 25;
-            
+
             if (!string.IsNullOrEmpty(campaign.CurrentObjective))
             {
                 sb.DrawString(_font, "Objective:", new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 y += 18;
-                
+
                 // Wrap objective text
                 string wrapped = WrapText(campaign.CurrentObjective, 330);
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -655,8 +718,8 @@ namespace _4DND
                 if (_selectedLocation == null && _selectedHex.HasValue)
                 {
                     y += 18;
-                    int hexSize = Campaign.GetHexSize(campaign.CurrentScale);
-                    var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * hexSize, _selectedHex.Value.r * hexSize);
+                    int selectedHexSize = Campaign.GetHexSize(campaign.CurrentScale);
+                    var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * selectedHexSize, _selectedHex.Value.r * selectedHexSize);
                     var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
                     sb.DrawString(_font, $"Terrain: {biome}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 }

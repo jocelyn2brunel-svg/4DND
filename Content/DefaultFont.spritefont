@@ -22,6 +22,11 @@
 				<Start>&#338;</Start>
 				<End>&#339;</End>
 			</CharacterRegion>
+			<!-- em dash (2014) -->
+			<CharacterRegion>
+				<Start>&#x2014;</Start>
+				<End>&#x2014;</End>
+			</CharacterRegion>			
 			<!-- Euro Symbol (8364) -->
 			<CharacterRegion>
 				<Start>&#8364;</Start>
