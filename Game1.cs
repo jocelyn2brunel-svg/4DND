@@ -3619,7 +3619,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = Loc.Tr("Inventaire [C]");
+            string label = Loc.Tr("Inventory [C]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,
@@ -3642,7 +3642,7 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string label = Loc.Tr(isCloseButton ? "Fermer map [M]" : "Ouvrir map [M]");
+            string label = Loc.Tr(isCloseButton ? "Close Map [M]" : "Open Map [M]");
             var labelSize = _font.MeasureString(label);
             var labelPos = new Vector2(
                 buttonRect.X + (buttonRect.Width - labelSize.X * 0.75f) / 2,

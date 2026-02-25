@@ -314,10 +314,15 @@ public static class Loc
         _en["Max HP"] = "Max HP"; _fr["Max HP"] = "PV Max";
         _en["TEMPORARY HP"] = "TEMPORARY HP"; _fr["TEMPORARY HP"] = "PV TEMPORAIRES";
         _en["Distracted!"] = "Distracted!"; _fr["Distracted!"] = "Distrait !";
-        // Buttons
-        _en["Inventaire [C]"] = "Inventory [C]"; _fr["Inventaire [C]"] = "Inventaire [C]";
-        _en["Ouvrir map [M]"] = "Open Map [M]"; _fr["Ouvrir map [M]"] = "Ouvrir map [M]";
-        _en["Fermer map [M]"] = "Close Map [M]"; _fr["Fermer map [M]"] = "Fermer map [M]";
+        // Buttons (canonical English keys)
+        _en["Inventory [C]"] = "Inventory [C]"; _fr["Inventory [C]"] = "Inventaire [C]";
+        _en["Open Map [M]"] = "Open Map [M]"; _fr["Open Map [M]"] = "Ouvrir map [M]";
+        _en["Close Map [M]"] = "Close Map [M]"; _fr["Close Map [M]"] = "Fermer map [M]";
+
+        // Legacy aliases (temporary: remove after global key cleanup)
+        _en["Inventaire [C]"] = _en["Inventory [C]"]; _fr["Inventaire [C]"] = _fr["Inventory [C]"];
+        _en["Ouvrir map [M]"] = _en["Open Map [M]"]; _fr["Ouvrir map [M]"] = _fr["Open Map [M]"];
+        _en["Fermer map [M]"] = _en["Close Map [M]"]; _fr["Fermer map [M]"] = _fr["Close Map [M]"];
     }
 
     private static void LoadSettings()
