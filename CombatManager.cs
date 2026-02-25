@@ -411,9 +411,10 @@ public class CombatManager
 
         var tileType = TacticalMap.Get(x, y, z);
 
-        // Walls are never passable.
+        // Walls and vegetation are never passable.
         // Empty tiles are only passable if the creature can fly.
-        if (tileType == TileType.Wall || (tileType == TileType.Empty && !mover.CanFly))
+        if (tileType == TileType.Wall || tileType == TileType.Tree || tileType == TileType.Shrub ||
+            (tileType == TileType.Empty && !mover.CanFly))
             return false;
 
         var occupant = GetCreatureAt(x, y, z);
@@ -451,9 +452,10 @@ public class CombatManager
                 var tileType = TacticalMap.Get(checkX, checkY, z);
                 bool canFly = movingCreature?.CanFly == true;
 
-                // Walls are never occupiable.
+                // Walls and vegetation are never occupiable.
                 // Empty tiles are only occupiable if the creature can fly.
-                bool isBlocked = tileType == TileType.Wall || (tileType == TileType.Empty && !canFly);
+                bool isBlocked = tileType == TileType.Wall || tileType == TileType.Tree || tileType == TileType.Shrub ||
+                                 (tileType == TileType.Empty && !canFly);
 
                 if (isBlocked)
                 {
@@ -1059,7 +1061,8 @@ public class CombatManager
             int cy = (int)Math.Round(y1 + (y2 - y1) * t);
             int cz = (int)Math.Round(z1 + (z2 - z1) * t);
 
-            if (TacticalMap.Get(cx, cy, cz) == TileType.Wall)
+            var tile = TacticalMap.Get(cx, cy, cz);
+            if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub)
                 return true;
 
             float tPrev = (float)(i - 1) / dist;
@@ -1118,33 +1121,38 @@ public class CombatManager
         // 2D diagonals check
         if (Abs(dx) == 1 && Abs(dy) == 1 && dz == 0)
         {
-            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall || TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall)
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)))
                 return false;
         }
         if (Abs(dx) == 1 && Abs(dz) == 1 && dy == 0)
         {
-            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall || TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
                 return false;
         }
         if (Abs(dy) == 1 && Abs(dz) == 1 && dx == 0)
         {
-            if (TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall || TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
+            if (IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
                 return false;
         }
 
         // 3D diagonal check (all 3 axes change)
         if (Abs(dx) == 1 && Abs(dy) == 1 && Abs(dz) == 1)
         {
-            // If any adjacent square that shares a face with the path is a wall, block it
-            if (TacticalMap.Get(x1 + dx, y1, z1) == TileType.Wall ||
-                TacticalMap.Get(x1, y1 + dy, z1) == TileType.Wall ||
-                TacticalMap.Get(x1, y1, z1 + dz) == TileType.Wall)
+            // If any adjacent square that shares a face with the path is a blocking tile, block it
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) ||
+                IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)) ||
+                IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
                 return false;
         }
 
         return true;
     }
     
+    private static bool IsBlockingTile(TileType tile)
+    {
+        return tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub;
+    }
+
     public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
     {
         // Chebyshev distance (5e grid rules: diagonals cost same as straight)

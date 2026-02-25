@@ -802,6 +802,7 @@ public class Game1 : Game
 
         List<VertexPositionNormalColor> wallVertices = new();
         List<VertexPositionNormalColor> tileVertices = new();
+        List<(int x, int y, int z, TileType type)> vegetation = new();
 
         // 1. Draw procedural ground around camera
         int viewDist = 40; // View radius in tiles
@@ -823,6 +824,13 @@ public class Game1 : Game
                 if (type == TileType.Wall)
                 {
                     AddThinWallVertices(wallVertices, x, y, 0, color);
+                }
+                else if (type == TileType.Tree || type == TileType.Shrub)
+                {
+                    // Draw grass under vegetation
+                    Color groundColor = GetTileColor(TileType.Grass, x, y, 0, zLevel);
+                    AddTileVertices(tileVertices, x, y, 0, TileType.Grass, groundColor);
+                    vegetation.Add((x, y, 0, type));
                 }
                 else
                 {
@@ -852,6 +860,14 @@ public class Game1 : Game
             if (cell.Value == TileType.Wall)
             {
                 AddThinWallVertices(wallVertices, cx, cy, cz, color);
+            }
+            else if (cell.Value == TileType.Tree || cell.Value == TileType.Shrub)
+            {
+                // Draw floor under vegetation if it's above ground, otherwise grass
+                TileType baseType = cz > 0 ? TileType.Floor : TileType.Grass;
+                Color groundColor = GetTileColor(baseType, cx, cy, cz, zLevel);
+                AddTileVertices(tileVertices, cx, cy, cz, baseType, groundColor);
+                vegetation.Add((cx, cy, cz, cell.Value));
             }
             else
             {
@@ -884,6 +900,46 @@ public class Game1 : Game
                 GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, tileVertices.ToArray(), 0, tileVertices.Count / 3);
             }
         }
+
+        // 4. Draw vegetation volumes
+        foreach (var v in vegetation)
+        {
+            if (v.type == TileType.Tree)
+                Draw3DTree(v.x, v.y, v.z, zLevel);
+            else
+                Draw3DShrub(v.x, v.y, v.z, zLevel);
+        }
+    }
+
+    private void Draw3DShrub(int x, int y, int z, int zLevel)
+    {
+        float radius = 0.3f + Hash01(x, y, z, 200) * 0.2f;
+        Color color = GetTileColor(TileType.Shrub, x, y, z, zLevel);
+        Draw3DCapsule(x, y, z, radius, 0, color);
+    }
+
+    private void Draw3DTree(int x, int y, int z, int zLevel)
+    {
+        float trunkHeight = 0.6f + Hash01(x, y, z, 300) * 0.8f;
+        float trunkRadius = 0.1f + Hash01(x, y, z, 301) * 0.05f;
+        float canopyRadius = 0.4f + Hash01(x, y, z, 302) * 0.4f;
+
+        Color trunkColor = new Color(101, 67, 33); // Brown
+        Color leafColor = GetTileColor(TileType.Tree, x, y, z, zLevel);
+
+        // Scale color for visibility
+        if (_showVisionOverlay && _playerCreature != null)
+        {
+            bool isVisible = _visionSystem.IsVisible(x, y, z);
+            Color tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
+            trunkColor = new Color((byte)(trunkColor.R * tint.R / 255), (byte)(trunkColor.G * tint.G / 255), (byte)(trunkColor.B * tint.B / 255));
+        }
+
+        // Trunk (using a cube scaled thin and tall)
+        Draw3DCube(x, y, z, 1.0f, trunkColor, new Vector3(trunkRadius, trunkRadius, trunkHeight));
+
+        // Canopy (Sphere)
+        Draw3DCapsule(x, y, z + trunkHeight, canopyRadius, 0, leafColor);
     }
 
     private Color GetTileColor(TileType type, int x, int y, int z, int zLevel)
@@ -900,11 +956,13 @@ public class Game1 : Game
             TileType.Ice => new Color(160, 200, 230),
             TileType.Mud => new Color(60, 50, 40),
             TileType.Rock => new Color(120, 120, 125),
+            TileType.Tree => new Color(40, 80, 30),
+            TileType.Shrub => new Color(60, 100, 40),
             _ => Color.ForestGreen
         };
 
         // Deterministic tile-level variation to mimic texture diversity and reduce visible tiling.
-        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock)
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock || type == TileType.Tree || type == TileType.Shrub)
         {
             float dryness = Hash01(x, y, z, 11);
             float moisture = Hash01(x, y, z, 23);
@@ -949,7 +1007,8 @@ public class Game1 : Game
         Color topLeft = baseColor;
 
         if (type == TileType.Grass || type == TileType.Floor || type == TileType.DifficultTerrain ||
-            type == TileType.Sand || type == TileType.Snow || type == TileType.Rock)
+            type == TileType.Sand || type == TileType.Snow || type == TileType.Rock ||
+            type == TileType.Tree || type == TileType.Shrub)
         {
             // Per-corner variation creates a subtle faux texture and breaks up repeated flat color blocks.
             bottomLeft = ScaleColor(baseColor, 0.92f + Hash01(x, y, z, 101) * 0.16f);
@@ -1429,12 +1488,18 @@ public class Game1 : Game
         foreach (var pass in _basicEffect.CurrentTechnique.Passes) { pass.Apply(); GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, _capsulePrimitiveCount); }
     }
 
-    private void Draw3DCube(float x, float y, float z, float scale, Color color)
+    private void Draw3DCube(float x, float y, float z, float scale, Color color, Vector3? nonUniformScale = null)
     {
         // Place la base du cube sur z
-        _basicEffect.World = Matrix.CreateScale(scale) * Matrix.CreateTranslation(x, y, z);
+        Matrix world = Matrix.Identity;
+        if (nonUniformScale.HasValue)
+            world = Matrix.CreateScale(nonUniformScale.Value * scale);
+        else
+            world = Matrix.CreateScale(scale);
+
+        _basicEffect.World = world * Matrix.CreateTranslation(x, y, z);
         _basicEffect.DiffuseColor = color.ToVector3();
-        _basicEffect.Alpha = 1.0f;
+        _basicEffect.Alpha = color.A / 255f;
         _basicEffect.LightingEnabled = true;
         GraphicsDevice.SetVertexBuffer(_cubeVertexBuffer);
         GraphicsDevice.Indices = _cubeIndexBuffer;
@@ -2559,7 +2624,7 @@ public class Game1 : Game
                         int tz = hovered.Value.z;
 
                         var tileType = _tacticalMap.Get(tx, ty, tz);
-                        if (tileType != TileType.Wall && tileType != TileType.Empty)
+                        if (tileType != TileType.Wall && tileType != TileType.Tree && tileType != TileType.Shrub && tileType != TileType.Empty)
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                             {

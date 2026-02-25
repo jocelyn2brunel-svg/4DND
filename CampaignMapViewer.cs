@@ -319,9 +319,57 @@ namespace _4DND
                     // Fill hexagon with biome color
                     DrawHexagonFill(sb, pos, _tileSize * _zoom, biomeColor * 0.6f);
 
+                    // Draw procedural foliage if biome supports it
+                    DrawProceduralFoliage(sb, pos, biome, q, r, campaign.Seed);
+
                     // Draw outline
                     DrawHexagon(sb, pos, _tileSize * _zoom, Color.Black * 0.2f);
                 }
+            }
+        }
+
+        private void DrawProceduralFoliage(SpriteBatch sb, Vector2 center, BiomeType biome, int q, int r, int seed)
+        {
+            // Only draw foliage for certain biomes and if zoomed in enough
+            if (_zoom < 0.4f) return;
+
+            int foliageCount = biome switch
+            {
+                BiomeType.Forest => 5,
+                BiomeType.Swamp => 3,
+                BiomeType.Plains => 1,
+                BiomeType.Mountain => 1,
+                _ => 0
+            };
+
+            if (foliageCount == 0) return;
+
+            float size = _tileSize * _zoom;
+            Color foliageColor = new Color(30, 60, 20) * 0.5f;
+
+            for (int i = 0; i < foliageCount; i++)
+            {
+                // Simple deterministic pseudo-random offset within the hex
+                float angle = Hash(q, r, seed + i) * MathHelper.TwoPi;
+                float dist = Hash(q, r, seed + i + 100) * size * 0.6f;
+
+                Vector2 offset = new Vector2((float)Math.Cos(angle) * dist, (float)Math.Sin(angle) * dist);
+                Vector2 foliagePos = center + offset;
+
+                int dotSize = (int)Math.Max(2, 4 * _zoom);
+                sb.Draw(_pixel, new Rectangle((int)foliagePos.X - dotSize / 2, (int)foliagePos.Y - dotSize / 2, dotSize, dotSize), foliageColor);
+            }
+        }
+
+        private float Hash(int x, int y, int seed)
+        {
+            unchecked
+            {
+                int h = x * 374761393 + y * 668265263 + seed * 1442695041;
+                h = (h ^ (h >> 13)) * 1274126177;
+                h ^= h >> 16;
+                uint u = (uint)h;
+                return (u & 0x00FFFFFF) / 16777215f;
             }
         }
 
