@@ -75,6 +75,10 @@ public class Character
     public int DarkvisionRange { get; set; } = 0;  // In feet
     public bool HasSunlightSensitivity { get; set; } = false;
     
+    // Racial traits
+    /// <summary>Dwarven Resilience: advantage on saving throws against poison, resistance to poison damage.</summary>
+    public bool HasDwarvenResilience { get; set; } = false;
+    
     // Inventory system
     public Inventory InventoryData { get; set; } = new Inventory();
     
@@ -239,6 +243,7 @@ public class Character
         // Darkvision from race
         DarkvisionRange = raceData.DarkvisionRange;
         HasSunlightSensitivity = raceData.HasSunlightSensitivity;
+        HasDwarvenResilience = raceData.HasDwarvenResilience;
     }
     
     public int GetPrimaryAbilityModifier()

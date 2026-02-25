@@ -21,6 +21,12 @@ public class Race
     public bool HasSuperiorDarkvision { get; set; } = false;
     public bool HasSunlightSensitivity { get; set; } = false;
     
+    // Dwarf-specific traits
+    /// <summary>Dwarven Resilience: advantage on saving throws against poison, resistance to poison damage.</summary>
+    public bool HasDwarvenResilience { get; set; } = false;
+    /// <summary>Dwarven Combat Training: proficiency with battleaxe, handaxe, light hammer, and warhammer.</summary>
+    public bool HasDwarvenCombatTraining { get; set; } = false;
+    
     public static readonly Dictionary<string, Race> AllRaces = new()
     {
         // Human
@@ -88,7 +94,9 @@ public class Race
             WisdomBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 60,
-            Description = "Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft)"
+            HasDwarvenResilience = true,
+            HasDwarvenCombatTraining = true,
+            Description = "Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
         },
         ["Mountain Dwarf"] = new Race
         {
@@ -99,7 +107,9 @@ public class Race
             ConstitutionBonus = 2,
             BaseSpeed = 25,
             DarkvisionRange = 60,
-            Description = "Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft)"
+            HasDwarvenResilience = true,
+            HasDwarvenCombatTraining = true,
+            Description = "Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)"
         },
         
         // Halflings

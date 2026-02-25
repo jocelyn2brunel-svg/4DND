@@ -356,4 +356,16 @@ public static class CharacterD20Extensions
         
         return D20CheckFactory.MakeSavingThrow(abilityName, abilityScore, proficient, character.ProficiencyBonus, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
     }
+    
+    /// <summary>
+    /// Make a saving throw for a character against a specific damage type.
+    /// Automatically applies Dwarven Resilience advantage on poison saves.
+    /// </summary>
+    public static D20Check MakeSavingThrow(this Character character, string abilityName, int dc, DamageType damageContext, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
+    {
+        if (character.HasDwarvenResilience && damageContext == DamageType.Poison)
+            hasAdvantage = true;
+        
+        return character.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
+    }
 }

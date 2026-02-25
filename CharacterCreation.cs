@@ -599,6 +599,18 @@ public class CharacterCreation
             spriteBatch.DrawString(_font, "  - Sunlight Sensitivity", new Vector2(detailsRect.X + 12, yOffset), Color.Orange, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
+        
+        if (selectedRace.HasDwarvenResilience)
+        {
+            spriteBatch.DrawString(_font, "  - Dwarven Resilience: advantage on poison saves, resistance to poison damage", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
+        
+        if (selectedRace.HasDwarvenCombatTraining)
+        {
+            spriteBatch.DrawString(_font, "  - Dwarven Combat Training: proficiency with battleaxe, handaxe, light hammer, warhammer", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
     }
 
     private void DrawClassStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
@@ -1359,6 +1371,17 @@ public class CharacterCreation
         // Apply armor and weapon proficiencies from class
         c.ArmorProficiencies = new List<string>(selectedClass.ArmorProficiencies);
         c.WeaponProficiencies = new List<string>(selectedClass.WeaponProficiencies);
+        
+        // Apply racial traits
+        c.HasDwarvenResilience = selectedRace.HasDwarvenResilience;
+        if (selectedRace.HasDwarvenCombatTraining)
+        {
+            foreach (var w in new[] { "Battleaxe", "Handaxe", "Light Hammer", "Warhammer" })
+            {
+                if (!c.WeaponProficiencies.Contains(w))
+                    c.WeaponProficiencies.Add(w);
+            }
+        }
         
         // Apply saving throw proficiencies from class
         foreach (var save in selectedClass.SavingThrowProficiencies)
