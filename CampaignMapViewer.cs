@@ -90,6 +90,13 @@ namespace _4DND
                         _isTraveling = false;
                         TravelOccurred = true;
                     }
+                    else if (dist > 0f)
+                    {
+                        Vector2 direction = Vector2.Normalize(targetPos - startPos);
+                        Vector2 newPos = startPos + direction * moveAmount;
+                        campaign.PartyX = newPos.X;
+                        campaign.PartyY = newPos.Y;
+                    }
 
                     Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
                     VisionSystem?.RevealPath(startPos, endPos);
