@@ -2281,7 +2281,7 @@ public class Game1 : Game
         // CAMPAIGN MAP VIEWER
         if (_showCampaignMap && _state == AppState.Playing)
         {
-            _campaignMapViewer.Update(_currentCampaign, mouse, kb, _prevKb);
+            _campaignMapViewer.Update(_currentCampaign, mouse, kb, _prevKb, gameTime);
 
             var closeMapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
             if (mouse.LeftButton == ButtonState.Pressed &&
