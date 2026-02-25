@@ -58,7 +58,7 @@ namespace _4DND
             _pixel = pixel;
         }
         
-        public void Update(Campaign campaign, System.Collections.Generic.List<Character> characters, MouseState mouse, KeyboardState kb, KeyboardState prevKb, GameTime gameTime)
+        public void Update(Campaign campaign, System.Collections.Generic.List<Character> characters, MouseState mouse, KeyboardState kb, KeyboardState prevKb, GameTime gameTime, Viewport viewport)
         {
             if (campaign == null) return;
 
@@ -102,8 +102,7 @@ namespace _4DND
                 if (_travelMessageTimer <= 0) _travelMessage = "";
             }
 
-            var vp = new Rectangle(0, 0, 1280, 720); // Default if device not accessible here, but we should use passed one if possible
-            // We'll use a simplified check or pass the viewport if needed
+            var center = new Vector2(viewport.Width / 2f, viewport.Height / 2f);
             
             // Pan camera with WASD
             float panSpeed = 5f;
@@ -114,16 +113,15 @@ namespace _4DND
             
             // Zoom with +/-
             if (kb.IsKeyDown(Keys.OemPlus) && !prevKb.IsKeyDown(Keys.OemPlus))
-                _zoom = Math.Min(2.0f, _zoom + 0.1f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + 0.1f, 0.5f, 2.0f);
             if (kb.IsKeyDown(Keys.OemMinus) && !prevKb.IsKeyDown(Keys.OemMinus))
-                _zoom = Math.Max(0.5f, _zoom - 0.1f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom - 0.1f, 0.5f, 2.0f);
             
             // Zoom with mouse wheel
             int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
             if (scrollDelta != 0)
             {
-                _zoom += scrollDelta * 0.001f;
-                _zoom = MathHelper.Clamp(_zoom, 0.3f, 3.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + scrollDelta * 0.001f, 0.3f, 3.0f);
                 _prevScrollValue = mouse.ScrollWheelValue;
             }
             
@@ -164,8 +162,6 @@ namespace _4DND
             // Click to select location or hex
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
-                var center = new Vector2(1280 / 2f, 720 / 2f); // Assuming default 720p for logic
-
                 // Handle UI button clicks first
                 var panelRect = new Rectangle(10, 10, 350, 300); // Match DrawInfoPanel
                 var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 180, 30);
