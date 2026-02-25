@@ -24,6 +24,10 @@ namespace _4DND
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
         public bool TravelOccurred { get; set; } = false;
+
+        // Caches for procedural map data
+        private System.Collections.Generic.Dictionary<(int q, int r, int seed, MapScale scale), BiomeType> _biomeCache = new();
+        private System.Collections.Generic.Dictionary<(int q, int r, int seed), System.Collections.Generic.List<Vector2>> _foliageCache = new();
         
         public CampaignMapViewer(SpriteFont font, Texture2D pixel)
         {
@@ -309,11 +313,14 @@ namespace _4DND
                 {
                     var pos = HexToScreen(q, r, center);
                     
-                    // Determine biome at this hex
-                    // We need Cartesian miles for WorldGenerator
-                    var (x_miles, y_miles) = Campaign.AxialToMiles((float)q * hexSizeInMiles, (float)r * hexSizeInMiles);
-
-                    BiomeType biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
+                    // Determine biome at this hex (with cache)
+                    var cacheKey = (q, r, campaign.Seed, campaign.CurrentScale);
+                    if (!_biomeCache.TryGetValue(cacheKey, out BiomeType biome))
+                    {
+                        var (x_miles, y_miles) = Campaign.AxialToMiles((float)q * hexSizeInMiles, (float)r * hexSizeInMiles);
+                        biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
+                        _biomeCache[cacheKey] = biome;
+                    }
                     Color biomeColor = WorldGenerator.GetBiomeColor(biome);
 
                     // Fill hexagon with biome color
@@ -344,19 +351,26 @@ namespace _4DND
 
             if (foliageCount == 0) return;
 
+            var cacheKey = (q, r, seed);
+            if (!_foliageCache.TryGetValue(cacheKey, out var offsets))
+            {
+                offsets = new System.Collections.Generic.List<Vector2>();
+                for (int i = 0; i < foliageCount; i++)
+                {
+                    float angle = Hash(q, r, seed + i) * MathHelper.TwoPi;
+                    float dist = Hash(q, r, seed + i + 100) * 0.6f; // Normalized dist
+                    offsets.Add(new Vector2((float)Math.Cos(angle) * dist, (float)Math.Sin(angle) * dist));
+                }
+                _foliageCache[cacheKey] = offsets;
+            }
+
             float size = _tileSize * _zoom;
             Color foliageColor = new Color(30, 60, 20) * 0.5f;
+            int dotSize = (int)Math.Max(2, 4 * _zoom);
 
-            for (int i = 0; i < foliageCount; i++)
+            foreach (var offset in offsets)
             {
-                // Simple deterministic pseudo-random offset within the hex
-                float angle = Hash(q, r, seed + i) * MathHelper.TwoPi;
-                float dist = Hash(q, r, seed + i + 100) * size * 0.6f;
-
-                Vector2 offset = new Vector2((float)Math.Cos(angle) * dist, (float)Math.Sin(angle) * dist);
-                Vector2 foliagePos = center + offset;
-
-                int dotSize = (int)Math.Max(2, 4 * _zoom);
+                Vector2 foliagePos = center + offset * size;
                 sb.Draw(_pixel, new Rectangle((int)foliagePos.X - dotSize / 2, (int)foliagePos.Y - dotSize / 2, dotSize, dotSize), foliageColor);
             }
         }

@@ -9,6 +9,7 @@ namespace _4DND
     {
         private readonly Dictionary<(int x, int y), T> _cells = new();
         private readonly Func<int, int, T>? _defaultFactory;
+        public bool AutoCache { get; set; } = false;
 
         public InfiniteGrid(Func<int, int, T>? defaultFactory = null)
         {
@@ -20,7 +21,14 @@ namespace _4DND
         public T? Get(int x, int y, T? defaultValue = default)
         {
             if (_cells.TryGetValue((x, y), out var v)) return v;
-            return _defaultFactory != null ? _defaultFactory(x, y) : defaultValue;
+            if (_defaultFactory == null) return defaultValue;
+
+            var result = _defaultFactory(x, y);
+            if (AutoCache && !EqualityComparer<T>.Default.Equals(result, default))
+            {
+                _cells[(x, y)] = result;
+            }
+            return result;
         }
 
         public bool Remove(int x, int y) => _cells.Remove((x, y));
