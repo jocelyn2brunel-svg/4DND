@@ -353,6 +353,12 @@ public class Character
         return false;
     }
 
+    // Cleric-specific
+    /// <summary>Number of Channel Divinity uses remaining (recharges on short or long rest).</summary>
+    public int ChannelDivinityUsesRemaining { get; set; } = 0;
+    /// <summary>Maximum number of Channel Divinity uses at current level (0 before level 2).</summary>
+    public int ChannelDivinityUsesMax { get; set; } = 0;
+
     /// <summary>
     /// Adds XP to this character and levels up if the threshold is reached.
     /// Returns true if the character gained at least one level.

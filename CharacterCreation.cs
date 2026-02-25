@@ -1302,6 +1302,19 @@ public class CharacterCreation
                 c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
             }
         }
+        else if (c.Class == "Cleric")
+        {
+            var clericData = ClassData.GetClass("Cleric");
+            var levelData = clericData.GetClericLevelData(c.Level);
+            if (levelData != null)
+            {
+                c.CantripsKnown = levelData.CantripsKnown;
+                c.SpellSlotsMax = (int[])levelData.SpellSlots.Clone();
+                c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
+                c.ChannelDivinityUsesRemaining = levelData.ChannelDivinityUses;
+                c.ChannelDivinityUsesMax = levelData.ChannelDivinityUses;
+            }
+        }
         
         return c;
     }
@@ -1419,6 +1432,19 @@ public class CharacterCreation
                 c.BardicInspirationUsesRemaining = chaMod;
                 c.SpellSlotsMax = (int[])levelData.SpellSlots.Clone();
                 c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
+            }
+        }
+        else if (c.Class == "Cleric")
+        {
+            var clericData = ClassData.GetClass("Cleric");
+            var levelData = clericData.GetClericLevelData(c.Level);
+            if (levelData != null)
+            {
+                c.CantripsKnown = levelData.CantripsKnown;
+                c.SpellSlotsMax = (int[])levelData.SpellSlots.Clone();
+                c.SpellSlotsRemaining = (int[])levelData.SpellSlots.Clone();
+                c.ChannelDivinityUsesRemaining = levelData.ChannelDivinityUses;
+                c.ChannelDivinityUsesMax = levelData.ChannelDivinityUses;
             }
         }
         

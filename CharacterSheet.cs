@@ -482,6 +482,20 @@ public class CharacterSheet
             }
         }
 
+        // Cleric-specific level features
+        if (c.Class == "Cleric")
+        {
+            var classData = ClassData.GetClass(c.Class);
+            var levelData = classData.GetClericLevelData(c.Level);
+            if (levelData != null)
+            {
+                contentY += 5 + 15 + 14 + 14 + 15;
+                for (int i = 0; i < levelData.SpellSlots.Length; i++)
+                    if (levelData.SpellSlots[i] > 0) contentY += 14;
+                contentY += 14; // Features line
+            }
+        }
+
         int height = contentY + 10;
 
         if (spriteBatch != null)
@@ -581,6 +595,44 @@ public class CharacterSheet
                     // Features
                     spriteBatch.DrawString(_font, SafeString($"• {bardLevelData.Features}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                     RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Capacités de niveau {c.Level}: {bardLevelData.Features}.");
+                }
+            }
+            else if (c.Class == "Cleric")
+            {
+                var levelData = classData.GetClericLevelData(c.Level);
+                if (levelData != null)
+                {
+                    drawY += 5;
+                    spriteBatch.DrawString(_font, "Cleric:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    drawY += 15;
+
+                    // Channel Divinity
+                    if (levelData.ChannelDivinityUses > 0)
+                    {
+                        spriteBatch.DrawString(_font, SafeString($"• Channel Divinity: {c.ChannelDivinityUsesRemaining}/{c.ChannelDivinityUsesMax}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                        RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Divinité canalisée: {c.ChannelDivinityUsesRemaining} sur {c.ChannelDivinityUsesMax} utilisations.");
+                        drawY += 14;
+                    }
+
+                    // Cantrips
+                    spriteBatch.DrawString(_font, SafeString($"• Cantrips Known: {levelData.CantripsKnown}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    drawY += 14;
+
+                    // Spell Slots
+                    spriteBatch.DrawString(_font, "Spell Slots:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                    drawY += 15;
+                    for (int i = 0; i < levelData.SpellSlots.Length; i++)
+                    {
+                        if (levelData.SpellSlots[i] <= 0) continue;
+                        int remaining = i < c.SpellSlotsRemaining.Length ? c.SpellSlotsRemaining[i] : 0;
+                        spriteBatch.DrawString(_font, SafeString($"• Level {i + 1}: {remaining}/{levelData.SpellSlots[i]}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                        RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Emplacements de sort de niveau {i + 1}: {remaining} restant(s) sur {levelData.SpellSlots[i]}.");
+                        drawY += 14;
+                    }
+
+                    // Features
+                    spriteBatch.DrawString(_font, SafeString($"• {levelData.Features}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                    RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Capacités de niveau {c.Level}: {levelData.Features}.");
                 }
             }
         }
