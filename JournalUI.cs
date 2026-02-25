@@ -170,7 +170,7 @@ public class JournalUI
         spriteBatch.Draw(_pixel, rect, new Color(140, 40, 40));
         DrawBorder(spriteBatch, rect, Color.Black, 2);
 
-        string text = "Fermer";
+        string text = Loc.Tr("Close");
         var size = _font.MeasureString(text) * 0.8f;
         spriteBatch.DrawString(_font, text, new Vector2(rect.X + (rect.Width - size.X) / 2, rect.Y + (rect.Height - size.Y) / 2), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
     }

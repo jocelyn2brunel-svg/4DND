@@ -114,7 +114,7 @@ public class CharacterSheet
             if (_showItemContextMenu)
             {
                 var option = GetContextMenuOptionAt(_mousePosition);
-                switch (option)
+                if (option == Loc.Tr("Equip"))
                 {
                     case "Equip":
                         if (!string.IsNullOrEmpty(_contextItemName))
@@ -130,50 +130,32 @@ public class CharacterSheet
                     case "Equip (Offhand)":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            if (character.InventoryData.EquipOffhandItem(_contextItemName))
-                            {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-                            }
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Unequip":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            if (character.InventoryData.UnequipItem(_contextItemName))
-                            {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-                            }
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Throw":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            // Pour l'instant, lancer retire l'objet de l'inventaire
-                            // (équivalent à un jet d'objet improvisé).
-                            bool changed = character.InventoryData.UnequipItem(_contextItemName);
-                            changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
-                            if (changed)
-                            {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-                            }
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Drop":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            bool changed = character.InventoryData.UnequipItem(_contextItemName);
-                            changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
-                            if (changed)
-                            {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-                            }
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
@@ -184,10 +166,32 @@ public class CharacterSheet
                     case "Inspect":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
-                            _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
                         }
+                    }
+                    _showItemContextMenu = false;
+                }
+                else if (option == Loc.Tr("Play"))
+                {
+                    PlayLuteRequested = true;
+                    _showItemContextMenu = false;
+                }
+                else if (option == Loc.Tr("Examine"))
+                {
+                    if (!string.IsNullOrEmpty(_contextItemName))
+                    {
+                        _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
+                    }
+                    _showItemContextMenu = false;
+                }
+                else
+                {
+                    if (!_itemContextMenuRect.Contains(_mousePosition))
+                    {
                         _showItemContextMenu = false;
-                        break;
+                    }
+                }
                     default:
                         if (!_itemContextMenuRect.Contains(_mousePosition))
                         {
@@ -302,9 +306,9 @@ public class CharacterSheet
         var closeButtonRect = GetCloseButtonRect(viewport);
         spriteBatch.Draw(_pixel, closeButtonRect, new Color(140, 40, 40));
         DrawBorder(spriteBatch, closeButtonRect, Color.Black, 2);
-        RegisterTooltip(closeButtonRect, "Fermer la feuille de personnage (raccourci: C).");
+        RegisterTooltip(closeButtonRect, Loc.Tr("Close the character sheet (shortcut: C)."));
 
-        var text = "Quitter";
+        var text = Loc.Tr("Exit");
         var textSize = _font.MeasureString(text);
         var textPos = new Vector2(
             closeButtonRect.X + (closeButtonRect.Width - textSize.X * 0.7f) * 0.5f,
@@ -397,17 +401,17 @@ public class CharacterSheet
         
         var abilities = new[] 
         {
-            ("STRENGTH", c.Strength, c.StrengthSaveProficiency),
-            ("DEXTERITY", c.Dexterity, c.DexteritySaveProficiency),
-            ("CONSTITUTION", c.Constitution, c.ConstitutionSaveProficiency),
-            ("INTELLIGENCE", c.Intelligence, c.IntelligenceSaveProficiency),
-            ("WISDOM", c.Wisdom, c.WisdomSaveProficiency),
-            ("CHARISMA", c.Charisma, c.CharismaSaveProficiency)
+            ("Strength", c.Strength, c.StrengthSaveProficiency),
+            ("Dexterity", c.Dexterity, c.DexteritySaveProficiency),
+            ("Constitution", c.Constitution, c.ConstitutionSaveProficiency),
+            ("Intelligence", c.Intelligence, c.IntelligenceSaveProficiency),
+            ("Wisdom", c.Wisdom, c.WisdomSaveProficiency),
+            ("Charisma", c.Charisma, c.CharismaSaveProficiency)
         };
         
-        foreach (var (name, score, saveProficiency) in abilities)
+        foreach (var (key, score, saveProficiency) in abilities)
         {
-            if (spriteBatch != null) DrawAbilityBox(spriteBatch, c, name, score, saveProficiency, x, currentY, width, boxSize);
+            if (spriteBatch != null) DrawAbilityBox(spriteBatch, c, key, score, saveProficiency, x, currentY, width, boxSize);
             currentY += boxSize + boxSpacing;
         }
         
@@ -506,12 +510,12 @@ public class CharacterSheet
             spriteBatch.Draw(_pixel, rect, Color.White);
             DrawBorder(spriteBatch, rect, Color.Black, 2);
 
-            spriteBatch.DrawString(_font, "PROFICIENCIES & LANGUAGES", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("PROFICIENCIES & LANGUAGES"), new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
 
             int drawY = y + 25;
             if (c.ArmorProficiencies != null && c.ArmorProficiencies.Count > 0)
             {
-                spriteBatch.DrawString(_font, "Armor:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, Loc.Tr("Armor:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 drawY += 15;
                 foreach (var armor in c.ArmorProficiencies)
                 {
@@ -524,7 +528,7 @@ public class CharacterSheet
 
             if (c.WeaponProficiencies != null && c.WeaponProficiencies.Count > 0)
             {
-                spriteBatch.DrawString(_font, "Weapons:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, Loc.Tr("Weapons:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 drawY += 15;
                 foreach (var weapon in c.WeaponProficiencies)
                 {
@@ -536,7 +540,7 @@ public class CharacterSheet
             }
 
             var classData = ClassData.GetClass(c.Class);
-            spriteBatch.DrawString(_font, "Class Info:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("Class Info:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             drawY += 15;
             spriteBatch.DrawString(_font, SafeString($"• Hit Die: d{c.HitDiceType}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Class hit die: d{0}.", c.HitDiceType));
@@ -551,11 +555,11 @@ public class CharacterSheet
                 if (levelData != null)
                 {
                     drawY += 5;
-                    spriteBatch.DrawString(_font, "Barbarian:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, Loc.Tr("Barbarian:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     drawY += 15;
                     string ragesMax = levelData.Rages == -1 ? Loc.Tr("Unlimited") : levelData.Rages.ToString();
                     spriteBatch.DrawString(_font, SafeString($"• Rages: {c.RagesRemaining}/{ragesMax}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                    RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), $"Rages par jour: {ragesMax}. Restantes: {c.RagesRemaining}.");
+                    RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Rages per day: {0}. Remaining: {1}.", ragesMax, c.RagesRemaining));
                     drawY += 14;
                     spriteBatch.DrawString(_font, SafeString($"• Rage Damage: +{levelData.RageDamage}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                     RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Rage damage bonus: +{0}.", levelData.RageDamage));
@@ -570,7 +574,7 @@ public class CharacterSheet
                 if (bardLevelData != null)
                 {
                     drawY += 5;
-                    spriteBatch.DrawString(_font, "Bard:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, Loc.Tr("Bard:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     drawY += 15;
 
                     // Bardic Inspiration
@@ -583,7 +587,7 @@ public class CharacterSheet
                     drawY += 14;
 
                     // Spell Slots
-                    spriteBatch.DrawString(_font, "Spell Slots:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, Loc.Tr("Spell Slots:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
                     drawY += 15;
                     for (int i = 0; i < bardLevelData.SpellSlots.Length; i++)
                     {
@@ -605,7 +609,7 @@ public class CharacterSheet
                 if (levelData != null)
                 {
                     drawY += 5;
-                    spriteBatch.DrawString(_font, "Cleric:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, Loc.Tr("Cleric:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     drawY += 15;
 
                     // Channel Divinity
@@ -621,7 +625,7 @@ public class CharacterSheet
                     drawY += 14;
 
                     // Spell Slots
-                    spriteBatch.DrawString(_font, "Spell Slots:", new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, Loc.Tr("Spell Slots:"), new Vector2(x + 10, drawY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
                     drawY += 15;
                     for (int i = 0; i < levelData.SpellSlots.Length; i++)
                     {
@@ -642,12 +646,13 @@ public class CharacterSheet
         return height;
     }
 
-    private void DrawAbilityBox(SpriteBatch spriteBatch, Character c, string name, int score, bool saveProficiency, int x, int y, int width, int height)
+    private void DrawAbilityBox(SpriteBatch spriteBatch, Character c, string key, int score, bool saveProficiency, int x, int y, int width, int height)
     {
         var outerRect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, outerRect, Color.White);
         DrawBorder(spriteBatch, outerRect, Color.Black, 2);
         
+        string name = Loc.Tr(key).ToUpper();
         var nameSize = _font.MeasureString(name);
         spriteBatch.DrawString(_font, name, new Vector2(x + (width - nameSize.X * 0.5f) / 2, y + 2), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         
@@ -672,7 +677,7 @@ public class CharacterSheet
 
         RegisterTooltip(outerRect, Loc.Tr("{0}: score {1} ({2}). Saving throw {3}.", name, score, modText, saveProficiency ? Loc.Tr("proficient") : Loc.Tr("not proficient")));
         
-        spriteBatch.DrawString(_font, "SAVING THROWS", new Vector2(x + 2, y + height - 10), Color.Black * 0.4f, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, Loc.Tr("SAVING THROWS"), new Vector2(x + 2, y + height - 10), Color.Black * 0.4f, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
     }
 
     private int DrawMiddleColumn(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
@@ -720,16 +725,16 @@ public class CharacterSheet
         currentY += DrawSkillsBox(spriteBatch, c, x, currentY, width);
         currentY += 10;
         
-        currentY += DrawTextBox(spriteBatch, "PERSONALITY TRAITS", "", x, currentY, width);
+        currentY += DrawTextBox(spriteBatch, Loc.Tr("PERSONALITY TRAITS"), "", x, currentY, width);
         currentY += 10;
         
-        currentY += DrawTextBox(spriteBatch, "IDEALS", "", x, currentY, width);
+        currentY += DrawTextBox(spriteBatch, Loc.Tr("IDEALS"), "", x, currentY, width);
         currentY += 10;
 
-        currentY += DrawTextBox(spriteBatch, "BONDS", "", x, currentY, width);
+        currentY += DrawTextBox(spriteBatch, Loc.Tr("BONDS"), "", x, currentY, width);
         currentY += 10;
         
-        currentY += DrawTextBox(spriteBatch, "FLAWS", "", x, currentY, width);
+        currentY += DrawTextBox(spriteBatch, Loc.Tr("FLAWS"), "", x, currentY, width);
         
         return currentY - y;
     }
@@ -747,7 +752,7 @@ public class CharacterSheet
             var rect = new Rectangle(x, y, width, height);
             spriteBatch.Draw(_pixel, rect, Color.White);
             DrawBorder(spriteBatch, rect, Color.Black, 2);
-            spriteBatch.DrawString(_font, "ATTACKS & SPELLCASTING", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("ATTACKS & SPELLCASTING"), new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             
             int headerY = y + 30;
             int nameCol = x + 10;
@@ -846,7 +851,7 @@ public class CharacterSheet
             var rect = new Rectangle(x, y, width, height);
             spriteBatch.Draw(_pixel, rect, Color.White);
             DrawBorder(spriteBatch, rect, Color.Black, 2);
-            spriteBatch.DrawString(_font, "EQUIPMENT", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("EQUIPMENT"), new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             
             int itemY = y + 30;
             int col1 = x + 10;
@@ -878,8 +883,8 @@ public class CharacterSheet
             }
 
             int totalWeight = c.InventoryData.GetTotalWeight();
-            spriteBatch.DrawString(_font, $"Poids Total: {totalWeight} lbs", new Vector2(x + 10, y + height - 35), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, $"Or: {c.GoldPieces} gp", new Vector2(x + 10, y + height - 20), Color.DarkGoldenrod, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("Total Weight: {0} lbs", totalWeight), new Vector2(x + 10, y + height - 35), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("Gold: {0} gp", c.GoldPieces), new Vector2(x + 10, y + height - 20), Color.DarkGoldenrod, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
         
         return height;
@@ -969,7 +974,7 @@ public class CharacterSheet
         var rect = new Rectangle(x, y, width, height);
         spriteBatch.Draw(_pixel, rect, Color.White);
         DrawBorder(spriteBatch, rect, Color.Black, 2);
-        spriteBatch.DrawString(_font, "JETS DE MORT", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, Loc.Tr("DEATH SAVES"), new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         int circleSize = 16;
         int startY = y + 30;
         spriteBatch.DrawString(_font, Loc.Tr("Successes"), new Vector2(x + 10, startY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
@@ -1004,17 +1009,18 @@ public class CharacterSheet
             var rect = new Rectangle(x, y, width, height);
             spriteBatch.Draw(_pixel, rect, Color.White);
             DrawBorder(spriteBatch, rect, Color.Black, 2);
-            spriteBatch.DrawString(_font, "SKILLS", new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("SKILLS"), new Vector2(x + 5, y + 5), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             int skillY = y + 25;
-            foreach (var (skillName, ability) in skills) {
-                int bonus = c.GetSkillBonus(skillName, out _);
-                bool proficient = GetSkillProficiency(c, skillName);
+            foreach (var (skillKey, ability) in skills) {
+                int bonus = c.GetSkillBonus(skillKey, out _);
+                bool proficient = GetSkillProficiency(c, skillKey);
                 DrawCheckbox(spriteBatch, x + 8, skillY, 10, proficient);
                 string bonusText = FormatModifier(bonus);
+                string localizedSkill = Loc.Tr(skillKey);
                 spriteBatch.DrawString(_font, bonusText, new Vector2(x + 25, skillY - 2), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, skillName, new Vector2(x + 60, skillY - 2), proficient ? Color.Black : Color.Black * 0.6f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, $"({ability})", new Vector2(x + width - 45, skillY - 2), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(x + 4, skillY - 2, width - 8, lineHeight), $"{skillName} ({ability}): {bonusText}");
+                spriteBatch.DrawString(_font, localizedSkill, new Vector2(x + 60, skillY - 2), proficient ? Color.Black : Color.Black * 0.6f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, $"({Loc.Tr(ability)})", new Vector2(x + width - 45, skillY - 2), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(new Rectangle(x + 4, skillY - 2, width - 8, lineHeight), Loc.Tr("{0} ({1}): {2}", localizedSkill, Loc.Tr(ability), bonusText));
                 skillY += lineHeight;
             }
         }

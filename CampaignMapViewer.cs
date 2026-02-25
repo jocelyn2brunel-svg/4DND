@@ -215,7 +215,7 @@ namespace _4DND
                     {
                         RestManager.LongRest(c);
                     }
-                    SetTravelMessage("Le groupe a pris un repos long (8h).");
+                    SetTravelMessage(Loc.Tr("The party took a long rest (8h)."));
                 }
                 else
                 {
@@ -270,8 +270,8 @@ namespace _4DND
             
             // Background (Day/Night)
             Color bgColor = Color.Black * 0.9f;
-            if (campaign.GameHour < 6 || campaign.GameHour >= 20) bgColor = new Color(10, 10, 30) * 0.95f; // Nuit
-            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // CrÃ©puscule/Aube
+            if (campaign.GameHour < 6 || campaign.GameHour >= 20) bgColor = new Color(10, 10, 30) * 0.95f; // Night
+            else if (campaign.GameHour < 8 || campaign.GameHour >= 18) bgColor = new Color(40, 20, 10) * 0.9f; // Twilight/Dawn
 
             sb.Draw(_pixel, new Rectangle(0, 0, vp.Width, vp.Height), bgColor);
             
@@ -891,10 +891,10 @@ namespace _4DND
         private void CheckRandomEncounters(Campaign campaign, float gameMinutesPassed)
         {
             _minutesSinceLastEncounterCheck += gameMinutesPassed;
-            if (_minutesSinceLastEncounterCheck >= 4 * 60) // Toutes les 4 heures
+            if (_minutesSinceLastEncounterCheck >= 4 * 60) // Every 4 hours
             {
                 _minutesSinceLastEncounterCheck = 0;
-                if (_random.Next(1, 21) >= 19) // 10% de chance
+                if (_random.Next(1, 21) >= 19) // 10% chance
                 {
                     SetTravelMessage(Loc.Tr("Random encounter! Travel stops."));
                     _isTraveling = false;

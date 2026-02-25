@@ -468,7 +468,7 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, fillRect, Color.LightGreen);
         
         // Step labels
-        string[] stepLabels = { "Name", "Race", "Class", "Tools", "Skills", "Abilities", "Review" };
+        string[] stepLabels = { Loc.Tr("Name"), Loc.Tr("Race"), Loc.Tr("Class"), Loc.Tr("Tools"), Loc.Tr("Skills"), Loc.Tr("Abilities"), Loc.Tr("Review") };
         for (int i = 0; i < 7; i++)
         {
             int stepX = barX + (barWidth * i / 6);
@@ -485,7 +485,7 @@ public class CharacterCreation
 
     private void DrawNameStep(SpriteBatch spriteBatch, GameTime gameTime, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
-        var instructionText = "Enter your character's name:";
+        var instructionText = Loc.Tr("Enter your character's name:");
         spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         
         var nameRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 40, menuRect.Width - padding * 2, 50);
@@ -498,21 +498,21 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, randomNameRect, randomNameColor);
         DrawBorder(spriteBatch, randomNameRect, 1, Color.White * 0.7f);
 
-        var randomNameText = "[D6] Nom aleatoire";
+        var randomNameText = "[D6] " + Loc.Tr("Random name");
         var randomNameTextSize = _font.MeasureString(randomNameText);
         spriteBatch.DrawString(_font, randomNameText, new Vector2(randomNameRect.X + (randomNameRect.Width - randomNameTextSize.X * 0.65f) / 2, randomNameRect.Y + (randomNameRect.Height - randomNameTextSize.Y * 0.65f) / 2), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
         
-        var displayName = string.IsNullOrEmpty(_createName) ? "Type your character's name..." : _createName + (((int)(gameTime.TotalGameTime.TotalSeconds * 2) % 2) == 0 ? "|" : "");
+        var displayName = string.IsNullOrEmpty(_createName) ? Loc.Tr("Type your character's name...") : _createName + (((int)(gameTime.TotalGameTime.TotalSeconds * 2) % 2) == 0 ? "|" : "");
         spriteBatch.DrawString(_font, displayName, new Vector2(nameRect.X + 12, nameRect.Y + 12), string.IsNullOrEmpty(_createName) ? Color.Gray : Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         
         // Tips
-        var tipText = "?? Tips: Choose a name that fits your character's background and personality.";
+        var tipText = Loc.Tr("Name Tip");
         spriteBatch.DrawString(_font, tipText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 150), Color.LightBlue, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
     }
 
     private void DrawRaceStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
-        var instructionText = "Choose your character's race:";
+        var instructionText = Loc.Tr("Choose your character's race:");
         spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         
         // Races list (left side)
@@ -566,7 +566,7 @@ public class CharacterCreation
         yOffset += 60;
         
         // Ability bonuses
-        spriteBatch.DrawString(_font, "Ability Score Increases:", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, Loc.Tr("Ability Score Increases:"), new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         yOffset += 25;
         
         var bonuses = new List<string>();
@@ -586,15 +586,15 @@ public class CharacterCreation
         yOffset += 10;
         
         // Racial traits
-        spriteBatch.DrawString(_font, "Traits:", new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, Loc.Tr("Traits:"), new Vector2(detailsRect.X + 12, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         yOffset += 25;
         
-        spriteBatch.DrawString(_font, $"  - Speed: {selectedRace.BaseSpeed} feet", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, "  - " + Loc.Tr("Speed: {0} feet", selectedRace.BaseSpeed), new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
         yOffset += 22;
         
         if (selectedRace.DarkvisionRange > 0)
         {
-            var darkvisionText = selectedRace.HasSuperiorDarkvision ? $"  - Superior Darkvision: {selectedRace.DarkvisionRange} feet" : $"  - Darkvision: {selectedRace.DarkvisionRange} feet";
+            var darkvisionText = selectedRace.HasSuperiorDarkvision ? "  - " + Loc.Tr("Superior Darkvision: {0} feet", selectedRace.DarkvisionRange) : "  - " + Loc.Tr("Darkvision: {0} feet", selectedRace.DarkvisionRange);
             spriteBatch.DrawString(_font, darkvisionText, new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
@@ -1085,7 +1085,7 @@ public class CharacterCreation
             var prevColor = prevRect.Contains(mouse.Position) ? Color.LightGray : Color.Gray;
             spriteBatch.Draw(_pixel, prevRect, prevColor);
             DrawBorder(spriteBatch, prevRect, 2, Color.White * 0.5f);
-            var prevText = "? Previous";
+            var prevText = "< " + Loc.Tr("Previous");
             var prevTextSize = _font.MeasureString(prevText);
             spriteBatch.DrawString(_font, prevText, new Vector2(prevRect.X + (prevRect.Width - prevTextSize.X * 0.6f) / 2, prevRect.Y + (prevRect.Height - prevTextSize.Y * 0.6f) / 2), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
@@ -1097,7 +1097,7 @@ public class CharacterCreation
             spriteBatch.Draw(_pixel, nextRect, nextColor);
             DrawBorder(spriteBatch, nextRect, 2, Color.LightGreen);
             
-            string nextText = _createStep == 6 ? "? Create!" : "Next >";
+            string nextText = _createStep == 6 ? Loc.Tr("Create!") : Loc.Tr("Next") + " >";
             var nextTextSize = _font.MeasureString(nextText);
             spriteBatch.DrawString(_font, nextText, new Vector2(nextRect.X + (nextRect.Width - nextTextSize.X * 0.7f) / 2, nextRect.Y + (nextRect.Height - nextTextSize.Y * 0.7f) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }

@@ -143,6 +143,26 @@ public static class Loc
         _en["WIS"] = "WIS"; _fr["WIS"] = "SAG";
         _en["CHA"] = "CHA"; _fr["CHA"] = "CHA";
 
+        // Skills
+        _en["Acrobatics"] = "Acrobatics"; _fr["Acrobatics"] = "Acrobaties";
+        _en["Animal Handling"] = "Animal Handling"; _fr["Animal Handling"] = "Dressage";
+        _en["Arcana"] = "Arcana"; _fr["Arcana"] = "Arcanes";
+        _en["Athletics"] = "Athletics"; _fr["Athletics"] = "Athlétisme";
+        _en["Deception"] = "Deception"; _fr["Deception"] = "Tromperie";
+        _en["History"] = "History"; _fr["History"] = "Histoire";
+        _en["Insight"] = "Insight"; _fr["Insight"] = "Intuition";
+        _en["Intimidation"] = "Intimidation"; _fr["Intimidation"] = "Intimidation";
+        _en["Investigation"] = "Investigation"; _fr["Investigation"] = "Investigation";
+        _en["Medicine"] = "Medicine"; _fr["Medicine"] = "Médecine";
+        _en["Nature"] = "Nature"; _fr["Nature"] = "Nature";
+        _en["Perception"] = "Perception"; _fr["Perception"] = "Perception";
+        _en["Performance"] = "Performance"; _fr["Performance"] = "Représentation";
+        _en["Persuasion"] = "Persuasion"; _fr["Persuasion"] = "Persuasion";
+        _en["Religion"] = "Religion"; _fr["Religion"] = "Religion";
+        _en["Sleight of Hand"] = "Sleight of Hand"; _fr["Sleight of Hand"] = "Escamotage";
+        _en["Stealth"] = "Stealth"; _fr["Stealth"] = "Discrétion";
+        _en["Survival"] = "Survival"; _fr["Survival"] = "Survie";
+
         // Classes
         _en["Barbarian"] = "Barbarian"; _fr["Barbarian"] = "Barbare";
         _en["Bard"] = "Bard"; _fr["Bard"] = "Barde";

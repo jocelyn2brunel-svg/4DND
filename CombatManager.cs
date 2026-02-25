@@ -129,18 +129,18 @@ public class CombatManager
 
         return (surprised, log);
     }
-    // Ajoutez cette méthode dans la classe CombatManager (ou dans un fichier approprié si vous gérez les actions de combat ici)
+    // Add this method to the CombatManager class (or appropriate file if handling combat actions here)
     public bool Hide(Creature creature, bool isBonusAction = false, VisionSystem? visionSystem = null)
     {
-        // Implémentation simple : vérifie si la créature peut se cacher et applique l'état caché
+        // Simple implementation: checks if the creature can hide and applies the hidden state
         if (creature == null || creature.IsHidden)
             return false;
 
-        // Exemple : vérifie si la créature a une action ou une action bonus disponible
+        // Example: checks if the creature has an action or bonus action available
         if ((isBonusAction && !creature.HasBonusAction) || (!isBonusAction && !creature.HasAction))
             return false;
 
-        // Ici, vous pouvez ajouter une logique de test de discrétion, de visibilité, etc.
+        // Here you can add stealth check logic, visibility, etc.
         creature.IsHidden = true;
         if (isBonusAction)
             creature.HasBonusAction = false;
