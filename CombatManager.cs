@@ -784,39 +784,79 @@ public class CombatManager
 
     public (int x, int y, int z)? GetNextStepTowards(Creature creature, Creature target)
     {
-        List<TacticalMapNode>? bestPath = null;
-
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                for (int dz = (creature.CanFly ? -1 : 0); dz <= (creature.CanFly ? 1 : 0); dz++)
-                {
-                    if (dx == 0 && dy == 0 && dz == 0)
-                        continue;
-
-                    int tx = target.X + dx;
-                    int ty = target.Y + dy;
-                    int tz = target.Z + dz;
-
-                    if (!CanOccupySpace(creature.Size, tx, ty, tz, creature))
-                        continue;
-
-                    var path = FindPath(creature, tx, ty, tz);
-                    if (path == null || path.Count < 2)
-                        continue;
-
-                    if (bestPath == null || CalculatePathCost(creature, path) < CalculatePathCost(creature, bestPath))
-                        bestPath = path;
-                }
-            }
-        }
+        var bestPath = FindPathToAdjacent(creature, target);
 
         if (bestPath == null)
             return null;
 
         var step = bestPath[1];
         return (step.X, step.Y, step.Z);
+    }
+
+    private List<TacticalMapNode>? FindPathToAdjacent(Creature creature, Creature target)
+    {
+        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        var openSet = new List<TacticalMapNode> { start };
+        var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
+        var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
+        var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
+        var fScore = new Dictionary<TacticalMapNode, int> { [start] = HeuristicToAdjacent(start, target) };
+
+        while (openSet.Count > 0)
+        {
+            var current = openSet.OrderBy(n => fScore.GetValueOrDefault(n, int.MaxValue)).First();
+
+            if (IsAdjacentToTarget(current, target) && CanOccupySpace(creature.Size, current.X, current.Y, current.Z, creature))
+                return ReconstructPath(cameFrom, current);
+
+            openSet.Remove(current);
+
+            foreach (var neighbor in GetNeighbors(creature, current))
+            {
+                bool isDiag = IsDiagonalStep(current, neighbor);
+                int currentDiagParity = diagParity[current];
+                int newDiagParity = isDiag ? 1 - currentDiagParity : currentDiagParity;
+
+                int tentativeTurns = turnCount[current] + GetTurnPenalty(cameFrom, current, neighbor);
+                int tentativeG = gScore[current] + GetMoveCost(creature, current, neighbor, currentDiagParity);
+                int currentBestG = gScore.GetValueOrDefault(neighbor, int.MaxValue);
+                int currentBestTurns = turnCount.GetValueOrDefault(neighbor, int.MaxValue);
+
+                if (tentativeG > currentBestG)
+                    continue;
+                if (tentativeG == currentBestG && tentativeTurns >= currentBestTurns)
+                    continue;
+
+                cameFrom[neighbor] = current;
+                gScore[neighbor] = tentativeG;
+                turnCount[neighbor] = tentativeTurns;
+                diagParity[neighbor] = newDiagParity;
+                fScore[neighbor] = tentativeG + HeuristicToAdjacent(neighbor, target);
+
+                if (!openSet.Contains(neighbor))
+                    openSet.Add(neighbor);
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsAdjacentToTarget(TacticalMapNode node, Creature target)
+    {
+        int dx = Abs(node.X - target.X);
+        int dy = Abs(node.Y - target.Y);
+        int dz = Abs(node.Z - target.Z);
+        return Max(Max(dx, dy), dz) == 1;
+    }
+
+    private static int HeuristicToAdjacent(TacticalMapNode node, Creature target)
+    {
+        int dx = Abs(node.X - target.X);
+        int dy = Abs(node.Y - target.Y);
+        int dz = Abs(node.Z - target.Z);
+        int chebyshev = Max(Max(dx, dy), dz);
+        return Max(chebyshev - 1, 0) * 5;
     }
 
     /// <summary>
