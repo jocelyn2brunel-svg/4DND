@@ -60,6 +60,12 @@ public class VisionSystem
         _areaEffects.Clear();
         _lightingNeedsUpdate = true;
     }
+
+    public void ResetExploration()
+    {
+        _visibleTiles.Clear();
+        _exploredTiles.Clear();
+    }
     
     public void CalculateLighting()
     {

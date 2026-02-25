@@ -87,9 +87,14 @@ namespace _4DND
 
             BiomeType biome = GetBiome(milesX, milesY, seed);
 
-            // Local noise for tile variation
-            float localNoise = GetNoise(x, y, seed + 999, 10.0f, 1);
-            float detailNoise = GetNoise(x, y, seed + 777, 2.0f, 1);
+            // Calculate absolute tactical coordinates in the world to ensure local noise
+            // varies when traveling even within the same biome.
+            float absX = (float)x + worldOffsetX * Campaign.TacticalUnitsPerMile;
+            float absY = (float)y + worldOffsetY * Campaign.TacticalUnitsPerMile;
+
+            // Local noise for tile variation using absolute world coordinates
+            float localNoise = GetNoise(absX, absY, seed + 999, 10.0f, 1);
+            float detailNoise = GetNoise(absX, absY, seed + 777, 2.0f, 1);
 
             return biome switch
             {

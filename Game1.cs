@@ -2292,6 +2292,7 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
+                    _visionSystem.ResetExploration();
                     PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;
@@ -2307,6 +2308,7 @@ public class Game1 : Game
                 if (_campaignMapViewer.TravelOccurred)
                 {
                     _tacticalMap.Clear();
+                    _visionSystem.ResetExploration();
                     PlacePlayerAtNearestValidTile();
                     _playerCreature.InterruptMovement();
                     _cameraTarget = Vector3.Zero;
