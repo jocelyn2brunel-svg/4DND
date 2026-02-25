@@ -118,7 +118,8 @@ public class Game1 : Game
     private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
-    private bool _showCombatUI = false;
+    private bool _showCombatUI = true;
+    private bool _hudAlwaysVisible = true;
     private int _combatTopPanelHeight = 125; // Reduced from 220
     private MouseState _prevMouse;
 
@@ -290,7 +291,7 @@ public class Game1 : Game
         // Clear and restart with proper initiative
         _combatManager.Combatants.Clear();
         _combatManager.StartCombat(combatants);
-        _showCombatUI = true;
+        _showCombatUI = _hudAlwaysVisible;
         _selectedAction = CombatAction.Move;
         AddToCombatLog("Combat started!");
         AddToCombatLog($"Round {_combatManager.CurrentRound} begins!");
@@ -2788,10 +2789,11 @@ public class Game1 : Game
             }
             
             
-            // Toggle combat UI with Tab
+            // Toggle HUD visibility preference with Tab
             if (kb.IsKeyDown(Keys.Tab) && !_prevKb.IsKeyDown(Keys.Tab))
             {
-                _showCombatUI = !_showCombatUI;
+                _hudAlwaysVisible = !_hudAlwaysVisible;
+                _showCombatUI = _hudAlwaysVisible;
                 if (_showCombatUI && _selectedAction == CombatAction.None)
                 {
                     _selectedAction = CombatAction.Move;
@@ -3005,7 +3007,6 @@ public class Game1 : Game
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
-                                        _showCombatUI = false;
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3075,7 +3076,6 @@ public class Game1 : Game
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
-                                        _showCombatUI = false;
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3128,7 +3128,6 @@ public class Game1 : Game
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog("Combat ended!");
-                                        _showCombatUI = false;
                                         if (_playerCreature != null && _currentCharacter != null)
                                         {
                                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3173,7 +3172,6 @@ public class Game1 : Game
                                         else if (wasInCombat && !_combatManager.InCombat)
                                         {
                                             AddToCombatLog("Combat ended!");
-                                            _showCombatUI = false;
                                             if (_playerCreature != null && _currentCharacter != null)
                                             {
                                                 _playerCreature.UpdateCharacter(_currentCharacter);
@@ -3343,7 +3341,6 @@ public class Game1 : Game
                     if (!_combatManager.InCombat)
                     {
                         AddToCombatLog("Combat ended!");
-                        _showCombatUI = false;
                         if (_playerCreature != null && _currentCharacter != null)
                         {
                             _playerCreature.UpdateCharacter(_currentCharacter);
@@ -4337,7 +4334,7 @@ public class Game1 : Game
                 
                 
                 // Bottom screen hints (moved from top panel)
-                var hint = "Press Tab to toggle combat UI | ESC for menu | PageUp/Down: Change level";
+                var hint = "Press Tab to toggle HUD | ESC for menu | PageUp/Down: Change level";
                 var hintSize = _font.MeasureString(hint);
                 _spriteBatch.DrawString(_font, hint, new Vector2(vp.Width - hintSize.X - 10, vp.Height - 25), Color.White * 0.7f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
                 
