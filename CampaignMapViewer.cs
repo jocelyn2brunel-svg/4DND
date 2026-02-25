@@ -569,21 +569,33 @@ namespace _4DND
 
         private void DrawHexagonFill(SpriteBatch sb, Vector2 center, float size, Color color)
         {
-            // Approximate hexagon fill with three rectangles to minimize overlap artifacts with alpha
-            // and better fit the hexagonal shape.
+            // Fill a proper pointy-top hex using horizontal scanlines.
+            // This avoids visible diagonal seam artifacts that appear when approximating
+            // the fill with a few rectangles.
+            int minY = (int)Math.Floor(center.Y - size);
+            int maxY = (int)Math.Ceiling(center.Y + size);
+            float halfWidthMax = (float)Math.Sqrt(3) * size * 0.5f;
 
-            // Central rectangle
-            int cw = (int)(size * 1.732f);
-            int ch = (int)(size);
-            sb.Draw(_pixel, new Rectangle((int)center.X - cw / 2, (int)center.Y - ch / 2, cw, ch), color);
+            for (int y = minY; y <= maxY; y++)
+            {
+                float dy = Math.Abs(y - center.Y);
+                float halfWidth;
 
-            // Top rectangle
-            int tw = (int)(size * 0.866f);
-            int th = (int)(size * 0.5f);
-            sb.Draw(_pixel, new Rectangle((int)center.X - tw / 2, (int)center.Y - (int)(size), tw, th), color);
+                if (dy <= size * 0.5f)
+                {
+                    halfWidth = halfWidthMax;
+                }
+                else
+                {
+                    float taper = (size - dy) / (size * 0.5f);
+                    if (taper <= 0f) continue;
+                    halfWidth = halfWidthMax * taper;
+                }
 
-            // Bottom rectangle
-            sb.Draw(_pixel, new Rectangle((int)center.X - tw / 2, (int)center.Y + (int)(size * 0.5f), tw, th), color);
+                int x = (int)Math.Floor(center.X - halfWidth);
+                int width = Math.Max(1, (int)Math.Ceiling(halfWidth * 2f));
+                sb.Draw(_pixel, new Rectangle(x, y, width, 1), color);
+            }
         }
         
         private void DrawRegion(SpriteBatch sb, Vector2 center, Region region, MapScale currentScale)
