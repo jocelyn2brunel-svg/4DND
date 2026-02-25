@@ -74,7 +74,7 @@ public class JournalUI
         var headerRect = new Rectangle(journalX, journalY, journalWidth, headerHeight);
         spriteBatch.Draw(_pixel, headerRect, new Color(80, 60, 40));
 
-        string title = Loc.Tr("ADVENTURE JOURNAL: ") + campaign.Name.ToUpper();
+        string title = Loc.Tr("ADVENTURE JOURNAL: {0}", campaign.Name.ToUpper());
         var titleSize = _font.MeasureString(title);
         spriteBatch.DrawString(_font, title, new Vector2(journalX + (journalWidth - titleSize.X) / 2, journalY + (headerHeight - titleSize.Y) / 2), Color.Gold);
 
@@ -119,7 +119,7 @@ public class JournalUI
         }
 
         // Hint
-        string hint = Loc.Tr("Press 'J' to close | Scroll wheel to scroll");
+        string hint = Loc.Tr("Press 'J' to close | Mouse wheel to scroll");
         var hintSize = _font.MeasureString(hint) * 0.7f;
         spriteBatch.DrawString(_font, hint, new Vector2((vp.Width - hintSize.X) / 2, vp.Height - 30), Color.White * 0.8f, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
 
@@ -153,7 +153,7 @@ public class JournalUI
         }
         else
         {
-            spriteBatch.DrawString(_font, Loc.Tr("No details available."), new Vector2(x + 15, y + 35), Color.Gray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, Loc.Tr("No detail available."), new Vector2(x + 15, y + 35), Color.Gray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
 
         return sectionHeight;

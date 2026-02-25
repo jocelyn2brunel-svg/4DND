@@ -342,7 +342,7 @@ public class Game1 : Game
         }
 
         _playerCreature.TeleportTo(preferredX, preferredY, preferredZ);
-        AddToCombatLog(Loc.Tr("No dry tile found for spawn; using default position."));
+        AddToCombatLog(Loc.Tr("No dry tile found for spawn; default position used."));
     }
 
     private void CreatePlayerCreatureAtSafeSpawn()
@@ -400,7 +400,7 @@ public class Game1 : Game
             return true;
         }
 
-        AddToCombatLog(Loc.Tr("Spawn impossible: no valid tile found within 20 tiles."));
+        AddToCombatLog(Loc.Tr("Spawn failed: no valid tile found within 20 tiles."));
         return false;
     }
 
@@ -2819,7 +2819,7 @@ public class Game1 : Game
                     int bonus = _currentCharacter.GetSkillBonus("Athletics", out _);
                     int total = roll + bonus;
                     string sign = bonus >= 0 ? $"+{bonus}" : $"{bonus}";
-                    AddToCombatLog(Loc.Tr("Grapple: d20({0}){1} = {2} (Athl.)", roll, sign, total));
+                    AddToCombatLog(Loc.Tr("Grapple: d20({0}){1} = {2} (Athletics)", roll, sign, total));
                     _characterSheet.GrappleRequested = false;
                 }
 
@@ -4172,7 +4172,7 @@ public class Game1 : Game
                     y += 25;
                     
                     // Initiative order
-                    var initText = "Initiative: ";
+                    var initText = Loc.Tr("Initiative: ");
                     if (_combatManager.InCombat)
                     {
                         for (int i = 0; i < _combatManager.Combatants.Count && i < 5; i++)
@@ -4499,7 +4499,7 @@ public class Game1 : Game
         y += 6;
         string survival = character.DarkvisionRange > 0
             ? Loc.Tr("Darkvision: {0} ft", character.DarkvisionRange)
-            : Loc.Tr("Darkvision: none");
+             : Loc.Tr("Darkvision: none");
         sb.DrawString(_font, survival, new Vector2(x, y), Color.Yellow, 0f, Vector2.Zero, 0.62f, SpriteEffects.None, 0f);
         y += 22;
 
@@ -4640,11 +4640,11 @@ public class Game1 : Game
 
         return
             $"{creature.Name} ({creature.Type})\n" +
-            Loc.Tr("Alignment: {0}", AlignmentHelper.GetDescription(creature.Alignment)) + "\n" +
-            Loc.Tr("Size: {0} ({1})", creature.Size, SizeHelper.GetSpaceDescription(creature.Size)) + "\n" +
-            Loc.Tr("HP: {0}/{1}", creature.CurrentHP, creature.MaxHP) + $" | AC: {creature.ArmorClass} | " + Loc.Tr("Speed: {0} ft.", creature.Speed) + "\n" +
-            $"Attack: {creature.AttackName} +{creature.AttackBonus} ({creature.DamageDice}+{creature.DamageBonus} {creature.CurrentDamageType})\n" +
-            Loc.Tr("Senses: {0} | Passive Perception: {1}", senses, creature.PassivePerception) + "\n" +
+            Loc.Tr("Alignment: {0}\n", AlignmentHelper.GetDescription(creature.Alignment)) +
+            Loc.Tr("Size: {0} ({1})\n", creature.Size, SizeHelper.GetSpaceDescription(creature.Size)) +
+            Loc.Tr("HP: {0}/{1} | AC: {2} | Speed: {3}ft\n", creature.CurrentHP, creature.MaxHP, creature.ArmorClass, creature.Speed) +
+            Loc.Tr("Attack: {0} +{1} ({2}+{3} {4})\n", creature.AttackName, creature.AttackBonus, creature.DamageDice, creature.DamageBonus, creature.CurrentDamageType) +
+            Loc.Tr("Senses: {0} | Passive Perception: {1}\n", senses, creature.PassivePerception) +
             Loc.Tr("Conditions: {0}", activeConditions);
     }
 
@@ -4662,7 +4662,7 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixel, _enemyContextMenuRect, new Color(20, 20, 20, 240));
         DrawBorder(_spriteBatch, _pixel, _enemyContextMenuRect, Color.White, 2);
         _spriteBatch.Draw(_pixel, _enemyExamineOptionRect, isHovered ? Color.DarkGoldenrod : Color.DarkSlateGray);
-        _spriteBatch.DrawString(_font, Loc.Tr("Examine"), new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        _spriteBatch.DrawString(_font, Loc.Tr("Inspect"), new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
     private void DrawEnemyExaminePopup(Viewport viewport)

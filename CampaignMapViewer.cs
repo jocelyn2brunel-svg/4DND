@@ -776,7 +776,7 @@ namespace _4DND
                 if (isHovered) btnColor = _isTraveling ? Color.Red : Color.DarkGreen;
 
                 sb.Draw(_pixel, travelBtn, btnColor);
-                string btnLabel = Loc.Tr(_isTraveling ? "Cancel Travel" : "Travel Here");
+                string btnLabel = _isTraveling ? Loc.Tr("Cancel Travel") : Loc.Tr("Travel Here");
                 sb.DrawString(_font, btnLabel, new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
 
@@ -845,7 +845,7 @@ namespace _4DND
                             if (c.ExhaustionLevel < 6)
                             {
                                 c.ExhaustionLevel++;
-                                SetTravelMessage(Loc.Tr("{0} is exhausted by the forced march (CON Save DC {1} failed)!", c.Name, dc));
+                                SetTravelMessage(Loc.Tr("{0} is exhausted from forced march (CON save DC {1} failed)!", c.Name, dc));
                             }
                         }
                     }
@@ -918,7 +918,7 @@ namespace _4DND
             sb.Draw(_pixel, new Rectangle(barRect.X, barRect.Y, (int)(barRect.Width * progress), barRect.Height), Color.LimeGreen);
             DrawBorder(sb, barRect, Color.White, 1);
 
-            string msg = Loc.Tr("Traveling... {0}", progress.ToString("P0"));
+            string msg = Loc.Tr("Traveling... {0:P0}", progress);
             if (_font != null)
             {
                 var size = _font.MeasureString(msg) * 0.8f;

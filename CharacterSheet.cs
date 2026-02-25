@@ -116,62 +116,55 @@ public class CharacterSheet
                 var option = GetContextMenuOptionAt(_mousePosition);
                 if (option == Loc.Tr("Equip"))
                 {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        if (character.InventoryData.EquipItem(_contextItemName))
+                    case "Equip":
+                        if (!string.IsNullOrEmpty(_contextItemName))
+                        {
+                            if (character.InventoryData.EquipItem(_contextItemName))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
+                        }
+                        _showItemContextMenu = false;
+                        break;
+                    case "Equip (Offhand)":
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
-                    }
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Equip (Offhand)"))
-                {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        if (character.InventoryData.EquipOffhandItem(_contextItemName))
+                        _showItemContextMenu = false;
+                        break;
+                    case "Unequip":
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
-                    }
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Unequip"))
-                {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        if (character.InventoryData.UnequipItem(_contextItemName))
+                        _showItemContextMenu = false;
+                        break;
+                    case "Throw":
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
-                    }
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Throw"))
-                {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        // Throwing currently removes item from inventory
-                        bool changed = character.InventoryData.UnequipItem(_contextItemName);
-                        changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
-                        if (changed)
+                        _showItemContextMenu = false;
+                        break;
+                    case "Drop":
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
-                    }
-                    _showItemContextMenu = false;
-                }
-                else if (option == Loc.Tr("Drop"))
-                {
-                    if (!string.IsNullOrEmpty(_contextItemName))
-                    {
-                        bool changed = character.InventoryData.UnequipItem(_contextItemName);
-                        changed = character.InventoryData.RemoveItem(_contextItemName) || changed;
-                        if (changed)
+                        _showItemContextMenu = false;
+                        break;
+                    case "Play":
+                        PlayLuteRequested = true;
+                        _showItemContextMenu = false;
+                        break;
+                    case "Inspect":
+                        if (!string.IsNullOrEmpty(_contextItemName))
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
@@ -290,7 +283,7 @@ public class CharacterSheet
                 DrawScrollbar(spriteBatch, sheetX + sheetWidth + 5, sheetY, scrollbarWidth, sheetHeight, maxScroll, totalContentHeight);
             }
             
-            var hint = Loc.Tr("Press 'C' to close | Scroll wheel to scroll");
+            var hint = Loc.Tr("Press 'C' to close | Mouse wheel to scroll");
             var hintSize = _font.MeasureString(hint) * 0.8f;
             spriteBatch.DrawString(_font, hint, new Vector2((vp.Width - hintSize.X) / 2, vp.Height - 30), Color.White * 0.8f, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
 
@@ -390,8 +383,8 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, wrappedValue, new Vector2(x + 2, y + 10), Color.Black, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
 
             RegisterTooltip(fieldRect, string.IsNullOrWhiteSpace(value)
-                ? Loc.Tr("{0}: field to fill.", label)
-                : Loc.Tr("{0}: {1}.", label, value));
+                ? Loc.Tr("{0}: field to fill in.", label)
+                : $"{label}: {value}.");
 
             var lineRect = new Rectangle(x, y + height - 2, width, 1);
             spriteBatch.Draw(_pixel, lineRect, Color.Black * 0.3f);
@@ -425,13 +418,13 @@ public class CharacterSheet
         currentY += 10;
         if (spriteBatch != null)
         {
-            DrawSmallBox(spriteBatch, "INSPIRATION", "", x, currentY, width / 2 - 5, 50, Loc.Tr("Inspiration Note"));
+            DrawSmallBox(spriteBatch, "INSPIRATION", "", x, currentY, width / 2 - 5, 50, "Inspiration: avantage sur un jet important quand le MJ l'accorde.");
             DrawSmallBox(spriteBatch, "PROFICIENCY BONUS", FormatModifier(c.ProficiencyBonus), x + width / 2 + 5, currentY, width / 2 - 5, 50, Loc.Tr("Current proficiency bonus: {0}.", FormatModifier(c.ProficiencyBonus)));
         }
         currentY += 60;
         
         int passivePerception = 10 + c.GetAbilityModifier(c.Wisdom) + (c.PerceptionProficiency ? c.ProficiencyBonus : 0);
-        if (spriteBatch != null) DrawSmallBox(spriteBatch, "PASSIVE WISDOM (PERCEPTION)", passivePerception.ToString(), x, currentY, width, 40, Loc.Tr("Passive Perception Note", passivePerception));
+        if (spriteBatch != null) DrawSmallBox(spriteBatch, "PASSIVE WISDOM (PERCEPTION)", passivePerception.ToString(), x, currentY, width, 40, Loc.Tr("Passive Perception = 10 + Wisdom mod + proficiency if proficient = {0}.", passivePerception));
         currentY += 50;
 
         currentY += DrawProficienciesBox(spriteBatch, c, x, currentY, width);
@@ -553,7 +546,7 @@ public class CharacterSheet
             RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Class hit die: d{0}.", c.HitDiceType));
             drawY += 14;
             spriteBatch.DrawString(_font, SafeString($"• Primary Ability: {classData.PrimaryAbility}"), new Vector2(x + 15, drawY), Color.Black, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Primary class ability: {0}.", classData.PrimaryAbility));
+            RegisterTooltip(new Rectangle(x + 12, drawY - 2, width - 24, 14), Loc.Tr("Class primary ability: {0}.", classData.PrimaryAbility));
             drawY += 14;
 
             if (c.Class == "Barbarian")
@@ -682,8 +675,7 @@ public class CharacterSheet
         int checkboxY = y + height / 2 - checkboxSize / 2;
         DrawCheckbox(spriteBatch, checkboxX, checkboxY, checkboxSize, saveProficiency);
 
-        string profLabel = Loc.Tr(saveProficiency ? "proficient" : "not proficient");
-        RegisterTooltip(outerRect, Loc.Tr("{0}: score {1} ({2}). {3} saving throw.", Loc.Tr(key), score, modText, profLabel));
+        RegisterTooltip(outerRect, Loc.Tr("{0}: score {1} ({2}). Saving throw {3}.", name, score, modText, saveProficiency ? Loc.Tr("proficient") : Loc.Tr("not proficient")));
         
         spriteBatch.DrawString(_font, Loc.Tr("SAVING THROWS"), new Vector2(x + 2, y + height - 10), Color.Black * 0.4f, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
     }
@@ -696,7 +688,7 @@ public class CharacterSheet
         
         if (spriteBatch != null)
         {
-            DrawHexBox(spriteBatch, "ARMOR CLASS", c.ArmorClass.ToString(), x, currentY, topBoxWidth, smallBoxSize, Loc.Tr("Armor class: {0}.", c.ArmorClass));
+            DrawHexBox(spriteBatch, "ARMOR CLASS", c.ArmorClass.ToString(), x, currentY, topBoxWidth, smallBoxSize, Loc.Tr("Armor Class: {0}.", c.ArmorClass));
             DrawCircleBox(spriteBatch, "INITIATIVE", FormatModifier(c.GetAbilityModifier(c.Dexterity)), x + topBoxWidth + 10, currentY, topBoxWidth, smallBoxSize, Loc.Tr("Initiative: {0}.", FormatModifier(c.GetAbilityModifier(c.Dexterity))));
             DrawCircleBox(spriteBatch, "SPEED", $"{c.Speed}", x + topBoxWidth * 2 + 20, currentY, topBoxWidth, smallBoxSize, Loc.Tr("Speed: {0} ft.", c.Speed));
         }
@@ -768,7 +760,7 @@ public class CharacterSheet
             int damageCol = x + width / 2 + 80;
 
             spriteBatch.DrawString(_font, Loc.Tr("NAME"), new Vector2(nameCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, Loc.Tr("ATK BONUS"), new Vector2(atkBonusCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, "BONUS ATK", new Vector2(atkBonusCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, Loc.Tr("DAMAGE/TYPE"), new Vector2(damageCol, headerY), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
 
             spriteBatch.Draw(_pixel, new Rectangle(x + 5, headerY + 15, width - 10, 1), Color.Black * 0.3f);
@@ -810,7 +802,7 @@ public class CharacterSheet
                 spriteBatch.DrawString(_font, SafeString($"(BA) {offhand}"), new Vector2(nameCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(_font, FormatModifier(offhandAtkBonus), new Vector2(atkBonusCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 spriteBatch.DrawString(_font, SafeString(offhandDamage), new Vector2(damageCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Two-Weapon Fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (modifier not added if positive)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
+                RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
                 entryY += entryHeight;
             }
 
@@ -821,7 +813,7 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, "Unarmed Strike", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, FormatModifier(unarmedBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString(unarmedDamage), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Unarmed Strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
+            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
             entryY += entryHeight;
 
             int grappleBonus = c.GetSkillBonus("Athletics", out _);
@@ -831,7 +823,7 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, "Grapple", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, FormatModifier(grappleBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString("Contested (Ath/Acr)"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(_grappleActionRect, Loc.Tr("Grapple Description", FormatModifier(grappleBonus)));
+            RegisterTooltip(_grappleActionRect, Loc.Tr("Grapple: Strength (Athletics) check {0} contested by target Strength (Athletics) or Dexterity (Acrobatics).\nTarget in melee range, max size: one category larger than you.\nRequires one free hand. Success: target grappled (speed 0).\n[Left click to use]", FormatModifier(grappleBonus)));
             entryY += entryHeight;
 
             int shoveBonus = c.GetSkillBonus("Athletics", out _);
@@ -841,7 +833,7 @@ public class CharacterSheet
             spriteBatch.DrawString(_font, "Shove", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, FormatModifier(shoveBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, SafeString("Prone or Push 5ft"), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(_shoveActionRect, Loc.Tr("Shove Description", FormatModifier(shoveBonus)));
+            RegisterTooltip(_shoveActionRect, Loc.Tr("Shove: Strength (Athletics) check {0} contested by target Strength (Athletics) or Dexterity (Acrobatics).\nTarget in melee range, max size: one category larger than you.\nSuccess: target knocked prone OR pushed 5 ft.\n[Left click to use]", FormatModifier(shoveBonus)));
         }
         
         return height;
@@ -935,7 +927,7 @@ public class CharacterSheet
         string currentHpText = c.CurrentHP.ToString();
         var hpSize = _font.MeasureString(currentHpText);
         spriteBatch.DrawString(_font, currentHpText, new Vector2(x + (width - hpSize.X * 1.2f) / 2, y + 28), Color.Black, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
-        spriteBatch.DrawString(_font, Loc.Tr("CURRENT HIT POINTS"), new Vector2(x + 10, y + 58), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, "POINTS DE VIE ACTUELS", new Vector2(x + 10, y + 58), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         RegisterTooltip(rect, Loc.Tr("HP: {0}/{1}", c.CurrentHP, c.MaxHP));
     }
 
@@ -953,10 +945,10 @@ public class CharacterSheet
             var tempHpSize = _font.MeasureString(tempHpText);
             spriteBatch.DrawString(_font, tempHpText, new Vector2(x + (width - tempHpSize.X * 1.2f) / 2, y + 28), new Color(0, 80, 200), 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
         }
-        spriteBatch.DrawString(_font, Loc.Tr("TEMPORARY HIT POINTS"), new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, Loc.Tr("TEMPORARY HP"), new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         string tooltip = c.TempHP > 0
-            ? Loc.Tr("Temporary HP: {0}. Absorbs damage before normal HP. Expires after a long rest.", c.TempHP)
-            : Loc.Tr("Temporary HP: none. Granted by certain spells or abilities; absorbs damage before normal HP.");
+            ? Loc.Tr("Temporary HP: {0}. Absorb damage before normal HP. Expire after a long rest.", c.TempHP)
+            : Loc.Tr("Temporary HP: none. Granted by some spells or abilities; absorb damage before normal HP.");
         RegisterTooltip(rect, tooltip);
     }
 
@@ -974,7 +966,7 @@ public class CharacterSheet
         var diceSize = _font.MeasureString(diceText);
         spriteBatch.DrawString(_font, diceText, new Vector2(x + (width - diceSize.X) / 2, y + 30), Color.Black);
         spriteBatch.DrawString(_font, Loc.Tr("HIT DICE"), new Vector2(x + 10, y + height - 15), Color.Black * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-        RegisterTooltip(rect, Loc.Tr("Hit Dice: {0} (d{1}). Used during short rests.", diceText, c.HitDiceType));
+        RegisterTooltip(rect, Loc.Tr("Hit dice: {0} (d{1}). Used during short rests.", diceText, c.HitDiceType));
     }
 
     private void DrawDeathSavesBox(SpriteBatch spriteBatch, Character c, int x, int y, int width, int height)
@@ -1050,8 +1042,8 @@ public class CharacterSheet
                 spriteBatch.DrawString(_font, wrappedContent, new Vector2(x + 10, y + 25), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
 
             RegisterTooltip(rect, string.IsNullOrWhiteSpace(content)
-                ? Loc.Tr("{0}: no notes provided.", label)
-                : Loc.Tr("{0}: {1}", label, content));
+                ? Loc.Tr("{0}: no note provided.", label)
+                : $"{label}: {content}");
         }
         return height;
     }
@@ -1103,25 +1095,25 @@ public class CharacterSheet
 
         if (_contextItemName == "Lute")
         {
-            options.Add(Loc.Tr("Play"));
+            options.Add("Play");
         }
 
         if (_contextItemIsEquipped)
         {
-            options.Add(Loc.Tr("Unequip"));
+            options.Add("Unequip");
         }
         else if (_contextItemIsEquippable)
         {
-            options.Add(Loc.Tr("Equip"));
+            options.Add("Equip");
             if (_contextItemIsLight)
             {
-                options.Add(Loc.Tr("Equip (Offhand)"));
+                options.Add("Equip (Offhand)");
             }
         }
 
-        options.Add(Loc.Tr("Drop"));
-        options.Add(Loc.Tr("Throw"));
-        options.Add(Loc.Tr("Examine"));
+        options.Add("Drop");
+        options.Add("Throw");
+        options.Add("Inspect");
 
         return options.ToArray();
     }
@@ -1147,7 +1139,7 @@ public class CharacterSheet
                 spriteBatch.Draw(_pixel, optionRect, new Color(90, 90, 90, 230));
             }
 
-            spriteBatch.DrawString(_font, SafeString(options[i]), new Vector2(optionRect.X + 10, optionRect.Y + 7), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, SafeString(Loc.Tr(options[i])), new Vector2(optionRect.X + 10, optionRect.Y + 7), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
     }
 
@@ -1155,7 +1147,7 @@ public class CharacterSheet
     {
         if (string.IsNullOrWhiteSpace(_inspectWeaponText)) return;
 
-        string title = Loc.Tr("Examine Weapon");
+        string title = Loc.Tr("Inspect Weapon");
         string content = WrapText(_font, SafeString(_inspectWeaponText), 320, 0.65f);
         int width = 360;
         int height = 160;
@@ -1224,15 +1216,15 @@ public class CharacterSheet
     private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage) {
         var item = ItemDatabase.GetItem(weaponName);
         if (item == null) return weaponName;
-        string rangeInfo = item.IsRanged ? Loc.Tr("Range: {0}/{1} ft.", item.Range, (item.LongRange > 0 ? item.LongRange : item.Range * 3)) : Loc.Tr("Melee range: 5 ft.");
-        return Loc.Tr("{0} (equipped)", weaponName) + $"\nBonus: {FormatModifier(attackBonus)}\nDamage: {damage}\n{rangeInfo}";
+        string rangeInfo = item.IsRanged ? Loc.Tr("Range: {0}/{1} ft.", item.Range, (item.LongRange > 0 ? item.LongRange : item.Range * 3)) : Loc.Tr("Melee Range: 5 ft.");
+        return Loc.Tr("{0} {1}\nBonus: {2}\nDamage: {3}\n{4}", weaponName, Loc.Tr("(equipped)"), FormatModifier(attackBonus), damage, rangeInfo);
     }
 
     private string BuildItemTooltip(string itemName, bool isEquipped = false) {
         var item = ItemDatabase.GetItem(itemName);
         if (item == null) return itemName;
-        string eq = isEquipped ? Loc.Tr(" (equipped)") : "";
-        string details = $"{item.Name}{eq}\n" + Loc.Tr("Weight: {0} lbs | Value: {1} gp", item.Weight, item.Value);
+        string eq = isEquipped ? $" {Loc.Tr("(equipped)")}" : "";
+        string details = Loc.Tr("{0}{1}\nWeight: {2} lbs | Value: {3} gp", item.Name, eq, item.Weight, item.Value);
         if (!string.IsNullOrWhiteSpace(item.Description)) details += $"\n{item.Description}";
         return details;
     }
