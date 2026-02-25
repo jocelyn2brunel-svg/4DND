@@ -89,10 +89,6 @@ namespace _4DND
                         campaign.PartyY = _targetPartyY;
                         _isTraveling = false;
                         TravelOccurred = true;
-            var center = new Vector2(1280 / 2f, 720 / 2f); // Default center for input handling
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + 0.1f, 0.5f, 2.0f);
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom - 0.1f, 0.5f, 2.0f);
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + scrollDelta * 0.001f, 0.3f, 3.0f);
                     }
 
                     Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
@@ -347,7 +343,7 @@ namespace _4DND
             var paces = new[]
             {
                 (TravelPace.Fast,   "[F4] Fast  ", 400, 4, 30, "-5 passive Percep."),
-                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, ""),
+                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, string.Empty),
                 (TravelPace.Slow,   "[F6] Slow  ", 200, 2, 18, "Stealth available"),
             };
 
