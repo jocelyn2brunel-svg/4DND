@@ -224,6 +224,12 @@ namespace _4DND
         /// </summary>
         public EncounterDifficulty? CurrentEncounterDifficulty { get; set; }
 
+        /// <summary>
+        /// Maximum allowed difficulty for random combat encounters in this campaign (DMG p.82-84).
+        /// Encounters above this threshold will not be generated.
+        /// </summary>
+        public EncounterDifficulty MaxEncounterDifficulty { get; set; } = EncounterDifficulty.Deadly;
+
         // Tactical scale constants
         public const int TacticalUnitsPerMile = 1056; // 1 mile = 5280 feet, 1 square = 5 feet => 1056 squares
         
