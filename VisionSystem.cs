@@ -477,8 +477,8 @@ public class VisionSystem
             float lightSourceRange = 0;
             if (characters != null)
             {
-                bool hasLantern = characters.Any(c => c.InventoryData.HasItem("Lantern, hooded") || c.InventoryData.HasItem("Lantern, bullseye"));
-                bool hasTorch = characters.Any(c => c.InventoryData.HasItem("Torch"));
+                bool hasLantern = characters.Any(c => c.InventoryData.HasActiveLantern());
+                bool hasTorch = characters.Any(c => c.InventoryData.HasActiveTorch());
 
                 if (hasLantern) lightSourceRange = 60f;
                 else if (hasTorch) lightSourceRange = 40f;
