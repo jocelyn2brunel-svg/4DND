@@ -15,5 +15,6 @@ public enum TileType
     Mud,
     Rock,
     Tree,
-    Shrub
+    Shrub,
+    BallBearings
 }

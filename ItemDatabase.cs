@@ -897,7 +897,7 @@ public static class ItemDatabase
         ["Ball bearings (bag of 1,000)"] = new Item
         {
             Name = "Ball bearings (bag of 1,000)",
-            Description = "Spreads ball bearings over a 10-foot square area",
+            Description = "As an action, you can spill these tiny metal balls from their pouch to cover a level area 10 feet square. A creature moving across the covered area must succeed on a DC 10 Dexterity saving throw or fall prone. A creature moving through the area at half speed doesn't need to make the saving throw.",
             Type = ItemType.Misc,
             Weight = 2,
             Value = 100,

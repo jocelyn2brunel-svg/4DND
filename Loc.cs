@@ -151,6 +151,11 @@ public static class Loc
         _en["Resists!"] = "Resists!"; _fr["Resists!"] = "Résiste !";
         _en["Grappled!"] = "Grappled!"; _fr["Grappled!"] = "Agrippé !";
 
+        // Ball Bearings
+        _en["{0} spills ball bearings covering a 10-foot square area!"] = "{0} spills ball bearings covering a 10-foot square area!"; _fr["{0} spills ball bearings covering a 10-foot square area!"] = "{0} répand des billes sur une zone carrée de 3 mètres !";
+        _en["{0} slips on ball bearings and falls prone! (DEX save {1} vs DC 10)"] = "{0} slips on ball bearings and falls prone! (DEX save {1} vs DC 10)"; _fr["{0} slips on ball bearings and falls prone! (DEX save {1} vs DC 10)"] = "{0} glisse sur les billes et tombe à terre ! (jet DEX {1} vs DD 10)";
+        _en["{0} navigates through ball bearings safely. (DEX save {1} vs DC 10)"] = "{0} navigates through ball bearings safely. (DEX save {1} vs DC 10)"; _fr["{0} navigates through ball bearings safely. (DEX save {1} vs DC 10)"] = "{0} traverse les billes sans tomber. (jet DEX {1} vs DD 10)";
+
         // Stats & Abilities
         _en["Strength"] = "Strength"; _fr["Strength"] = "Force";
         _en["Dexterity"] = "Dexterity"; _fr["Dexterity"] = "Dextérité";

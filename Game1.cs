@@ -1077,6 +1077,10 @@ public class Game1 : Game
                 {
                     AddDifficultTerrainLines(_reusableLineVertices, cx, cy, cz);
                 }
+                else if (cell.Value == TileType.BallBearings)
+                {
+                    AddBallBearingsOverlay(_reusableLineVertices, cx, cy, cz);
+                }
             }
         }
 
@@ -1162,6 +1166,7 @@ public class Game1 : Game
             TileType.Floor => new Color(70, 145, 70),
             TileType.Grass => new Color(80, 180, 80),
             TileType.DifficultTerrain => new Color(139, 69, 19),
+            TileType.BallBearings => new Color(180, 180, 190),
             TileType.Wall => new Color(100, 100, 110),
             TileType.Water => Color.CornflowerBlue,
             TileType.Sand => new Color(210, 180, 120),
@@ -1216,6 +1221,25 @@ public class Game1 : Game
         vertices.Add(new VertexPositionColor(new Vector3(x + 0.2f, y + 0.2f, z + elevation), color));
         vertices.Add(new VertexPositionColor(new Vector3(x - 0.2f, y + 0.2f, z + elevation), color));
         vertices.Add(new VertexPositionColor(new Vector3(x + 0.2f, y - 0.2f, z + elevation), color));
+    }
+
+    private void AddBallBearingsOverlay(List<VertexPositionColor> vertices, int x, int y, int z)
+    {
+        const float elevation = 0.016f;
+        const float r = 0.06f;
+        Color color = Color.DimGray * 0.8f;
+        // Draw 4 small cross markers representing scattered ball bearings
+        float[] offsets = { -0.25f, 0.25f };
+        foreach (float ox in offsets)
+        {
+            foreach (float oy in offsets)
+            {
+                vertices.Add(new VertexPositionColor(new Vector3(x + ox - r, y + oy, z + elevation), color));
+                vertices.Add(new VertexPositionColor(new Vector3(x + ox + r, y + oy, z + elevation), color));
+                vertices.Add(new VertexPositionColor(new Vector3(x + ox, y + oy - r, z + elevation), color));
+                vertices.Add(new VertexPositionColor(new Vector3(x + ox, y + oy + r, z + elevation), color));
+            }
+        }
     }
 
     private void AddGridOutlineVertices(List<VertexPositionColor> vertices, int x, int y, int z, Color color)

@@ -149,6 +149,65 @@ public class CombatManager
 
         return true;
     }
+
+    /// <summary>
+    /// Spills ball bearings from their pouch to cover a level 10-foot square area (2×2 tiles).
+    /// Costs an action. Each creature that moves through the covered area at normal speed must
+    /// succeed on a DC 10 Dexterity saving throw or fall prone (PHB "Adventuring Gear: Ball Bearings").
+    /// </summary>
+    /// <param name="user">The creature spilling the ball bearings.</param>
+    /// <param name="originX">The top-left X coordinate of the 2×2 area to cover.</param>
+    /// <param name="originY">The top-left Y coordinate of the 2×2 area to cover.</param>
+    /// <param name="originZ">The Z level of the area.</param>
+    /// <returns>True if the ball bearings were successfully spilled.</returns>
+    public bool SpillBallBearings(Creature user, int originX, int originY, int originZ)
+    {
+        if (_inCombat && !user.HasAction) return false;
+        if (TacticalMap == null) return false;
+
+        for (int dx = 0; dx <= 1; dx++)
+        {
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                var existing = TacticalMap.Get(originX + dx, originY + dy, originZ);
+                if (existing != TileType.Wall && existing != TileType.Tree &&
+                    existing != TileType.Shrub && existing != TileType.Empty)
+                {
+                    TacticalMap.Set(originX + dx, originY + dy, originZ, TileType.BallBearings);
+                }
+            }
+        }
+
+        if (_inCombat)
+            user.HasAction = false;
+
+        TurnMessages.Add(Loc.Tr("{0} spills ball bearings covering a 10-foot square area!", user.Name));
+        return true;
+    }
+
+    /// <summary>
+    /// Rolls a DC 10 Dexterity saving throw for a creature entering a ball bearings zone.
+    /// On failure the creature gains the Prone condition.
+    /// </summary>
+    /// <returns>True if the creature succeeded on the saving throw.</returns>
+    private bool CheckBallBearingsSave(Creature creature)
+    {
+        var saveCheck = MakeSavingThrow(creature, "DEX", 10);
+        bool saved = saveCheck.Success;
+
+        if (!saved)
+        {
+            creature.Conditions = creature.Conditions.AddCondition(Condition.Prone);
+            TurnMessages.Add(Loc.Tr("{0} slips on ball bearings and falls prone! (DEX save {1} vs DC 10)", creature.Name, saveCheck.Total));
+        }
+        else
+        {
+            TurnMessages.Add(Loc.Tr("{0} navigates through ball bearings safely. (DEX save {1} vs DC 10)", creature.Name, saveCheck.Total));
+        }
+
+        return saved;
+    }
+
     /// <summary>
     /// Begins a new combat encounter.
     /// Each participant rolls initiative (1d20 + Dexterity modifier) to determine turn order.
@@ -630,6 +689,13 @@ public class CombatManager
             if (IsDiagonalStep(path[i - 1], path[i]))
                 diagonalCount++;
             creature.MoveTo(path[i].X, path[i].Y, path[i].Z);
+
+            // Ball bearings: DC 10 DEX save or fall prone and stop moving (PHB "Ball Bearings").
+            if (TacticalMap != null && TacticalMap.Get(path[i].X, path[i].Y, path[i].Z) == TileType.BallBearings)
+            {
+                if (!CheckBallBearingsSave(creature))
+                    break;
+            }
         }
 
         creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
