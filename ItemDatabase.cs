@@ -568,7 +568,24 @@ public static class ItemDatabase
             Value = 50,
             IsEquippable = true
         },
-        
+        ["Net"] = new Item
+        {
+            Name = "Net",
+            Description = "A Large or smaller creature hit by a net is restrained until freed. Has no effect on Huge or larger creatures. A creature can use its action to make a DC 10 Strength check, freeing itself or another within reach on a success. Dealing 5 slashing damage to the net (AC 10) also frees it. Only one attack per turn can be made with a net.",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Martial,
+            DamageDice = "0",
+            DamageType = DamageType.None,
+            IsRanged = true,
+            IsLoading = true,  // Only one attack per turn with a net (PHB "Special Weapons: Net")
+            IsSpecial = true,
+            Range = 5,
+            LongRange = 15,
+            Weight = 3,
+            Value = 1,
+            IsEquippable = true
+        },
+
         // Armor - Light
         ["Padded"] = new Item
         {

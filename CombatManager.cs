@@ -1339,11 +1339,13 @@ public class CombatManager
         bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
                            target.Conditions.HasCondition(Condition.Paralyzed) ||
                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                           target.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls against have advantage
                            target.IsSqueezingThrough ||  // Attack rolls against a squeezing creature have advantage
                            attacker.IsHidden ||           // Unseen attacker (hidden via stealth): attack rolls have advantage
                            attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition): PHB "Unseen Attackers and Targets"
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough ||   // Squeezing creature has disadvantage on attack rolls
+                               attacker.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls have disadvantage
                                beyondNormalRange;               // Ranged attack beyond normal range (PHB "Ranged Attacks")
 
         // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
@@ -1455,7 +1457,7 @@ public class CombatManager
     }
 
     /// <summary>
-    /// Makes the Two-Weapon Fighting bonus action attack
+    /// Makes the Two-Weapon Fighting bonus action attack.
     /// The attacker must hold a light melee weapon in each hand; the bonus attack uses
     /// <see cref="Creature.HasBonusAction"/> instead of the main action, and the ability
     /// modifier is <em>not</em> added to the damage roll (unless it is negative).
@@ -1501,11 +1503,13 @@ public class CombatManager
         bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
                             target.Conditions.HasCondition(Condition.Paralyzed) ||
                             target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls against have advantage
                             target.IsSqueezingThrough ||
                             attacker.IsHidden ||
                             attacker.Conditions.HasCondition(Condition.Invisible);
         bool hasDisadvantage = !attackerCanSee ||
-                               attacker.IsSqueezingThrough;
+                               attacker.IsSqueezingThrough ||
+                               attacker.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls have disadvantage
 
         attacker.IsHidden = false;
 
@@ -1629,6 +1633,14 @@ public class CombatManager
             return result;
         }
 
+        // Net has no effect on Huge or larger creatures (PHB "Special Weapons: Net")
+        if (attacker.IsNetAttack && target.Size >= CreatureSize.Huge)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("The net has no effect on {0} — only Large or smaller creatures can be restrained by a net.", target.Name));
+            return result;
+        }
+
         if (_inCombat)
             attacker.HasAction = false;
 
@@ -1636,8 +1648,10 @@ public class CombatManager
             ? visionSystem.CanSee(attacker, target)
             : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
 
-        bool hasAdvantage    = attacker.IsHidden;
-        bool hasDisadvantage = !attackerCanSee;
+        bool hasAdvantage    = attacker.IsHidden ||
+                               target.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls against have advantage
+        bool hasDisadvantage = !attackerCanSee ||
+                               attacker.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls have disadvantage
 
         attacker.IsHidden = false;
 
@@ -1708,9 +1722,18 @@ public class CombatManager
 
         if (result.IsHit)
         {
-            result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
-            result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
+            if (attacker.IsNetAttack)
+            {
+                // Net: no damage dealt; apply Restrained condition (PHB "Special Weapons: Net")
+                target.Conditions = target.Conditions.AddCondition(Condition.Restrained);
+                result.TargetRestrained = true;
+            }
+            else
+            {
+                result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
+                result.DamageType = attacker.CurrentDamageType;
+                target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
+            }
             attacker.HasAttackedThisRound = true;
         }
 
@@ -2409,6 +2432,94 @@ public class CombatManager
             }
         }
     }
+
+    /// <summary>
+    /// Uses an action to attempt to escape a net (PHB "Special Weapons: Net").
+    /// The creature makes a DC 10 Strength check; on a success the Restrained condition is removed.
+    /// Another creature within reach can also free the restrained target using this method.
+    /// </summary>
+    /// <param name="creature">The creature using its action (may be the restrained creature or an ally).</param>
+    /// <param name="restrainedCreature">The creature currently restrained by the net.</param>
+    /// <returns>True if the check succeeds and the creature is freed; false otherwise.</returns>
+    public bool TryEscapeNet(Creature creature, Creature restrainedCreature)
+    {
+        if (!restrainedCreature.Conditions.HasCondition(Condition.Restrained))
+        {
+            TurnMessages.Add(Loc.Tr("{0} is not restrained by a net.", restrainedCreature.Name));
+            return false;
+        }
+
+        if (_inCombat && !creature.HasAction)
+            return false;
+
+        if (_inCombat)
+            creature.HasAction = false;
+
+        int strMod = creature.GetAbilityModifier(creature.Strength);
+        int roll = _random.Next(1, 21) + strMod;
+        bool success = DndMath.MeetsDC(roll, 10);
+
+        if (success)
+        {
+            restrainedCreature.Conditions = restrainedCreature.Conditions.RemoveCondition(Condition.Restrained);
+            TurnMessages.Add(Loc.Tr("{0} frees {1} from the net! (rolled {2} vs DC 10)", creature.Name, restrainedCreature.Name, roll));
+        }
+        else
+        {
+            TurnMessages.Add(Loc.Tr("{0} fails to free {1} from the net. (rolled {2} vs DC 10)", creature.Name, restrainedCreature.Name, roll));
+        }
+
+        return success;
+    }
+
+    /// <summary>
+    /// Attacks the net restraining a creature (PHB "Special Weapons: Net").
+    /// The net has AC 10. Dealing 5 or more slashing damage in a single hit destroys the net
+    /// and removes the Restrained condition without harming the restrained creature.
+    /// </summary>
+    /// <param name="attacker">The creature attacking the net.</param>
+    /// <param name="restrainedCreature">The creature currently restrained by the net.</param>
+    /// <returns>True if the net was destroyed and the creature freed; false otherwise.</returns>
+    public bool TryDestroyNet(Creature attacker, Creature restrainedCreature)
+    {
+        if (!restrainedCreature.Conditions.HasCondition(Condition.Restrained))
+        {
+            TurnMessages.Add(Loc.Tr("{0} is not restrained by a net.", restrainedCreature.Name));
+            return false;
+        }
+
+        if (_inCombat && !attacker.HasAction)
+            return false;
+
+        if (_inCombat)
+            attacker.HasAction = false;
+
+        const int netAC = 10;
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attacker.AttackBonus,
+            netAC,
+            hasAdvantage: false,
+            hasDisadvantage: false,
+            circumstantialBonus: 0);
+
+        if (!attackCheck.Success)
+        {
+            TurnMessages.Add(Loc.Tr("{0} attacks the net but misses! (rolled {1} vs AC {2})", attacker.Name, attackCheck.Total, netAC));
+            return false;
+        }
+
+        int damage = RollDamage(attacker.DamageDice, attacker.DamageBonus, attackCheck.IsCriticalHit);
+        if (attacker.CurrentDamageType == DamageType.Slashing && damage >= 5)
+        {
+            restrainedCreature.Conditions = restrainedCreature.Conditions.RemoveCondition(Condition.Restrained);
+            TurnMessages.Add(Loc.Tr("{0} destroys the net, freeing {1}! ({2} slashing damage)", attacker.Name, restrainedCreature.Name, damage));
+            return true;
+        }
+
+        TurnMessages.Add(Loc.Tr("{0} hits the net but fails to destroy it! ({1} {2} damage — needs 5 slashing to destroy)", attacker.Name, damage, attacker.CurrentDamageType));
+        return false;
+    }
 }
 
 public class AttackResult
@@ -2426,6 +2537,8 @@ public class AttackResult
     public bool HasAdvantage { get; set; }
     public bool HasDisadvantage { get; set; }
     public bool IsNonProficient { get; set; }
+    /// <summary>True when a net attack hit and applied the Restrained condition to the target.</summary>
+    public bool TargetRestrained { get; set; }
 
     public string GetMessage()
     {
@@ -2439,7 +2552,11 @@ public class AttackResult
         if (IsCritical)
             return Loc.Tr("{0} critically hit {1} for {2} damage!{3}", Attacker.Name, Target.Name, Damage, advantageText + profText);
         if (IsHit)
+        {
+            if (TargetRestrained)
+                return Loc.Tr("{0} throws a net and restrains {1}! (AC {2}, rolled {3}+{4}={5}){6}", Attacker.Name, Target.Name, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText + profText);
             return Loc.Tr("{0} hit {1} for {2} damage! (AC {3}, rolled {4}+{5}={6}){7}", Attacker.Name, Target.Name, Damage, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText + profText);
+        }
 
         return Loc.Tr("{0} missed {1}! (AC {2}, rolled {3}+{4}={5}){6}", Attacker.Name, Target.Name, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText + profText);
     }

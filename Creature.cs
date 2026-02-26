@@ -489,6 +489,16 @@ public class Creature
     public bool IsLanceAttack { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a Net (PHB "Special Weapons: Net").
+    /// On a hit, a Large or smaller target is restrained until freed; no damage is dealt.
+    /// Has no effect on Huge or larger creatures. Only one net attack can be made per turn.
+    /// A restrained creature can use its action to make a DC 10 Strength check to free itself,
+    /// or another creature within reach can do so. The net can also be destroyed by dealing
+    /// 5 slashing damage to it (AC 10).
+    /// </summary>
+    public bool IsNetAttack { get; set; } = false;
+
+    /// <summary>
     /// Whether the current attack is an improvised weapon attack (PHB "Improvised Weapons").
     /// Improvised attacks deal 1d4 damage and do not add the proficiency bonus to the roll.
     /// </summary>
@@ -1405,6 +1415,7 @@ public class Creature
             creature.IsLoadingWeapon = weapon.IsLoading;
             creature.IsReachWeapon = weapon.IsReach;
             creature.IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
+            creature.IsNetAttack = weapon.IsSpecial && weapon.Name == "Net";
             creature.IsStrengthBasedAttack = weapon.IsFinesse
                 ? creature.GetAbilityModifier(creature.Strength) >= creature.GetAbilityModifier(creature.Dexterity)
                 : !isEffectivelyRanged;
@@ -1504,6 +1515,7 @@ public class Creature
             IsLoadingWeapon = false;
             IsReachWeapon = false;
             IsLanceAttack = false;
+            IsNetAttack = false;
             IsStrengthBasedAttack = true;
             return;
         }
@@ -1529,6 +1541,7 @@ public class Creature
         IsLoadingWeapon = weapon.IsLoading;
         IsReachWeapon = weapon.IsReach;
         IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
+        IsNetAttack = weapon.IsSpecial && weapon.Name == "Net";
 
         // A thrown weapon is released with one hand, so versatile weapons always use the one-handed die when thrown.
         // When isTwoHanded is explicitly true, use the versatile die regardless of other conditions.
