@@ -1444,7 +1444,8 @@ public class Creature
 
         // Pure ranged weapons (bow, crossbow) use Dexterity and are always ranged.
         // Thrown weapons (e.g. Dagger, Handaxe) are melee by default but can be thrown as a ranged attack.
-        // When isThrownAttack is true, a thrown weapon uses its thrown range and STR modifier (PHB "Thrown").
+        // When isThrownAttack is true, a thrown weapon uses its thrown range and the same ability modifier
+        // as for a melee attack: STR for non-finesse weapons, or the better of STR/DEX for finesse weapons (PHB "Thrown").
         bool isEffectivelyRanged = (weapon.IsRanged && !weapon.IsThrown) || (weapon.IsThrown && isThrownAttack);
         int abilityMod = weapon.IsFinesse
             ? Math.Max(GetAbilityModifier(Strength), GetAbilityModifier(Dexterity))
@@ -1461,7 +1462,8 @@ public class Creature
         IsReachWeapon = weapon.IsReach;
         IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
 
-        bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
+        // A thrown weapon is released with one hand, so versatile weapons always use the one-handed die when thrown.
+        bool isVersatileTwoHanded = weapon.IsVersatile && !isThrownAttack && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
 
         // TWF: don't add ability modifier to damage (unless negative)
@@ -1471,7 +1473,8 @@ public class Creature
         // Thrown attacks and pure ranged attacks are not melee.
         IsMeleeAttack = !isEffectivelyRanged;
         // Finesse: same modifier for attack and damage (PHB "Finesse").
-        // Thrown weapons use STR (PHB "Thrown"). Rage bonus only applies to STR-based melee attacks (PHB "Rage").
+        // Thrown weapons use the same modifier as for a melee attack: STR for non-finesse, or best of STR/DEX
+        // for finesse weapons (PHB "Thrown"). Rage bonus only applies to STR-based melee attacks (PHB "Rage").
         IsStrengthBasedAttack = weapon.IsFinesse
             ? GetAbilityModifier(Strength) >= GetAbilityModifier(Dexterity)
             : !isEffectivelyRanged || isThrownAttack;

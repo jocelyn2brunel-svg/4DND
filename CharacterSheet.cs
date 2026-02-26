@@ -1163,12 +1163,14 @@ public class CharacterSheet
                     int thrownAtkBonus = thrownAbilityMod + profBonus;
                     int thrownLongRange = weaponItem.LongRange > 0 ? weaponItem.LongRange : weaponItem.Range * 3;
                     string thrownRange = Loc.Tr("{0}/{1} ft.", weaponItem.Range, thrownLongRange);
+                    // Thrown attacks always use the one-handed damage die (cannot throw two-handed).
+                    string thrownDamage = $"{weaponItem.DamageDice} {weaponItem.DamageType.ToDisplayString()}";
 
                     var thrownClickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
                     bool isThrownActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && !creature.IsMeleeAttack;
 
-                    DrawEntry($"{weapon} (Thrown)", FormatModifier(thrownAtkBonus), damage, thrownClickRect, new Color(60, 140, 60), isThrownActive);
-                    RegisterTooltip(thrownClickRect, Loc.Tr("Thrown: {0}\nBonus: {1}\nDamage: {2}\nRange: {3}\nAttacks beyond normal range have disadvantage.", weapon, FormatModifier(thrownAtkBonus), damage, thrownRange));
+                    DrawEntry($"{weapon} (Thrown)", FormatModifier(thrownAtkBonus), thrownDamage, thrownClickRect, new Color(60, 140, 60), isThrownActive);
+                    RegisterTooltip(thrownClickRect, Loc.Tr("Thrown: {0}\nBonus: {1}\nDamage: {2}\nRange: {3}\nAttacks beyond normal range have disadvantage.", weapon, FormatModifier(thrownAtkBonus), thrownDamage, thrownRange));
                     _attackEntryRects.Add((thrownClickRect, item, null, false, true));
                     entryY += entryHeight;
                 }
