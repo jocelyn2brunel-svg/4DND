@@ -407,25 +407,6 @@ public class Game1 : Game
     private void SetupCombatLighting()
     {
         _visionSystem.ClearLightSources();
-        
-        // Add torches at strategic locations
-        if (_playerCreature != null)
-        {
-            // Player carries a torch
-            var torch = LightSource.Torch(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
-            torch.AttachedTo = _playerCreature;
-            _visionSystem.AddLightSource(torch);
-        }
-        
-        // Add some ambient light sources at different heights
-        var rand = new Random();
-        for (int i = 0; i < 2; i++)
-        {
-            int lx = rand.Next(-10, 11);
-            int ly = rand.Next(-10, 11);
-            int lz = rand.Next(0, 4);
-            _visionSystem.AddLightSource(LightSource.Lantern(lx, ly, lz));
-        }
     }
     
     private void UpdateVision()
