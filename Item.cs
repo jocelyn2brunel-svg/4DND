@@ -52,6 +52,7 @@ public class Item
     public ArmorType ArmorCategory { get; set; }
     public int ArmorClass { get; set; }
     public int MaxDexBonus { get; set; } = 10; // 10 means unlimited
+    public int StrengthRequirement { get; set; } // Minimum Strength score required to wear
     public bool StealthDisadvantage { get; set; }
     
     // Stat modifiers
