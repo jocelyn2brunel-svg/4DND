@@ -1360,6 +1360,53 @@ public class Creature
 
         return creature;
     }
+
+    public void SetupAttackFromWeapon(string weaponName, Character character)
+    {
+        var weapon = ItemDatabase.GetItem(weaponName);
+        if (weapon == null || weapon.Type != ItemType.Weapon)
+        {
+            // Fallback to unarmed strike
+            AttackName = "Unarmed Strike";
+            int strMod = GetAbilityModifier(Strength);
+            AttackBonus = strMod + character.ProficiencyBonus;
+            DamageDice = "1";
+            DamageBonus = strMod;
+            CurrentDamageType = DamageType.Bludgeoning;
+            IsMeleeAttack = true;
+            NormalRange = 0;
+            LongRange = 0;
+            return;
+        }
+
+        AttackName = weapon.Name;
+        int abilityMod = weapon.IsFinesse
+            ? Math.Max(GetAbilityModifier(Strength), GetAbilityModifier(Dexterity))
+            : weapon.IsRanged
+                ? GetAbilityModifier(Dexterity)
+                : GetAbilityModifier(Strength);
+
+        AttackBonus = abilityMod + character.ProficiencyBonus;
+        DamageDice = weapon.DamageDice;
+        DamageBonus = abilityMod;
+        CurrentDamageType = weapon.DamageType;
+        IsMeleeAttack = !weapon.IsRanged;
+        NormalRange = weapon.Range;
+        LongRange = weapon.LongRange;
+    }
+
+    public void SetupAttackFromSpell(Spell spell, Character character)
+    {
+        AttackName = spell.Name;
+        int mod = character.GetPrimaryAbilityModifier();
+        AttackBonus = mod + character.ProficiencyBonus;
+        DamageDice = spell.DamageDice;
+        DamageBonus = 0; // Spell damage usually doesn't add modifier unless special feature
+        CurrentDamageType = spell.DamageType;
+        IsMeleeAttack = false;
+        NormalRange = spell.Range;
+        LongRange = 0;
+    }
     
     public void UpdateCharacter(Character character)
     {
