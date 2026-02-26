@@ -532,10 +532,10 @@ public class VisionSystem
     
     public Color GetFogOfWarTint(int x, int y, int z, bool isCurrentlyVisible, Creature observer)
     {
+        var lightLevel = GetLightLevel(x, y, z);
+
         if (isCurrentlyVisible)
         {
-            var lightLevel = GetLightLevel(x, y, z);
-            
             // Darkvision sees in shades of gray in darkness
             if (lightLevel == LightType.Darkness && observer.DarkvisionRange > 0)
             {
@@ -551,14 +551,20 @@ public class VisionSystem
             {
                 LightType.Bright => Color.White,
                 LightType.Dim => new Color(128, 128, 128),
-                LightType.Darkness => new Color(64, 64, 96),
+                LightType.Darkness => Color.Black,
                 _ => Color.White
             };
         }
         else if (IsExplored(x, y, z))
         {
-            // Keep explored tiles fully readable: fog of war should no longer darken them.
-            return Color.White;
+            // Explored tiles take the tint of the local light level (ambient or local sources)
+            return lightLevel switch
+            {
+                LightType.Bright => Color.White,
+                LightType.Dim => new Color(128, 128, 128),
+                LightType.Darkness => Color.Black,
+                _ => Color.White
+            };
         }
         else
         {
