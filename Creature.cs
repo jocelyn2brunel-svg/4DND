@@ -313,6 +313,7 @@ public class Creature
     public int DamageBonus { get; set; } = 0;
     public DamageType CurrentDamageType { get; set; } = DamageType.Bludgeoning;
     public bool IsMeleeAttack { get; set; } = true;
+    public bool IsOffhandAttack { get; set; } = false;
 
     /// <summary>
     /// Normal range for ranged attacks, in feet. 0 means no ranged attack.
@@ -1361,9 +1362,11 @@ public class Creature
         return creature;
     }
 
-    public void SetupAttackFromWeapon(string weaponName, Character character)
+    public void SetupAttackFromWeapon(string weaponName, Character character, bool isOffhand = false)
     {
         var weapon = ItemDatabase.GetItem(weaponName);
+        IsOffhandAttack = isOffhand;
+
         if (weapon == null || weapon.Type != ItemType.Weapon)
         {
             // Fallback to unarmed strike
@@ -1376,6 +1379,7 @@ public class Creature
             IsMeleeAttack = true;
             NormalRange = 0;
             LongRange = 0;
+            IsOffhandAttack = false;
             return;
         }
 
@@ -1388,7 +1392,10 @@ public class Creature
 
         AttackBonus = abilityMod + character.ProficiencyBonus;
         DamageDice = weapon.DamageDice;
-        DamageBonus = abilityMod;
+
+        // TWF: don't add ability modifier to damage (unless negative)
+        DamageBonus = isOffhand ? Math.Min(0, abilityMod) : abilityMod;
+
         CurrentDamageType = weapon.DamageType;
         IsMeleeAttack = !weapon.IsRanged;
         NormalRange = weapon.Range;
