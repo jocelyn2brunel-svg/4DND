@@ -317,6 +317,7 @@ public class CombatManager
                 CurrentCombatant.IsDodging = false;
                 CurrentCombatant.IsHidden = false;
                 CurrentCombatant.IsBeingHelped = false; // Help benefit expires at the start of this creature's turn
+                CurrentCombatant.HasFiredLoadingWeaponThisTurn = false;
             }
 
             // Process ongoing effects (poison, burning, etc.)
@@ -1275,7 +1276,14 @@ public class CombatManager
             return result;
         }
 
-        // Total cover: cannot be targeted directly (PHB "Cover")
+        // Loading: can fire only one piece of ammunition per turn, regardless of the number of
+        // attacks you can normally make (PHB "Loading")
+        if (attacker.IsLoadingWeapon && attacker.HasFiredLoadingWeaponThisTurn)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} cannot fire again — the {1} needs to be reloaded.", attacker.Name, attacker.AttackName));
+            return result;
+        }
         if (target.Cover == CoverType.Total)
         {
             result.IsHit = false;
@@ -1314,8 +1322,9 @@ public class CombatManager
         // Consume the action
         if (_inCombat)
             attacker.HasAction = false;
-        
-        // Check if attacker can see target
+
+        if (attacker.IsLoadingWeapon)
+            attacker.HasFiredLoadingWeaponThisTurn = true;
         bool attackerCanSee = true;
         if (visionSystem != null)
         {

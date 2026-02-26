@@ -65,6 +65,13 @@ public class Item
     /// </summary>
     public bool IsAmmunition { get; set; }
     /// <summary>
+    /// True for weapons with the Loading property (crossbows, blowgun).
+    /// Because of the time required to load, you can fire only one piece of ammunition
+    /// from it when you use an action, bonus action, or reaction to fire it, regardless
+    /// of the number of attacks you can normally make (PHB "Loading").
+    /// </summary>
+    public bool IsLoading { get; set; }
+    /// <summary>
     /// The ItemDatabase key for the ammunition this weapon requires (e.g. "Ammunition - Arrows (20)").
     /// Empty string for weapons that do not have the Ammunition property.
     /// </summary>

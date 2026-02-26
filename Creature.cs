@@ -456,6 +456,13 @@ public class Creature
     public bool IsHeavyWeaponAttack { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a weapon with the Loading property (PHB "Loading").
+    /// Only one piece of ammunition can be fired per action, bonus action, or reaction,
+    /// regardless of the number of attacks you can normally make.
+    /// </summary>
+    public bool IsLoadingWeapon { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -502,6 +509,13 @@ public class Creature
     /// Used to determine whether the rage continues.
     /// </summary>
     public bool HasTakenDamageThisRound { get; set; } = false;
+
+    /// <summary>
+    /// Whether this creature has already fired a Loading weapon this turn.
+    /// Resets at the start of each new turn. Prevents firing more than once per turn
+    /// with crossbows, blowguns, and other Loading weapons (PHB "Loading").
+    /// </summary>
+    public bool HasFiredLoadingWeaponThisTurn { get; set; } = false;
 
     // Bard-specific
     /// <summary>Die type for Bardic Inspiration (d6/d8/d10/d12).</summary>
@@ -1344,7 +1358,7 @@ public class Creature
             creature.NormalRange = isEffectivelyRanged ? weapon.Range : 0;
             creature.LongRange = isEffectivelyRanged ? weapon.LongRange : 0;
             creature.IsHeavyWeaponAttack = weapon.IsHeavy;
-            // Finesse: same modifier for attack and damage (PHB "Finesse").
+            creature.IsLoadingWeapon = weapon.IsLoading;
             // Rage bonus only applies to STR-based melee attacks (PHB "Rage").
             creature.IsStrengthBasedAttack = weapon.IsFinesse
                 ? creature.GetAbilityModifier(creature.Strength) >= creature.GetAbilityModifier(creature.Dexterity)
@@ -1428,6 +1442,7 @@ public class Creature
         HasWeaponNonProficiencyPenalty = !isProficient;
         AttackBonus = abilityMod + (isProficient ? character.ProficiencyBonus : 0);
         IsHeavyWeaponAttack = weapon.IsHeavy;
+        IsLoadingWeapon = weapon.IsLoading;
 
         bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
