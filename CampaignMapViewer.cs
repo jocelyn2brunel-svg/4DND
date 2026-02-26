@@ -28,6 +28,7 @@ namespace _4DND
         public bool TravelOccurred { get; private set; } = false;
         public bool PartyPositionChanged { get; private set; } = false;
 
+        private System.Collections.Generic.List<Character> _characters = new();
         private bool _isTraveling = false;
         private float _targetPartyX;
         private float _targetPartyY;
@@ -63,6 +64,7 @@ namespace _4DND
         {
             if (campaign == null) return;
 
+            _characters = characters;
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             // Handle travel movement
@@ -804,7 +806,7 @@ namespace _4DND
             y += 20;
 
             // Show busy members (Donning/Doffing)
-            var busyMembers = characters.FindAll(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+            var busyMembers = _characters.FindAll(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
             if (busyMembers.Count > 0)
             {
                 sb.DrawString(_font, Loc.Tr("Busy Members:"), new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);

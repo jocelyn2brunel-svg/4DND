@@ -2768,8 +2768,7 @@ public class Game1 : Game
                     if (_showCampaignMap)
                     {
                         // In Campaign Map, advance time faster while "waiting"
-                        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-                        double minutesToAdvance = dt * 10.0; // 10 minutes per real second while busy?
+                        double minutesToAdvance = dtPlaying * 10.0; // 10 minutes per real second while busy?
 
                         _currentCampaign.TotalGameMinutes += minutesToAdvance;
                         UpdateTorchDurations((int)minutesToAdvance);
@@ -2786,9 +2785,8 @@ public class Game1 : Game
                     else if (!_combatManager.InCombat)
                     {
                         // In Tactical mode but not in combat
-                        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
                         // 1 game minute per 60 real seconds
-                        double minutesToAdvance = dt / 60.0;
+                        double minutesToAdvance = dtPlaying / 60.0;
 
                         foreach (var c in activeProcesses)
                         {
