@@ -1756,6 +1756,22 @@ public class CharacterSheet
             details += $"\n{Loc.Tr("Lit (Remaining: {0}m)", itemInstance.RemainingMinutes)}";
         }
         if (!string.IsNullOrWhiteSpace(itemData.Description)) details += $"\n{itemData.Description}";
+        if (itemData.Type == ItemType.Weapon)
+        {
+            var props = new System.Collections.Generic.List<string>();
+            if (itemData.IsLight)      props.Add(Loc.Tr("Light"));
+            if (itemData.IsFinesse)    props.Add(Loc.Tr("Finesse"));
+            if (itemData.IsHeavy)      props.Add(Loc.Tr("Heavy"));
+            if (itemData.IsTwoHanded)  props.Add(Loc.Tr("Two-Handed"));
+            if (itemData.IsVersatile)  props.Add(Loc.Tr("Versatile ({0})", itemData.VersatileDamageDice));
+            if (itemData.IsReach)      props.Add(Loc.Tr("Reach"));
+            if (itemData.IsThrown)     props.Add(Loc.Tr("Thrown ({0}/{1} ft.)", itemData.Range, itemData.LongRange > 0 ? itemData.LongRange : itemData.Range * 3));
+            if (itemData.IsLoading)    props.Add(Loc.Tr("Loading"));
+            if (itemData.IsAmmunition) props.Add(Loc.Tr("Ammunition"));
+            if (itemData.IsSpecial)    props.Add(Loc.Tr("Special"));
+            if (props.Count > 0)
+                details += $"\n{string.Join(", ", props)}";
+        }
         return details;
     }
 

@@ -107,12 +107,18 @@ public class Inventory
                 // TWF: if the new main-hand weapon is not light, unequip the offhand (PHB "Two-Weapon Fighting")
                 if (!itemData.IsLight && OffhandWeapon != null)
                     OffhandWeapon = null;
+                // Two-Handed: requires both hands, so a shield cannot be used simultaneously (PHB "Two-Handed")
+                if (itemData.IsTwoHanded && EquippedShield != null)
+                    EquippedShield = null;
                 EquippedWeapon = instance;
                 return true;
             case ItemType.Armor:
                 EquippedArmor = instance;
                 return true;
             case ItemType.Shield:
+                // A shield requires a free hand; cannot be equipped alongside a two-handed weapon (PHB "Two-Handed")
+                if (EquippedWeapon != null && ItemDatabase.GetItem(EquippedWeapon.Name)?.IsTwoHanded == true)
+                    return false;
                 EquippedShield = instance;
                 return true;
             default:
