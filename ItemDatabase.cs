@@ -18,7 +18,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsLight = true,
             Weight = 2,
-            Value = 1,
+            Value = 10,
             IsEquippable = true
         },
         ["Dagger"] = new Item
@@ -35,7 +35,7 @@ public static class ItemDatabase
             Range = 20,
             LongRange = 60,
             Weight = 1,
-            Value = 2,
+            Value = 200,
             IsEquippable = true
         },
         ["Greatclub"] = new Item
@@ -48,7 +48,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsTwoHanded = true,
             Weight = 10,
-            Value = 2,
+            Value = 20,
             IsEquippable = true
         },
         ["Handaxe"] = new Item
@@ -64,7 +64,7 @@ public static class ItemDatabase
             Range = 20,
             LongRange = 60,
             Weight = 2,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["Javelin"] = new Item
@@ -79,7 +79,7 @@ public static class ItemDatabase
             Range = 30,
             LongRange = 120,
             Weight = 2,
-            Value = 5,
+            Value = 50,
             IsEquippable = true
         },
         ["Light Hammer"] = new Item
@@ -95,7 +95,7 @@ public static class ItemDatabase
             Range = 20,
             LongRange = 60,
             Weight = 2,
-            Value = 2,
+            Value = 200,
             IsEquippable = true
         },
         ["Mace"] = new Item
@@ -107,7 +107,7 @@ public static class ItemDatabase
             DamageDice = "1d6",
             DamageType = DamageType.Bludgeoning,
             Weight = 4,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["Quarterstaff"] = new Item
@@ -121,7 +121,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsVersatile = true,
             Weight = 4,
-            Value = 2,
+            Value = 20,
             IsEquippable = true
         },
         ["Sickle"] = new Item
@@ -134,7 +134,7 @@ public static class ItemDatabase
             DamageType = DamageType.Slashing,
             IsLight = true,
             Weight = 2,
-            Value = 1,
+            Value = 100,
             IsEquippable = true
         },
         ["Spear"] = new Item
@@ -151,7 +151,7 @@ public static class ItemDatabase
             Range = 20,
             LongRange = 60,
             Weight = 3,
-            Value = 1,
+            Value = 100,
             IsEquippable = true
         },
         ["Unarmed Strike"] = new Item
@@ -184,7 +184,7 @@ public static class ItemDatabase
             Range = 80,
             LongRange = 320,
             Weight = 5,
-            Value = 25,
+            Value = 2500,
             IsEquippable = true
         },
         ["Dart"] = new Item
@@ -201,7 +201,7 @@ public static class ItemDatabase
             LongRange = 60,
             IsFinesse = true,
             Weight = 0,
-            Value = 0,
+            Value = 5,
             IsEquippable = true
         },
         ["Shortbow"] = new Item
@@ -219,7 +219,7 @@ public static class ItemDatabase
             Range = 80,
             LongRange = 320,
             Weight = 2,
-            Value = 25,
+            Value = 2500,
             IsEquippable = true
         },
         ["Sling"] = new Item
@@ -236,7 +236,7 @@ public static class ItemDatabase
             Range = 30,
             LongRange = 120,
             Weight = 0,
-            Value = 0,
+            Value = 10,
             IsEquippable = true
         },
         
@@ -252,7 +252,7 @@ public static class ItemDatabase
             DamageType = DamageType.Slashing,
             IsVersatile = true,
             Weight = 4,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Flail"] = new Item
@@ -264,7 +264,7 @@ public static class ItemDatabase
             DamageDice = "1d8",
             DamageType = DamageType.Bludgeoning,
             Weight = 2,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Glaive"] = new Item
@@ -279,7 +279,7 @@ public static class ItemDatabase
             IsReach = true,
             IsTwoHanded = true,
             Weight = 6,
-            Value = 20,
+            Value = 2000,
             IsEquippable = true
         },
         ["Greataxe"] = new Item
@@ -293,7 +293,7 @@ public static class ItemDatabase
             IsHeavy = true,
             IsTwoHanded = true,
             Weight = 7,
-            Value = 30,
+            Value = 3000,
             IsEquippable = true
         },
         ["Greatsword"] = new Item
@@ -307,7 +307,7 @@ public static class ItemDatabase
             IsHeavy = true,
             IsTwoHanded = true,
             Weight = 6,
-            Value = 50,
+            Value = 5000,
             IsEquippable = true
         },
         ["Halberd"] = new Item
@@ -322,7 +322,7 @@ public static class ItemDatabase
             IsReach = true,
             IsTwoHanded = true,
             Weight = 6,
-            Value = 20,
+            Value = 2000,
             IsEquippable = true
         },
         ["Lance"] = new Item
@@ -336,7 +336,7 @@ public static class ItemDatabase
             IsReach = true,
             IsSpecial = true,
             Weight = 6,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Longsword"] = new Item
@@ -350,7 +350,7 @@ public static class ItemDatabase
             DamageType = DamageType.Slashing,
             IsVersatile = true,
             Weight = 3,
-            Value = 15,
+            Value = 1500,
             IsEquippable = true
         },
         ["Maul"] = new Item
@@ -364,7 +364,7 @@ public static class ItemDatabase
             IsHeavy = true,
             IsTwoHanded = true,
             Weight = 10,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Morningstar"] = new Item
@@ -376,7 +376,7 @@ public static class ItemDatabase
             DamageDice = "1d8",
             DamageType = DamageType.Piercing,
             Weight = 4,
-            Value = 15,
+            Value = 1500,
             IsEquippable = true
         },
         ["Pike"] = new Item
@@ -391,7 +391,7 @@ public static class ItemDatabase
             IsReach = true,
             IsTwoHanded = true,
             Weight = 18,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["Rapier"] = new Item
@@ -404,7 +404,7 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsFinesse = true,
             Weight = 2,
-            Value = 25,
+            Value = 2500,
             IsEquippable = true
         },
         ["Scimitar"] = new Item
@@ -418,7 +418,7 @@ public static class ItemDatabase
             IsLight = true,
             IsFinesse = true,
             Weight = 3,
-            Value = 25,
+            Value = 2500,
             IsEquippable = true
         },
         ["Shortsword"] = new Item
@@ -432,7 +432,7 @@ public static class ItemDatabase
             IsLight = true,
             IsFinesse = true,
             Weight = 2,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Trident"] = new Item
@@ -449,7 +449,7 @@ public static class ItemDatabase
             Range = 20,
             LongRange = 60,
             Weight = 4,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["War Pick"] = new Item
@@ -461,7 +461,7 @@ public static class ItemDatabase
             DamageDice = "1d8",
             DamageType = DamageType.Piercing,
             Weight = 2,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["Warhammer"] = new Item
@@ -475,7 +475,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsVersatile = true,
             Weight = 2,
-            Value = 15,
+            Value = 1500,
             IsEquippable = true
         },
         ["Whip"] = new Item
@@ -489,7 +489,7 @@ public static class ItemDatabase
             IsFinesse = true,
             IsReach = true,
             Weight = 3,
-            Value = 2,
+            Value = 200,
             IsEquippable = true
         },
         
@@ -509,7 +509,7 @@ public static class ItemDatabase
             Range = 25,
             LongRange = 100,
             Weight = 1,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Crossbow, Hand"] = new Item
@@ -528,7 +528,7 @@ public static class ItemDatabase
             Range = 30,
             LongRange = 120,
             Weight = 3,
-            Value = 75,
+            Value = 7500,
             IsEquippable = true
         },
         ["Crossbow, Heavy"] = new Item
@@ -548,7 +548,7 @@ public static class ItemDatabase
             Range = 100,
             LongRange = 400,
             Weight = 18,
-            Value = 50,
+            Value = 5000,
             IsEquippable = true
         },
         ["Longbow"] = new Item
@@ -567,7 +567,7 @@ public static class ItemDatabase
             Range = 150,
             LongRange = 600,
             Weight = 2,
-            Value = 50,
+            Value = 5000,
             IsEquippable = true
         },
         ["Net"] = new Item
@@ -584,7 +584,7 @@ public static class ItemDatabase
             Range = 5,
             LongRange = 15,
             Weight = 3,
-            Value = 1,
+            Value = 100,
             IsEquippable = true
         },
 
@@ -598,7 +598,7 @@ public static class ItemDatabase
             ArmorClass = 11,
             StealthDisadvantage = true,
             Weight = 8,
-            Value = 5,
+            Value = 500,
             IsEquippable = true
         },
         ["Leather Armor"] = new Item
@@ -609,7 +609,7 @@ public static class ItemDatabase
             ArmorCategory = ArmorType.Light,
             ArmorClass = 11,
             Weight = 10,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Studded Leather"] = new Item
@@ -620,7 +620,7 @@ public static class ItemDatabase
             ArmorCategory = ArmorType.Light,
             ArmorClass = 12,
             Weight = 13,
-            Value = 45,
+            Value = 4500,
             IsEquippable = true
         },
         
@@ -634,7 +634,7 @@ public static class ItemDatabase
             ArmorClass = 12,
             MaxDexBonus = 2,
             Weight = 12,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         ["Chain Shirt"] = new Item
@@ -646,7 +646,7 @@ public static class ItemDatabase
             ArmorClass = 13,
             MaxDexBonus = 2,
             Weight = 20,
-            Value = 50,
+            Value = 5000,
             IsEquippable = true
         },
         ["Scale Mail"] = new Item
@@ -659,7 +659,7 @@ public static class ItemDatabase
             MaxDexBonus = 2,
             StealthDisadvantage = true,
             Weight = 45,
-            Value = 50,
+            Value = 5000,
             IsEquippable = true
         },
         ["Breastplate"] = new Item
@@ -671,7 +671,7 @@ public static class ItemDatabase
             ArmorClass = 14,
             MaxDexBonus = 2,
             Weight = 20,
-            Value = 400,
+            Value = 40000,
             IsEquippable = true
         },
         ["Half Plate"] = new Item
@@ -684,7 +684,7 @@ public static class ItemDatabase
             MaxDexBonus = 2,
             StealthDisadvantage = true,
             Weight = 40,
-            Value = 750,
+            Value = 75000,
             IsEquippable = true
         },
         
@@ -699,7 +699,7 @@ public static class ItemDatabase
             MaxDexBonus = 0,
             StealthDisadvantage = true,
             Weight = 40,
-            Value = 30,
+            Value = 3000,
             IsEquippable = true
         },
         ["Chain Mail"] = new Item
@@ -713,7 +713,7 @@ public static class ItemDatabase
             StrengthRequirement = 13,
             StealthDisadvantage = true,
             Weight = 55,
-            Value = 75,
+            Value = 7500,
             IsEquippable = true
         },
         ["Splint"] = new Item
@@ -727,7 +727,7 @@ public static class ItemDatabase
             StrengthRequirement = 15,
             StealthDisadvantage = true,
             Weight = 60,
-            Value = 200,
+            Value = 20000,
             IsEquippable = true
         },
         ["Plate Armor"] = new Item
@@ -741,7 +741,7 @@ public static class ItemDatabase
             StrengthRequirement = 15,
             StealthDisadvantage = true,
             Weight = 65,
-            Value = 1500,
+            Value = 150000,
             IsEquippable = true
         },
         
@@ -754,7 +754,7 @@ public static class ItemDatabase
             ArmorCategory = ArmorType.Shield,
             ArmorClass = 2,
             Weight = 6,
-            Value = 10,
+            Value = 1000,
             IsEquippable = true
         },
         
@@ -765,7 +765,7 @@ public static class ItemDatabase
             Description = "A counting device",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Acid (vial)"] = new Item
@@ -774,7 +774,7 @@ public static class ItemDatabase
             Description = "As an action, throw this vial at a creature within 20 ft. Make a ranged attack (improvised weapon). On a hit, the target takes 2d6 acid damage.",
             Type = ItemType.Consumable,
             Weight = 1,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Alchemist's Fire (flask)"] = new Item
@@ -783,7 +783,7 @@ public static class ItemDatabase
             Description = "Sticky, adhesive fluid ignites when exposed to air",
             Type = ItemType.Consumable,
             Weight = 1,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Ammunition - Arrows (20)"] = new Item
@@ -792,7 +792,7 @@ public static class ItemDatabase
             Description = "Arrows for bows",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1,
+            Value = 100,
             IsEquippable = false,
             DefaultQuantity = 20
         },
@@ -802,7 +802,7 @@ public static class ItemDatabase
             Description = "Needles for blowguns",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false,
             DefaultQuantity = 50
         },
@@ -812,7 +812,7 @@ public static class ItemDatabase
             Description = "Bolts for crossbows",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1,
+            Value = 100,
             IsEquippable = false,
             DefaultQuantity = 20
         },
@@ -822,7 +822,7 @@ public static class ItemDatabase
             Description = "Bullets for slings",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 4,
             IsEquippable = false,
             DefaultQuantity = 20
         },
@@ -832,7 +832,7 @@ public static class ItemDatabase
             Description = "Grants advantage on saving throws against poison for 1 hour",
             Type = ItemType.Consumable,
             Weight = 0,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Arcane Focus - Crystal"] = new Item
@@ -841,7 +841,7 @@ public static class ItemDatabase
             Description = "Arcane spellcasting focus",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Arcane Focus - Orb"] = new Item
@@ -850,7 +850,7 @@ public static class ItemDatabase
             Description = "Arcane spellcasting focus",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 20,
+            Value = 2000,
             IsEquippable = false
         },
         ["Arcane Focus - Rod"] = new Item
@@ -859,7 +859,7 @@ public static class ItemDatabase
             Description = "Arcane spellcasting focus",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Arcane Focus - Staff"] = new Item
@@ -868,7 +868,7 @@ public static class ItemDatabase
             Description = "Arcane spellcasting focus",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Arcane Focus - Wand"] = new Item
@@ -877,7 +877,7 @@ public static class ItemDatabase
             Description = "Arcane spellcasting focus",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Backpack"] = new Item
@@ -886,7 +886,7 @@ public static class ItemDatabase
             Description = "Can hold 1 cubic foot / 30 pounds of gear",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Ball bearings (bag of 1,000)"] = new Item
@@ -895,7 +895,7 @@ public static class ItemDatabase
             Description = "Spreads ball bearings over a 10-foot square area",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Barrel"] = new Item
@@ -904,7 +904,7 @@ public static class ItemDatabase
             Description = "Holds 40 gallons of liquid or 4 cubic feet of solid",
             Type = ItemType.Misc,
             Weight = 70,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Basket"] = new Item
@@ -913,7 +913,7 @@ public static class ItemDatabase
             Description = "Can hold 2 cubic feet / 40 pounds of gear",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 0,
+            Value = 40,
             IsEquippable = false
         },
         ["Bedroll"] = new Item
@@ -922,7 +922,7 @@ public static class ItemDatabase
             Description = "Provides warmth and comfort while sleeping",
             Type = ItemType.Misc,
             Weight = 7,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Bell"] = new Item
@@ -931,7 +931,7 @@ public static class ItemDatabase
             Description = "A small bell",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Blanket"] = new Item
@@ -940,7 +940,7 @@ public static class ItemDatabase
             Description = "A warm blanket",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Block and tackle"] = new Item
@@ -949,7 +949,7 @@ public static class ItemDatabase
             Description = "A set of pulleys with a cable for lifting",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Book"] = new Item
@@ -958,7 +958,7 @@ public static class ItemDatabase
             Description = "A book with blank or written pages",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Bottle, glass"] = new Item
@@ -967,7 +967,7 @@ public static class ItemDatabase
             Description = "Holds 1.5 pints of liquid",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Bucket"] = new Item
@@ -976,7 +976,7 @@ public static class ItemDatabase
             Description = "Holds 3 gallons of liquid or half a cubic foot of solid",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 0,
+            Value = 5,
             IsEquippable = false
         },
         ["Caltrops (bag of 20)"] = new Item
@@ -985,7 +985,7 @@ public static class ItemDatabase
             Description = "Covers a 5-foot square area with spikes",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Candle"] = new Item
@@ -994,7 +994,7 @@ public static class ItemDatabase
             Description = "Sheds bright light in a 5-foot radius for 1 hour",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 1,
             IsEquippable = false
         },
         ["Case, crossbow bolt"] = new Item
@@ -1003,7 +1003,7 @@ public static class ItemDatabase
             Description = "Holds up to 20 crossbow bolts",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Case, map or scroll"] = new Item
@@ -1012,7 +1012,7 @@ public static class ItemDatabase
             Description = "Holds up to 10 sheets of paper or 5 sheets of parchment",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Chain (10 feet)"] = new Item
@@ -1021,7 +1021,7 @@ public static class ItemDatabase
             Description = "Has 10 hit points. Can be broken with a DC 20 Strength check",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Chalk (1 piece)"] = new Item
@@ -1030,7 +1030,7 @@ public static class ItemDatabase
             Description = "For drawing or writing",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 1,
             IsEquippable = false
         },
         ["Chest"] = new Item
@@ -1039,7 +1039,7 @@ public static class ItemDatabase
             Description = "Can hold 12 cubic feet / 300 pounds of gear",
             Type = ItemType.Misc,
             Weight = 25,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Climber's kit"] = new Item
@@ -1048,7 +1048,7 @@ public static class ItemDatabase
             Description = "Includes pitons, boot tips, gloves, and harness",
             Type = ItemType.Misc,
             Weight = 12,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Clothes, common"] = new Item
@@ -1057,7 +1057,7 @@ public static class ItemDatabase
             Description = "Common clothing",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Clothes, costume"] = new Item
@@ -1066,7 +1066,7 @@ public static class ItemDatabase
             Description = "Costume clothing",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Clothes, fine"] = new Item
@@ -1075,7 +1075,7 @@ public static class ItemDatabase
             Description = "Fine clothing",
             Type = ItemType.Misc,
             Weight = 6,
-            Value = 15,
+            Value = 1500,
             IsEquippable = false
         },
         ["Clothes, traveler's"] = new Item
@@ -1084,7 +1084,7 @@ public static class ItemDatabase
             Description = "Traveling clothing",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Component pouch"] = new Item
@@ -1093,7 +1093,7 @@ public static class ItemDatabase
             Description = "Contains material components for spellcasting",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Crowbar"] = new Item
@@ -1102,7 +1102,7 @@ public static class ItemDatabase
             Description = "Grants advantage on Strength checks for prying",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Druidic Focus - Sprig of mistletoe"] = new Item
@@ -1111,7 +1111,7 @@ public static class ItemDatabase
             Description = "Druidic spellcasting focus",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Druidic Focus - Totem"] = new Item
@@ -1120,7 +1120,7 @@ public static class ItemDatabase
             Description = "Druidic spellcasting focus",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Druidic Focus - Wooden staff"] = new Item
@@ -1129,7 +1129,7 @@ public static class ItemDatabase
             Description = "Druidic spellcasting focus",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Druidic Focus - Yew wand"] = new Item
@@ -1138,7 +1138,7 @@ public static class ItemDatabase
             Description = "Druidic spellcasting focus",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Fishing tackle"] = new Item
@@ -1147,7 +1147,7 @@ public static class ItemDatabase
             Description = "Includes a wooden rod, silken line, corkwood bobbers, steel hooks, lead sinkers, and velvet lure",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Flask or tankard"] = new Item
@@ -1156,7 +1156,7 @@ public static class ItemDatabase
             Description = "Holds 1 pint of liquid",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 2,
             IsEquippable = false
         },
         ["Grappling hook"] = new Item
@@ -1165,7 +1165,7 @@ public static class ItemDatabase
             Description = "Hooks onto ledges or edges",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Hammer"] = new Item
@@ -1174,7 +1174,7 @@ public static class ItemDatabase
             Description = "A basic tool hammer",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Hammer, sledge"] = new Item
@@ -1183,7 +1183,7 @@ public static class ItemDatabase
             Description = "A large heavy hammer",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Healer's kit"] = new Item
@@ -1192,7 +1192,7 @@ public static class ItemDatabase
             Description = "Has 10 uses. Can be used to stabilize dying creature",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Holy symbol - Amulet"] = new Item
@@ -1201,7 +1201,7 @@ public static class ItemDatabase
             Description = "Holy symbol for divine spellcasting",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Holy symbol - Emblem"] = new Item
@@ -1210,7 +1210,7 @@ public static class ItemDatabase
             Description = "Holy symbol for divine spellcasting",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Holy symbol - Reliquary"] = new Item
@@ -1219,7 +1219,7 @@ public static class ItemDatabase
             Description = "Holy symbol for divine spellcasting",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Holy water (flask)"] = new Item
@@ -1228,7 +1228,7 @@ public static class ItemDatabase
             Description = "Deals 2d6 radiant damage to fiends and undead",
             Type = ItemType.Consumable,
             Weight = 1,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Hourglass"] = new Item
@@ -1237,7 +1237,7 @@ public static class ItemDatabase
             Description = "Measures time in one-hour increments",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Hunting trap"] = new Item
@@ -1246,7 +1246,7 @@ public static class ItemDatabase
             Description = "Can be set to restrain a creature",
             Type = ItemType.Misc,
             Weight = 25,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Ink (1 ounce bottle)"] = new Item
@@ -1255,7 +1255,7 @@ public static class ItemDatabase
             Description = "Ink for writing",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Ink pen"] = new Item
@@ -1264,7 +1264,7 @@ public static class ItemDatabase
             Description = "A writing instrument",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 2,
             IsEquippable = false
         },
         ["Jug or pitcher"] = new Item
@@ -1273,7 +1273,7 @@ public static class ItemDatabase
             Description = "Holds 1 gallon of liquid",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 0,
+            Value = 2,
             IsEquippable = false
         },
         ["Ladder (10-foot)"] = new Item
@@ -1282,7 +1282,7 @@ public static class ItemDatabase
             Description = "A wooden ladder",
             Type = ItemType.Misc,
             Weight = 25,
-            Value = 0,
+            Value = 10,
             IsEquippable = false
         },
         ["Lamp"] = new Item
@@ -1291,7 +1291,7 @@ public static class ItemDatabase
             Description = "Sheds bright light in a 15-foot radius for 6 hours on 1 pint of oil",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Lantern, bullseye"] = new Item
@@ -1300,7 +1300,7 @@ public static class ItemDatabase
             Description = "Sheds bright light in a 60-foot cone for 6 hours on 1 pint of oil",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Lantern, hooded"] = new Item
@@ -1309,7 +1309,7 @@ public static class ItemDatabase
             Description = "Sheds bright light in a 30-foot radius for 6 hours on 1 pint of oil",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Lock"] = new Item
@@ -1318,7 +1318,7 @@ public static class ItemDatabase
             Description = "Comes with a key. Can be picked with thieves' tools",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Magnifying glass"] = new Item
@@ -1327,7 +1327,7 @@ public static class ItemDatabase
             Description = "Grants advantage on ability checks to appraise or inspect small items",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 100,
+            Value = 10000,
             IsEquippable = false
         },
         ["Manacles"] = new Item
@@ -1336,7 +1336,7 @@ public static class ItemDatabase
             Description = "Binds a Small or Medium creature. DC 20 to escape",
             Type = ItemType.Misc,
             Weight = 6,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Mess kit"] = new Item
@@ -1345,7 +1345,7 @@ public static class ItemDatabase
             Description = "Includes a tin box containing a cup and simple cutlery",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 20,
             IsEquippable = false
         },
         ["Mirror, steel"] = new Item
@@ -1354,7 +1354,7 @@ public static class ItemDatabase
             Description = "A polished steel mirror",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Oil (flask)"] = new Item
@@ -1363,7 +1363,7 @@ public static class ItemDatabase
             Description = "Can fuel lanterns or be thrown as improvised weapon",
             Type = ItemType.Consumable,
             Weight = 1,
-            Value = 0,
+            Value = 10,
             IsEquippable = false
         },
         ["Paper (one sheet)"] = new Item
@@ -1372,7 +1372,7 @@ public static class ItemDatabase
             Description = "One sheet of paper",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 20,
             IsEquippable = false
         },
         ["Parchment (one sheet)"] = new Item
@@ -1381,7 +1381,7 @@ public static class ItemDatabase
             Description = "One sheet of parchment",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 10,
             IsEquippable = false
         },
         ["Perfume (vial)"] = new Item
@@ -1390,7 +1390,7 @@ public static class ItemDatabase
             Description = "A vial of perfume",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Pick, miner's"] = new Item
@@ -1399,7 +1399,7 @@ public static class ItemDatabase
             Description = "Used for mining",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Piton"] = new Item
@@ -1408,7 +1408,7 @@ public static class ItemDatabase
             Description = "A spike hammered into rock for climbing",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 5,
             IsEquippable = false
         },
         ["Poison, basic (vial)"] = new Item
@@ -1417,7 +1417,7 @@ public static class ItemDatabase
             Description = "Can be applied to weapons. DC 10 Con save or take 1d4 poison damage",
             Type = ItemType.Consumable,
             Weight = 0,
-            Value = 100,
+            Value = 10000,
             IsEquippable = false
         },
         ["Pole (10-foot)"] = new Item
@@ -1426,7 +1426,7 @@ public static class ItemDatabase
             Description = "A long wooden pole",
             Type = ItemType.Misc,
             Weight = 7,
-            Value = 0,
+            Value = 5,
             IsEquippable = false
         },
         ["Pot, iron"] = new Item
@@ -1435,7 +1435,7 @@ public static class ItemDatabase
             Description = "An iron cooking pot",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Potion of healing"] = new Item
@@ -1444,7 +1444,7 @@ public static class ItemDatabase
             Description = "Restores 2d4+2 hit points",
             Type = ItemType.Consumable,
             Weight = 0,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Pouch"] = new Item
@@ -1453,7 +1453,7 @@ public static class ItemDatabase
             Description = "Holds 1/5 cubic foot / 6 pounds of gear",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Quiver"] = new Item
@@ -1462,7 +1462,7 @@ public static class ItemDatabase
             Description = "Holds up to 20 arrows",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Ram, portable"] = new Item
@@ -1471,7 +1471,7 @@ public static class ItemDatabase
             Description = "Grants +4 bonus on Strength checks to break down doors",
             Type = ItemType.Misc,
             Weight = 35,
-            Value = 4,
+            Value = 400,
             IsEquippable = false
         },
         ["Rations (1 day)"] = new Item
@@ -1480,7 +1480,7 @@ public static class ItemDatabase
             Description = "Dry foods for long journeys",
             Type = ItemType.Consumable,
             Weight = 2,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Robes"] = new Item
@@ -1489,7 +1489,7 @@ public static class ItemDatabase
             Description = "Simple robes",
             Type = ItemType.Misc,
             Weight = 4,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Rope, hempen (50 feet)"] = new Item
@@ -1498,7 +1498,7 @@ public static class ItemDatabase
             Description = "Has 2 hit points. Can be burst with DC 17 Strength check",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Rope, silk (50 feet)"] = new Item
@@ -1507,7 +1507,7 @@ public static class ItemDatabase
             Description = "Has 2 hit points. Can be burst with DC 17 Strength check",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Sack"] = new Item
@@ -1516,7 +1516,7 @@ public static class ItemDatabase
             Description = "Holds 1 cubic foot / 30 pounds of gear",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 1,
             IsEquippable = false
         },
         ["Scale, merchant's"] = new Item
@@ -1525,7 +1525,7 @@ public static class ItemDatabase
             Description = "Includes a small balance and pans",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Sealing wax"] = new Item
@@ -1534,7 +1534,7 @@ public static class ItemDatabase
             Description = "Used to seal letters and documents",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Shovel"] = new Item
@@ -1543,7 +1543,7 @@ public static class ItemDatabase
             Description = "Used for digging",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Signal whistle"] = new Item
@@ -1552,7 +1552,7 @@ public static class ItemDatabase
             Description = "Can be heard up to 300 feet away",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 5,
             IsEquippable = false
         },
         ["Signet ring"] = new Item
@@ -1561,7 +1561,7 @@ public static class ItemDatabase
             Description = "Used to impress a design in sealing wax",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Soap"] = new Item
@@ -1570,7 +1570,7 @@ public static class ItemDatabase
             Description = "For bathing and cleaning",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 2,
             IsEquippable = false
         },
         ["Spellbook"] = new Item
@@ -1579,7 +1579,7 @@ public static class ItemDatabase
             Description = "Essential for wizards. Has 100 blank pages",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Spikes, iron (10)"] = new Item
@@ -1588,7 +1588,7 @@ public static class ItemDatabase
             Description = "Iron spikes",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Spyglass"] = new Item
@@ -1597,7 +1597,7 @@ public static class ItemDatabase
             Description = "Objects viewed are magnified to twice their size",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 1000,
+            Value = 100000,
             IsEquippable = false
         },
         ["Tent, two-person"] = new Item
@@ -1606,7 +1606,7 @@ public static class ItemDatabase
             Description = "Simple shelter for two",
             Type = ItemType.Misc,
             Weight = 20,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Tinderbox"] = new Item
@@ -1615,7 +1615,7 @@ public static class ItemDatabase
             Description = "Used to start fires. Takes an action",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Torch"] = new Item
@@ -1628,7 +1628,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsLight = true,
             Weight = 1,
-            Value = 0,
+            Value = 1,
             IsEquippable = true
         },
         ["Vial"] = new Item
@@ -1637,7 +1637,7 @@ public static class ItemDatabase
             Description = "Holds 4 ounces of liquid",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Waterskin"] = new Item
@@ -1646,7 +1646,7 @@ public static class ItemDatabase
             Description = "Holds 4 pints of liquid",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 0,
+            Value = 20,
             IsEquippable = false
         },
         ["Whetstone"] = new Item
@@ -1655,7 +1655,7 @@ public static class ItemDatabase
             Description = "Used to sharpen blades",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 0,
+            Value = 1,
             IsEquippable = false
         },
         
@@ -1666,7 +1666,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 8,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Brewer's supplies"] = new Item
@@ -1675,7 +1675,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 9,
-            Value = 20,
+            Value = 2000,
             IsEquippable = false
         },
         ["Calligrapher's supplies"] = new Item
@@ -1684,7 +1684,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Carpenter's tools"] = new Item
@@ -1693,7 +1693,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 6,
-            Value = 8,
+            Value = 800,
             IsEquippable = false
         },
         ["Cartographer's tools"] = new Item
@@ -1702,7 +1702,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 6,
-            Value = 15,
+            Value = 1500,
             IsEquippable = false
         },
         ["Cobbler's tools"] = new Item
@@ -1711,7 +1711,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Cook's utensils"] = new Item
@@ -1720,7 +1720,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 8,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Glassblower's tools"] = new Item
@@ -1729,7 +1729,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 30,
+            Value = 3000,
             IsEquippable = false
         },
         ["Jeweler's tools"] = new Item
@@ -1738,7 +1738,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Leatherworker's tools"] = new Item
@@ -1747,7 +1747,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Mason's tools"] = new Item
@@ -1756,7 +1756,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 8,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Painter's supplies"] = new Item
@@ -1765,7 +1765,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Potter's tools"] = new Item
@@ -1774,7 +1774,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 10,
+            Value = 1000,
             IsEquippable = false
         },
         ["Smith's tools"] = new Item
@@ -1783,7 +1783,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 8,
-            Value = 20,
+            Value = 2000,
             IsEquippable = false
         },
         ["Tinker's tools"] = new Item
@@ -1792,7 +1792,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Weaver's tools"] = new Item
@@ -1801,7 +1801,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Woodcarver's tools"] = new Item
@@ -1810,7 +1810,7 @@ public static class ItemDatabase
             Description = "These special tools include items needed to pursue a craft or trade. Proficiency lets you add your proficiency bonus to any ability checks you make when using these tools",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         
@@ -1821,7 +1821,7 @@ public static class ItemDatabase
             Description = "This pouch of cosmetics, hair dye, and small props lets you create disguises. Proficiency with this kit lets you add your proficiency bonus to ability checks you make to create a visual disguise",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Forgery kit"] = new Item
@@ -1830,7 +1830,7 @@ public static class ItemDatabase
             Description = "This small box contains a variety of papers and parchments, pens and inks, seals and sealing wax, gold and silver leaf, and other supplies. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to create a physical forgery of a document",
             Type = ItemType.Misc,
             Weight = 5,
-            Value = 15,
+            Value = 1500,
             IsEquippable = false
         },
         ["Herbalism kit"] = new Item
@@ -1839,7 +1839,7 @@ public static class ItemDatabase
             Description = "This kit contains pouches to store herbs, clippers, mortar and pestle, and pouches. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to identify or apply herbs",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 5,
+            Value = 500,
             IsEquippable = false
         },
         ["Navigator's tools"] = new Item
@@ -1848,7 +1848,7 @@ public static class ItemDatabase
             Description = "This set of instruments is used for navigation at sea. Proficiency with navigator's tools lets you chart a ship's course and follow navigation charts. In addition, these tools allow you to add your proficiency bonus to any ability checks you make to avoid getting lost at sea",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Poisoner's kit"] = new Item
@@ -1857,7 +1857,7 @@ public static class ItemDatabase
             Description = "A poisoner's kit includes the vials, chemicals, and other equipment necessary for the creation of poisons. Proficiency with this kit lets you add your proficiency bonus to any ability checks you make to craft or use poisons",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 50,
+            Value = 5000,
             IsEquippable = false
         },
         ["Thieves' tools"] = new Item
@@ -1866,7 +1866,7 @@ public static class ItemDatabase
             Description = "This set of tools includes a small file, a set of lock picks, a small mirror mounted on a metal handle, a set of narrow-bladed scissors, and a pair of pliers. Proficiency with these tools lets you add your proficiency bonus to any ability checks you make to disarm traps or open locks",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         
@@ -1877,7 +1877,7 @@ public static class ItemDatabase
             Description = "A set of dice for games of chance",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 10,
             IsEquippable = false
         },
         ["Dragonchess set"] = new Item
@@ -1886,7 +1886,7 @@ public static class ItemDatabase
             Description = "A strategic board game",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         ["Playing card set"] = new Item
@@ -1895,7 +1895,7 @@ public static class ItemDatabase
             Description = "A deck of cards",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 0,
+            Value = 50,
             IsEquippable = false
         },
         ["Three-Dragon Ante set"] = new Item
@@ -1904,7 +1904,7 @@ public static class ItemDatabase
             Description = "A popular card game",
             Type = ItemType.Misc,
             Weight = 0,
-            Value = 1,
+            Value = 100,
             IsEquippable = false
         },
         
@@ -1915,7 +1915,7 @@ public static class ItemDatabase
             Description = "A wind musical instrument. Several of the most common types of musical instruments are shown on the table. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 6,
-            Value = 30,
+            Value = 3000,
             IsEquippable = false
         },
         ["Drum"] = new Item
@@ -1924,7 +1924,7 @@ public static class ItemDatabase
             Description = "A percussion musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 3,
-            Value = 6,
+            Value = 600,
             IsEquippable = false
         },
         ["Dulcimer"] = new Item
@@ -1933,7 +1933,7 @@ public static class ItemDatabase
             Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 10,
-            Value = 25,
+            Value = 2500,
             IsEquippable = false
         },
         ["Flute"] = new Item
@@ -1942,7 +1942,7 @@ public static class ItemDatabase
             Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Lute"] = new Item
@@ -1951,7 +1951,7 @@ public static class ItemDatabase
             Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 35,
+            Value = 3500,
             IsEquippable = false
         },
         ["Lyre"] = new Item
@@ -1960,7 +1960,7 @@ public static class ItemDatabase
             Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 30,
+            Value = 3000,
             IsEquippable = false
         },
         ["Horn"] = new Item
@@ -1969,7 +1969,7 @@ public static class ItemDatabase
             Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 3,
+            Value = 300,
             IsEquippable = false
         },
         ["Pan flute"] = new Item
@@ -1978,7 +1978,7 @@ public static class ItemDatabase
             Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 2,
-            Value = 12,
+            Value = 1200,
             IsEquippable = false
         },
         ["Shawm"] = new Item
@@ -1987,7 +1987,7 @@ public static class ItemDatabase
             Description = "A wind musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 2,
+            Value = 200,
             IsEquippable = false
         },
         ["Viol"] = new Item
@@ -1996,7 +1996,7 @@ public static class ItemDatabase
             Description = "A stringed musical instrument. If you have proficiency with a given musical instrument, you can add your proficiency bonus to any ability checks you make to play music with the instrument",
             Type = ItemType.Misc,
             Weight = 1,
-            Value = 30,
+            Value = 3000,
             IsEquippable = false
         },
         

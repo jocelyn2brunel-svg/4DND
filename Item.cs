@@ -32,7 +32,7 @@ public class Item
     public string Description { get; set; } = "";
     public ItemType Type { get; set; }
     public int Weight { get; set; } // in pounds
-    public int Value { get; set; } // in gold pieces
+    public int Value { get; set; } // in copper pieces
     public bool IsEquippable { get; set; }
     
     // Weapon properties
