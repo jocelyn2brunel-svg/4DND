@@ -78,6 +78,13 @@ public class Item
     /// </summary>
     public bool IsLoading { get; set; }
     /// <summary>
+    /// True for weapons with the Special property (PHB "Special Weapons").
+    /// Such weapons have unusual rules governing their use, explained in the weapon's description.
+    /// Examples: Lance (disadvantage within 5 ft. of non-target hostile; two-handed when not mounted),
+    /// Net (restrains creatures on hit).
+    /// </summary>
+    public bool IsSpecial { get; set; }
+    /// <summary>
     /// The ItemDatabase key for the ammunition this weapon requires (e.g. "Ammunition - Arrows (20)").
     /// Empty string for weapons that do not have the Ammunition property.
     /// </summary>

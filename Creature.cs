@@ -469,6 +469,13 @@ public class Creature
     public bool IsLoadingWeapon { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a weapon with the Special property (PHB "Special Weapons").
+    /// For the Lance specifically: attack rolls have disadvantage when the attacker is within
+    /// 5 feet of a hostile creature other than the target.
+    /// </summary>
+    public bool IsLanceAttack { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -1366,6 +1373,7 @@ public class Creature
             creature.IsHeavyWeaponAttack = weapon.IsHeavy;
             creature.IsLoadingWeapon = weapon.IsLoading;
             creature.IsReachWeapon = weapon.IsReach;
+            creature.IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
             creature.IsStrengthBasedAttack = weapon.IsFinesse
                 ? creature.GetAbilityModifier(creature.Strength) >= creature.GetAbilityModifier(creature.Dexterity)
                 : !isEffectivelyRanged;
@@ -1451,6 +1459,7 @@ public class Creature
         IsHeavyWeaponAttack = weapon.IsHeavy;
         IsLoadingWeapon = weapon.IsLoading;
         IsReachWeapon = weapon.IsReach;
+        IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
 
         bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;

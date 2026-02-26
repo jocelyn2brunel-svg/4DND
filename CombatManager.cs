@@ -1398,6 +1398,19 @@ public class CombatManager
         if (attacker.IsHeavyWeaponAttack && attacker.Size <= CreatureSize.Small)
             hasDisadvantage = true;
 
+        // Lance: disadvantage on attack rolls when within 5 feet of a hostile creature other than the target (PHB "Special Weapons")
+        if (attacker.IsLanceAttack)
+        {
+            bool hostileAdjacentNonTarget = _combatants.Any(c =>
+                c != attacker &&
+                c != target &&
+                c.IsPlayer != attacker.IsPlayer &&
+                c.IsAlive() &&
+                CalculateDistance(attacker.X, attacker.Y, attacker.Z, c.X, c.Y, c.Z) <= 1);
+            if (hostileAdjacentNonTarget)
+                hasDisadvantage = true;
+        }
+
         // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,

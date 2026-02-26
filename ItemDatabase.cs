@@ -333,6 +333,7 @@ public static class ItemDatabase
             DamageDice = "1d12",
             DamageType = DamageType.Piercing,
             IsReach = true,
+            IsSpecial = true,
             Weight = 6,
             Value = 10,
             IsEquippable = true
