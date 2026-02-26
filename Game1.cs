@@ -3221,13 +3221,14 @@ public class Game1 : Game
 
                 if (_characterSheet.AttackRequestedWithItem != null)
                 {
-                    _playerCreature!.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter!, _characterSheet.AttackRequestedIsOffhand, _characterSheet.AttackRequestedIsThrown, _characterSheet.AttackRequestedIsTwoHanded);
+                    _playerCreature!.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter!, _characterSheet.AttackRequestedIsOffhand, _characterSheet.AttackRequestedIsThrown, _characterSheet.AttackRequestedIsTwoHanded, _characterSheet.AttackRequestedIsImprovisedMelee);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithItem = null;
                     _characterSheet.AttackRequestedIsOffhand = false;
                     _characterSheet.AttackRequestedIsThrown = false;
                     _characterSheet.AttackRequestedIsTwoHanded = false;
+                    _characterSheet.AttackRequestedIsImprovisedMelee = false;
                 }
 
                 if (_characterSheet.AttackRequestedWithSpell != null)

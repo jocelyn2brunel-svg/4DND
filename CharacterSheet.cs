@@ -24,7 +24,7 @@ public class CharacterSheet
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
     private readonly List<(Rectangle Rect, ItemInstance Item, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
-    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell, bool IsOffhand, bool IsThrown, bool IsTwoHanded)> _attackEntryRects = new();
+    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell, bool IsOffhand, bool IsThrown, bool IsTwoHanded, bool IsImprovisedMelee)> _attackEntryRects = new();
     private bool _showItemContextMenu;
     private Rectangle _itemContextMenuRect;
     private ItemInstance? _contextItem;
@@ -55,6 +55,7 @@ public class CharacterSheet
     public bool AttackRequestedIsOffhand { get; set; }
     public bool AttackRequestedIsThrown { get; set; }
     public bool AttackRequestedIsTwoHanded { get; set; }
+    public bool AttackRequestedIsImprovisedMelee { get; set; }
     public Spell? AttackRequestedWithSpell { get; set; }
     public bool AttackRequestedWithUnarmed { get; set; }
     public bool CloseRequested { get; set; }
@@ -152,6 +153,7 @@ public class CharacterSheet
                     AttackRequestedIsOffhand = clickedAttack.IsOffhand;
                     AttackRequestedIsThrown = clickedAttack.IsThrown;
                     AttackRequestedIsTwoHanded = clickedAttack.IsTwoHanded;
+                    AttackRequestedIsImprovisedMelee = clickedAttack.IsImprovisedMelee;
                 }
                 else if (clickedAttack.Spell != null)
                 {
@@ -1086,7 +1088,9 @@ public class CharacterSheet
         int thrownCount = equippedWeaponData?.IsThrown == true ? 1 : 0;
         bool freeHandForVersatile = c.InventoryData.OffhandWeapon == null && c.InventoryData.EquippedShield == null;
         int versatileCount = (equippedWeaponData?.IsVersatile == true && freeHandForVersatile) ? 1 : 0;
-        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + thrownCount + versatileCount + offhandCount + 1 + spellCount + 2);
+        int impThrowCount = (equippedWeaponData != null && !equippedWeaponData.IsThrown && !equippedWeaponData.IsRanged) ? 1 : 0;
+        int impMeleeCount = equippedWeaponData?.IsAmmunition == true ? 1 : 0;
+        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + thrownCount + versatileCount + impThrowCount + impMeleeCount + offhandCount + 1 + spellCount + 2);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -1163,7 +1167,7 @@ public class CharacterSheet
                 string entryLabel = showVersatileEntries ? $"{weapon} (1H)" : weapon;
                 DrawEntry(entryLabel, FormatModifier(atkBonus), damage, clickRect, Color.Black, showVersatileEntries ? isOneHandedActive : isActive);
                 RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
-                _attackEntryRects.Add((clickRect, item, null, false, false, false));
+                _attackEntryRects.Add((clickRect, item, null, false, false, false, false));
                 entryY += entryHeight;
 
                 // Two-handed entry for versatile weapons (PHB "Versatile")
@@ -1176,7 +1180,7 @@ public class CharacterSheet
                     var twoHandedClickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
                     DrawEntry($"{weapon} (2H)", FormatModifier(atkBonus), twoHandedDamage, twoHandedClickRect, new Color(80, 120, 180), isTwoHandedActive);
                     RegisterTooltip(twoHandedClickRect, Loc.Tr("Versatile (two-handed): {0}\nBonus: {1}\nDamage: {2}\nMelee Range: 5 ft.", weapon, FormatModifier(atkBonus), twoHandedDamage));
-                    _attackEntryRects.Add((twoHandedClickRect, item, null, false, false, true));
+                    _attackEntryRects.Add((twoHandedClickRect, item, null, false, false, true, false));
                     entryY += entryHeight;
                 }
 
@@ -1197,7 +1201,33 @@ public class CharacterSheet
 
                     DrawEntry($"{weapon} (Thrown)", FormatModifier(thrownAtkBonus), thrownDamage, thrownClickRect, new Color(60, 140, 60), isThrownActive);
                     RegisterTooltip(thrownClickRect, Loc.Tr("Thrown: {0}\nBonus: {1}\nDamage: {2}\nRange: {3}\nAttacks beyond normal range have disadvantage.", weapon, FormatModifier(thrownAtkBonus), thrownDamage, thrownRange));
-                    _attackEntryRects.Add((thrownClickRect, item, null, false, true, false));
+                    _attackEntryRects.Add((thrownClickRect, item, null, false, true, false, false));
+                    entryY += entryHeight;
+                }
+
+                // Improvised throw: available for any melee weapon without the Thrown property (PHB "Improvised Weapons")
+                if (weaponItem != null && !weaponItem.IsThrown && !weaponItem.IsRanged)
+                {
+                    int impThrowAtkBonus = c.GetAbilityModifier(c.Strength);
+                    string impThrowDamage = "1d4 Bludgeoning";
+                    var impThrowClickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                    bool isImpThrowActive = creature != null && creature.AttackName == weapon && creature.IsImprovisedWeaponAttack && !creature.IsMeleeAttack;
+                    DrawEntry($"{weapon} (Imp. Throw)", FormatModifier(impThrowAtkBonus), impThrowDamage, impThrowClickRect, new Color(120, 80, 20), isImpThrowActive);
+                    RegisterTooltip(impThrowClickRect, Loc.Tr("Improvised throw: {0}\nBonus: {1}\nDamage: 1d4 Bludgeoning\nRange: 20/60 ft.\nNo proficiency bonus (PHB: Improvised Weapons).", weapon, FormatModifier(impThrowAtkBonus)));
+                    _attackEntryRects.Add((impThrowClickRect, item, null, false, true, false, false));
+                    entryY += entryHeight;
+                }
+
+                // Improvised melee: available when a ranged weapon is used as a melee weapon (PHB "Improvised Weapons")
+                if (weaponItem?.IsAmmunition == true)
+                {
+                    int impMeleeAtkBonus = c.GetAbilityModifier(c.Strength);
+                    string impMeleeDamage = "1d4 Bludgeoning";
+                    var impMeleeClickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                    bool isImpMeleeActive = creature != null && creature.AttackName == weapon && creature.IsImprovisedWeaponAttack && creature.IsMeleeAttack;
+                    DrawEntry($"{weapon} (Improvised)", FormatModifier(impMeleeAtkBonus), impMeleeDamage, impMeleeClickRect, new Color(120, 80, 20), isImpMeleeActive);
+                    RegisterTooltip(impMeleeClickRect, Loc.Tr("Improvised melee: {0}\nBonus: {1}\nDamage: 1d4 Bludgeoning\nRange: 5 ft.\nNo proficiency bonus (PHB: Improvised Weapons).", weapon, FormatModifier(impMeleeAtkBonus)));
+                    _attackEntryRects.Add((impMeleeClickRect, item, null, false, false, false, true));
                     entryY += entryHeight;
                 }
             }
@@ -1224,7 +1254,7 @@ public class CharacterSheet
 
                 DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, new Color(80, 80, 180), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
-                _attackEntryRects.Add((clickRect, item, null, true, false, false));
+                _attackEntryRects.Add((clickRect, item, null, true, false, false, false));
                 entryY += entryHeight;
             }
 
@@ -1238,7 +1268,7 @@ public class CharacterSheet
 
                 DrawEntry("Unarmed Strike", FormatModifier(unarmedBonus), unarmedDamage, clickRect, Color.Black * 0.7f, isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
-                _attackEntryRects.Add((clickRect, null, null, false, false, false));
+                _attackEntryRects.Add((clickRect, null, null, false, false, false, false));
                 entryY += entryHeight;
             }
 
@@ -1254,7 +1284,7 @@ public class CharacterSheet
 
                 DrawEntry(spell.Name, FormatModifier(spellAtk), damage, clickRect, new Color(100, 50, 150), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("{0} (Level {1} {2})\nRange: {3} ft\n{4}", spell.Name, spell.Level, spell.School, spell.Range, spell.Description));
-                _attackEntryRects.Add((clickRect, null, spell, false, false, false));
+                _attackEntryRects.Add((clickRect, null, spell, false, false, false, false));
                 entryY += entryHeight;
             }
 

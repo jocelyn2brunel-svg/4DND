@@ -476,6 +476,12 @@ public class Creature
     public bool IsLanceAttack { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack is an improvised weapon attack (PHB "Improvised Weapons").
+    /// Improvised attacks deal 1d4 damage and do not add the proficiency bonus to the roll.
+    /// </summary>
+    public bool IsImprovisedWeaponAttack { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -1418,7 +1424,7 @@ public class Creature
         return creature;
     }
 
-    public void SetupAttackFromWeapon(string weaponName, Character character, bool isOffhand = false, bool isThrownAttack = false, bool isTwoHanded = false)
+    public void SetupAttackFromWeapon(string weaponName, Character character, bool isOffhand = false, bool isThrownAttack = false, bool isTwoHanded = false, bool isImprovisedMelee = false)
     {
         var weapon = ItemDatabase.GetItem(weaponName);
         IsOffhandAttack = isOffhand;
@@ -1437,10 +1443,37 @@ public class Creature
             LongRange = 0;
             IsOffhandAttack = false;
             HasWeaponNonProficiencyPenalty = false;
+            IsImprovisedWeaponAttack = false;
             return;
         }
 
         AttackName = weapon.Name;
+
+        // Improvised weapon cases (PHB "Improvised Weapons"):
+        // 1. Throwing a melee weapon without the Thrown property → 1d4, 20/60 ft range, no proficiency.
+        // 2. Using a ranged weapon as a melee attack → 1d4, STR-based, no proficiency.
+        bool isImprovisedThrow = isThrownAttack && !weapon.IsThrown && !weapon.IsRanged;
+        if (isImprovisedThrow || isImprovisedMelee)
+        {
+            IsImprovisedWeaponAttack = true;
+            int impStrMod = GetAbilityModifier(Strength);
+            HasWeaponNonProficiencyPenalty = true;
+            AttackBonus = impStrMod;
+            DamageDice = "1d4";
+            DamageBonus = 0;
+            CurrentDamageType = DamageType.Bludgeoning;
+            IsMeleeAttack = !isImprovisedThrow;
+            NormalRange = isImprovisedThrow ? 20 : 0;
+            LongRange = isImprovisedThrow ? 60 : 0;
+            IsHeavyWeaponAttack = false;
+            IsLoadingWeapon = false;
+            IsReachWeapon = false;
+            IsLanceAttack = false;
+            IsStrengthBasedAttack = true;
+            return;
+        }
+
+        IsImprovisedWeaponAttack = false;
 
         // Pure ranged weapons (bow, crossbow) use Dexterity and are always ranged.
         // Thrown weapons (e.g. Dagger, Handaxe) are melee by default but can be thrown as a ranged attack.
