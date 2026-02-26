@@ -498,8 +498,8 @@ public class VisionSystem
         }
         else if (IsExplored(x, y, z))
         {
-            // Reduce fog-of-war darkness intensity by 50% for explored but currently unseen tiles.
-            return new Color(64, 64, 64);
+            // Keep explored tiles fully readable: fog of war should no longer darken them.
+            return Color.White;
         }
         else
         {
