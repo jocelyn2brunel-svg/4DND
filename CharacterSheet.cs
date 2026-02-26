@@ -24,7 +24,7 @@ public class CharacterSheet
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
     private readonly List<(Rectangle Rect, ItemInstance Item, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
-    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell, bool IsOffhand)> _attackEntryRects = new();
+    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell, bool IsOffhand, bool IsThrown)> _attackEntryRects = new();
     private bool _showItemContextMenu;
     private Rectangle _itemContextMenuRect;
     private ItemInstance? _contextItem;
@@ -53,6 +53,7 @@ public class CharacterSheet
     public ItemInstance? DroppedItem { get; set; }
     public ItemInstance? AttackRequestedWithItem { get; set; }
     public bool AttackRequestedIsOffhand { get; set; }
+    public bool AttackRequestedIsThrown { get; set; }
     public Spell? AttackRequestedWithSpell { get; set; }
     public bool AttackRequestedWithUnarmed { get; set; }
     public bool CloseRequested { get; set; }
@@ -148,6 +149,7 @@ public class CharacterSheet
                 {
                     AttackRequestedWithItem = clickedAttack.Item;
                     AttackRequestedIsOffhand = clickedAttack.IsOffhand;
+                    AttackRequestedIsThrown = clickedAttack.IsThrown;
                 }
                 else if (clickedAttack.Spell != null)
                 {
@@ -391,8 +393,9 @@ public class CharacterSheet
                     case "Throw":
                         if (_contextItem != null)
                         {
-                            character.CalculateDerivedStats();
-                            hasCharacterChanges = true;
+                            AttackRequestedWithItem = _contextItem;
+                            AttackRequestedIsThrown = true;
+                            CloseRequested = true;
                         }
                         _showItemContextMenu = false;
                         break;
@@ -1077,7 +1080,9 @@ public class CharacterSheet
         var relevantSpells = c.UsesSpellPreparation ? c.PreparedSpells : c.KnownSpells;
         int spellCount = relevantSpells.Count;
 
-        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 1 + spellCount + 2);
+        var equippedWeaponData = c.InventoryData.EquippedWeapon != null ? ItemDatabase.GetItem(c.InventoryData.EquippedWeapon.Name) : null;
+        int thrownCount = equippedWeaponData?.IsThrown == true ? 1 : 0;
+        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + thrownCount + offhandCount + 1 + spellCount + 2);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -1138,12 +1143,35 @@ public class CharacterSheet
                 string damage = isVersatileTwoHanded && weaponItem != null ? $"{weaponItem.VersatileDamageDice} {weaponItem.DamageType.ToDisplayString()}" : GetWeaponDamage(weapon);
 
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
-                bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && creature.IsMeleeAttack == !(weaponItem?.IsRanged ?? false);
+                // For thrown weapons the melee entry is active only when IsMeleeAttack is true.
+                bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack &&
+                    (weaponItem?.IsThrown == true
+                        ? creature.IsMeleeAttack
+                        : creature.IsMeleeAttack == !(weaponItem?.IsRanged ?? false));
 
                 DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, Color.Black, isActive);
                 RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
-                _attackEntryRects.Add((clickRect, item, null, false));
+                _attackEntryRects.Add((clickRect, item, null, false, false));
                 entryY += entryHeight;
+
+                // Thrown attack entry: shown when weapon has the Thrown property (PHB "Thrown")
+                if (weaponItem?.IsThrown == true)
+                {
+                    int thrownAbilityMod = weaponItem.IsFinesse
+                        ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
+                        : c.GetAbilityModifier(c.Strength);
+                    int thrownAtkBonus = thrownAbilityMod + profBonus;
+                    int thrownLongRange = weaponItem.LongRange > 0 ? weaponItem.LongRange : weaponItem.Range * 3;
+                    string thrownRange = Loc.Tr("{0}/{1} ft.", weaponItem.Range, thrownLongRange);
+
+                    var thrownClickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                    bool isThrownActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && !creature.IsMeleeAttack;
+
+                    DrawEntry($"{weapon} (Thrown)", FormatModifier(thrownAtkBonus), damage, thrownClickRect, new Color(60, 140, 60), isThrownActive);
+                    RegisterTooltip(thrownClickRect, Loc.Tr("Thrown: {0}\nBonus: {1}\nDamage: {2}\nRange: {3}\nAttacks beyond normal range have disadvantage.", weapon, FormatModifier(thrownAtkBonus), damage, thrownRange));
+                    _attackEntryRects.Add((thrownClickRect, item, null, false, true));
+                    entryY += entryHeight;
+                }
             }
 
             // Two-Weapon Fighting offhand bonus attack (PHB "Two-Weapon Fighting": both weapons must be Light)
@@ -1168,7 +1196,7 @@ public class CharacterSheet
 
                 DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, new Color(80, 80, 180), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
-                _attackEntryRects.Add((clickRect, item, null, true));
+                _attackEntryRects.Add((clickRect, item, null, true, false));
                 entryY += entryHeight;
             }
 
@@ -1182,7 +1210,7 @@ public class CharacterSheet
 
                 DrawEntry("Unarmed Strike", FormatModifier(unarmedBonus), unarmedDamage, clickRect, Color.Black * 0.7f, isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
-                _attackEntryRects.Add((clickRect, null, null, false));
+                _attackEntryRects.Add((clickRect, null, null, false, false));
                 entryY += entryHeight;
             }
 
@@ -1198,7 +1226,7 @@ public class CharacterSheet
 
                 DrawEntry(spell.Name, FormatModifier(spellAtk), damage, clickRect, new Color(100, 50, 150), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("{0} (Level {1} {2})\nRange: {3} ft\n{4}", spell.Name, spell.Level, spell.School, spell.Range, spell.Description));
-                _attackEntryRects.Add((clickRect, null, spell, false));
+                _attackEntryRects.Add((clickRect, null, spell, false, false));
                 entryY += entryHeight;
             }
 
@@ -1571,7 +1599,9 @@ public class CharacterSheet
         }
 
         options.Add("Drop");
-        options.Add("Throw");
+        var contextItemData2 = _contextItem != null ? ItemDatabase.GetItem(_contextItem.Name) : null;
+        if (contextItemData2?.IsThrown == true)
+            options.Add("Throw");
         options.Add("Inspect");
 
         return options.ToArray();
@@ -1706,7 +1736,11 @@ public class CharacterSheet
     private string BuildWeaponTooltip(string weaponName, int attackBonus, string damage) {
         var item = ItemDatabase.GetItem(weaponName);
         if (item == null) return weaponName;
-        string rangeInfo = item.IsRanged ? Loc.Tr("Range: {0}/{1} ft.", item.Range, (item.LongRange > 0 ? item.LongRange : item.Range * 3)) : Loc.Tr("Melee Range: 5 ft.");
+        string rangeInfo = item.IsRanged
+            ? Loc.Tr("Range: {0}/{1} ft.", item.Range, (item.LongRange > 0 ? item.LongRange : item.Range * 3))
+            : item.IsThrown
+                ? Loc.Tr("Melee: 5 ft. | Thrown: {0}/{1} ft.", item.Range, (item.LongRange > 0 ? item.LongRange : item.Range * 3))
+                : Loc.Tr("Melee Range: 5 ft.");
         return Loc.Tr("{0} {1}\nBonus: {2}\nDamage: {3}\n{4}", weaponName, Loc.Tr("(equipped)"), FormatModifier(attackBonus), damage, rangeInfo);
     }
 
