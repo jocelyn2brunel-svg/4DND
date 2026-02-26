@@ -316,6 +316,13 @@ public class Creature
     public bool IsOffhandAttack { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses Strength as its ability modifier.
+    /// False for ranged attacks (DEX) and finesse weapons where DEX was chosen.
+    /// Barbarian Rage bonus damage only applies to melee attacks using Strength (PHB "Rage").
+    /// </summary>
+    public bool IsStrengthBasedAttack { get; set; } = true;
+
+    /// <summary>
     /// Normal range for ranged attacks, in feet. 0 means no ranged attack.
     /// Attack rolls against targets beyond normal range (but within long range) have disadvantage.
     /// </summary>
@@ -1310,11 +1317,16 @@ public class Creature
         {
             var weapon = ItemDatabase.GetItem(character.InventoryData.EquippedWeapon.Name);
             creature.AttackName = weapon.Name;
-            
-            int abilityMod = weapon.IsFinesse 
+
+            // Thrown weapons (e.g. Dagger, Handaxe) are melee weapons by default.
+            // Pure ranged weapons (bow, crossbow) use Dexterity.
+            bool isEffectivelyRanged = weapon.IsRanged && !weapon.IsThrown;
+            int abilityMod = weapon.IsFinesse
                 ? Math.Max(creature.GetAbilityModifier(creature.Strength), creature.GetAbilityModifier(creature.Dexterity))
-                : creature.GetAbilityModifier(creature.Strength);
-            
+                : isEffectivelyRanged
+                    ? creature.GetAbilityModifier(creature.Dexterity)
+                    : creature.GetAbilityModifier(creature.Strength);
+
             creature.AttackBonus = abilityMod + character.ProficiencyBonus;
 
             bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
@@ -1322,7 +1334,14 @@ public class Creature
 
             creature.DamageBonus = abilityMod;
             creature.CurrentDamageType = weapon.DamageType;
-            creature.IsMeleeAttack = !weapon.IsRanged;
+            creature.IsMeleeAttack = !isEffectivelyRanged;
+            creature.NormalRange = isEffectivelyRanged ? weapon.Range : 0;
+            creature.LongRange = isEffectivelyRanged ? weapon.LongRange : 0;
+            // Finesse: same modifier for attack and damage (PHB "Finesse").
+            // Rage bonus only applies to STR-based melee attacks (PHB "Rage").
+            creature.IsStrengthBasedAttack = weapon.IsFinesse
+                ? creature.GetAbilityModifier(creature.Strength) >= creature.GetAbilityModifier(creature.Dexterity)
+                : !isEffectivelyRanged;
         }
         else
         {
@@ -1411,6 +1430,11 @@ public class Creature
         CurrentDamageType = weapon.DamageType;
         // Thrown weapons are melee; pure ranged weapons are ranged.
         IsMeleeAttack = !isEffectivelyRanged;
+        // Finesse: same modifier for attack and damage (PHB "Finesse").
+        // Rage bonus only applies to STR-based melee attacks (PHB "Rage").
+        IsStrengthBasedAttack = weapon.IsFinesse
+            ? GetAbilityModifier(Strength) >= GetAbilityModifier(Dexterity)
+            : !isEffectivelyRanged;
         // Store the weapon's range for ranged weapons; thrown weapons keep 0 range here (melee use).
         NormalRange = isEffectivelyRanged ? weapon.Range : 0;
         LongRange   = isEffectivelyRanged ? weapon.LongRange : 0;

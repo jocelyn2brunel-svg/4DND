@@ -1411,8 +1411,9 @@ public class CombatManager
         {
             int damageBonus = attacker.DamageBonus;
 
-            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength.
-            if (attacker.IsRaging && attacker.IsMeleeAttack)
+            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength (PHB "Rage").
+            // Finesse weapons using DEX do not benefit.
+            if (attacker.IsRaging && attacker.IsMeleeAttack && attacker.IsStrengthBasedAttack)
             {
                 damageBonus += attacker.RageDamageBonus;
             }
@@ -1536,7 +1537,9 @@ public class CombatManager
             // TWF: don't add ability modifier to damage unless it is negative (PHB "Two-Weapon Fighting")
             int damageBonus = Math.Min(0, attacker.DamageBonus);
 
-            if (attacker.IsRaging && attacker.IsMeleeAttack)
+            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength (PHB "Rage").
+            // Finesse weapons using DEX do not benefit.
+            if (attacker.IsRaging && attacker.IsMeleeAttack && attacker.IsStrengthBasedAttack)
                 damageBonus += attacker.RageDamageBonus;
 
             result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
