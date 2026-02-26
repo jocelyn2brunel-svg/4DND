@@ -128,7 +128,7 @@ Key methods:
 - Tiles are tinted based on light level:
   - Bright: White (full color)
   - Dim: Gray (128, 128, 128)
-  - Darkness with darkvision: Dark blue-gray (64, 64, 96)
+  - Darkness with darkvision: Dark gray (96, 96, 96)
   - Complete darkness: Black (invisible)
 
 ## Future Enhancements

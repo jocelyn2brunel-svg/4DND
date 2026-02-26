@@ -18,7 +18,7 @@
 
 #### Darkvision
 - Create an **Elf**, **Dwarf**, **Half-Orc**, or **Tiefling** (60 ft darkvision)
-- In darkness, you can see in a blue-gray tint up to 60 feet
+- In darkness, you can see in a gray tint up to 60 feet
 - In dim light, you can see normally
 
 #### Superior Darkvision
@@ -98,7 +98,7 @@
 Shows color coding:
 - White: Bright Light
 - Gray: Dim Light (Lightly Obscured)
-- Dark Blue-Gray: Darkness (using Darkvision)
+- Dark Gray: Darkness (using Darkvision)
 - Black: Complete Darkness (Heavily Obscured)
 
 #### Vision Info (Bottom Left)
@@ -134,7 +134,7 @@ Hover over any tile to see:
 1. Create Elf character (60 ft darkvision)
 2. Start combat
 3. Turn off global daylight
-4. Observe that you can still see in darkness (blue-gray tint)
+4. Observe that you can still see in darkness (gray tint)
 5. Check darkvision range indicator (purple circle)
 
 #### Scenario 3: Fog of War
@@ -167,7 +167,7 @@ Hover over any tile to see:
 - Only works in darkness
 - Converts darkness to dim light
 - Converts dim light to bright light
-- Shows in grayscale (simulated with blue-gray tint)
+- Shows in grayscale
 
 #### Blindsight
 - Ignores line of sight
