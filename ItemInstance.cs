@@ -13,6 +13,13 @@ public class ItemInstance
     /// </summary>
     public int Quantity { get; set; } = 0;
 
+    /// <summary>
+    /// Whether this weapon or ammunition has been coated with silver (PHB "Silvered Weapons").
+    /// Silvering costs 100 gp and allows the weapon to bypass immunity or resistance
+    /// to nonmagical weapons for susceptible creatures (e.g. werewolves, certain fiends).
+    /// </summary>
+    public bool IsSilvered { get; set; } = false;
+
     public ItemInstance() { }
 
     public ItemInstance(string name)

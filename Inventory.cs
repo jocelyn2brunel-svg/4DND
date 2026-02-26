@@ -58,6 +58,23 @@ public class Inventory
         return Items.Any(i => i.Name == itemName);
     }
 
+    /// <summary>
+    /// Applies a silver coating to a weapon or ammunition pack (PHB "Silvered Weapons").
+    /// The caller is responsible for deducting the 100 gp cost before calling this method.
+    /// Returns false if no matching, unsilvered item instance is found.
+    /// </summary>
+    /// <param name="weaponName">Name of the weapon or ammunition to silver.</param>
+    public bool SilverWeapon(string weaponName)
+    {
+        var instance = (EquippedWeapon?.Name == weaponName && EquippedWeapon?.IsSilvered == false ? EquippedWeapon : null)
+            ?? (OffhandWeapon?.Name == weaponName && OffhandWeapon?.IsSilvered == false ? OffhandWeapon : null)
+            ?? Items.FirstOrDefault(i => i.Name == weaponName && !i.IsSilvered);
+        if (instance == null)
+            return false;
+        instance.IsSilvered = true;
+        return true;
+    }
+
     public bool HasActiveLightSource()
     {
         return HasActiveLantern() || HasActiveTorch();

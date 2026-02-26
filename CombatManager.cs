@@ -776,7 +776,7 @@ public class CombatManager
 
             result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
             attacker.HasAttackedThisRound = true;
         }
 
@@ -1446,7 +1446,7 @@ public class CombatManager
 
             result.Damage = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
 
             attacker.HasAttackedThisRound = true;
         }
@@ -1578,7 +1578,7 @@ public class CombatManager
 
             result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
             attacker.HasAttackedThisRound = true;
         }
 
@@ -1710,7 +1710,7 @@ public class CombatManager
         {
             result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
             result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
             attacker.HasAttackedThisRound = true;
         }
 

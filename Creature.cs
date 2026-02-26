@@ -360,6 +360,19 @@ public class Creature
     /// <summary>Damage types this creature is vulnerable to (takes double damage).</summary>
     public HashSet<DamageType> DamageVulnerabilities { get; set; } = new();
 
+    /// <summary>
+    /// Damage types this creature is immune to from nonmagical, non-silvered attacks (PHB "Silvered Weapons").
+    /// Silvered weapons (and magical weapons) bypass this immunity.
+    /// Typical for lycanthropes, certain fiends, and undead.
+    /// </summary>
+    public HashSet<DamageType> NonmagicalImmunities { get; set; } = new();
+
+    /// <summary>
+    /// Damage types this creature is resistant to from nonmagical, non-silvered attacks (PHB "Silvered Weapons").
+    /// Silvered weapons (and magical weapons) bypass this resistance.
+    /// </summary>
+    public HashSet<DamageType> NonmagicalResistances { get; set; } = new();
+
     /// <summary>Conditions this creature cannot be affected by.</summary>
     public Condition ConditionImmunities { get; set; } = Condition.None;
     
@@ -482,6 +495,13 @@ public class Creature
     public bool IsImprovisedWeaponAttack { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a silvered weapon (PHB "Silvered Weapons").
+    /// Silvered weapons bypass immunity or resistance to nonmagical attacks
+    /// for susceptible creatures (e.g. werewolves, certain fiends and undead).
+    /// </summary>
+    public bool IsSilveredAttack { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -576,17 +596,22 @@ public class Creature
         return Conditions.HasCondition(Condition.Blinded) || Conditions.HasCondition(Condition.Unconscious);
     }
     
-    public void TakeDamage(int amount, DamageType damageType = DamageType.None, bool isCriticalHit = false)
+    public void TakeDamage(int amount, DamageType damageType = DamageType.None, bool isCriticalHit = false, bool isSilvered = false)
     {
         // Immunity: no damage
         if (damageType != DamageType.None && DamageImmunities.Contains(damageType))
             return;
 
+        // Nonmagical immunity (PHB "Silvered Weapons"): bypassed by silvered (or magical) weapons.
+        if (damageType != DamageType.None && NonmagicalImmunities.Contains(damageType) && !isSilvered)
+            return;
+
         // Resistance: half damage (PHB "Damage Resistance").
         // Multiple sources of resistance still count as only one instance.
         bool hasResistance = damageType != DamageType.None && DamageResistances.Contains(damageType);
+        bool hasNonmagicalResistance = damageType != DamageType.None && NonmagicalResistances.Contains(damageType) && !isSilvered;
         bool hasRageResistance = IsRaging && (damageType == DamageType.Bludgeoning || damageType == DamageType.Piercing || damageType == DamageType.Slashing);
-        if (hasResistance || hasRageResistance)
+        if (hasResistance || hasNonmagicalResistance || hasRageResistance)
             amount /= 2;
 
         // Vulnerability: double damage (PHB "Damage Vulnerability").
@@ -1395,6 +1420,8 @@ public class Creature
             creature.IsMeleeAttack = true;
         }
 
+        creature.IsSilveredAttack = character.InventoryData.EquippedWeapon?.IsSilvered ?? false;
+
         if (character.Class == "Barbarian")
         {
             creature.RagesRemaining = character.RagesRemaining;
@@ -1428,6 +1455,14 @@ public class Creature
     {
         var weapon = ItemDatabase.GetItem(weaponName);
         IsOffhandAttack = isOffhand;
+
+        // Detect whether the specific weapon instance has been silvered.
+        IsSilveredAttack = false;
+        var weaponInstance = isOffhand
+            ? character.InventoryData.OffhandWeapon
+            : character.InventoryData.EquippedWeapon;
+        if (weaponInstance?.Name == weaponName)
+            IsSilveredAttack = weaponInstance.IsSilvered;
 
         if (weapon == null || weapon.Type != ItemType.Weapon)
         {
