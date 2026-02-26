@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace _4DND;
 
-public class LuteProceduralMusic
+public class LuteProceduralMusic(LuteSynthesizer synth)
 {
-    private readonly LuteSynthesizer _synth;
+    private readonly LuteSynthesizer _synth = synth;
     private readonly Random _random = new();
     private float _noteTimer = 0;
     private bool _isPlaying = false;
@@ -13,13 +13,8 @@ public class LuteProceduralMusic
     private int _noteIndex = 0;
 
     // D Dorian scale for procedural generation
-    private readonly int[] _scale = { 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69 };
-    private readonly int[] _bassNotes = { 38, 45, 50 }; // D2, A2, D3
-
-    public LuteProceduralMusic(LuteSynthesizer synth)
-    {
-        _synth = synth;
-    }
+    private readonly int[] _scale = [50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69];
+    private readonly int[] _bassNotes = [38, 45, 50]; // D2, A2, D3
 
     public void PlayRandomTune()
     {
@@ -58,7 +53,7 @@ public class LuteProceduralMusic
 
     private List<LuteNote> GeneratePhrase(int length)
     {
-        var notes = new List<LuteNote>();
+        List<LuteNote> notes = [];
         int currentMidi = _scale[_random.Next(_scale.Length)];
 
         for (int i = 0; i < length; i++)
@@ -147,7 +142,7 @@ public class LuteProceduralMusic
         }
     }
 
-    private float MidiToFreq(int midi)
+    private static float MidiToFreq(int midi)
     {
         return (float)(440.0 * Math.Pow(2.0, (midi - 69) / 12.0));
     }

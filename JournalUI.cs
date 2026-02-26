@@ -158,7 +158,7 @@ public class JournalUI
         return sectionHeight;
     }
 
-    public Rectangle GetCloseButtonRect(Viewport viewport)
+    public static Rectangle GetCloseButtonRect(Viewport viewport)
     {
         return new Rectangle(viewport.Width - Margin - CloseButtonWidth, Margin + 20, CloseButtonWidth, CloseButtonHeight);
     }
@@ -194,7 +194,7 @@ public class JournalUI
         spriteBatch.Draw(_pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
     }
 
-    private string WrapText(SpriteFont font, string text, float maxLineWidth)
+    private static string WrapText(SpriteFont font, string text, float maxLineWidth)
     {
         if (string.IsNullOrEmpty(text)) return "";
         string[] words = text.Split(' ');

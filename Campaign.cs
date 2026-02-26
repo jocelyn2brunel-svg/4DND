@@ -212,8 +212,8 @@ namespace _4DND
         public float HoursTraveledToday { get; set; } = 0f;
 
         // Campaign notes and lore
-        public List<string> CampaignNotes { get; set; } = new();
-        public Dictionary<string, string> Lore { get; set; } = new();
+        public List<string> CampaignNotes { get; set; } = [];
+        public Dictionary<string, string> Lore { get; set; } = [];
         
         // Current map viewing scale
         public MapScale CurrentScale { get; set; } = MapScale.Province;
@@ -318,10 +318,10 @@ namespace _4DND
                 CenterY = startR,
                 Radius = 30,
                 Terrain = "Mixed",
-                Scale = MapScale.Province
+                Scale = MapScale.Province,
+                Locations = new() { campaign.HomeBase }
             };
             
-            campaign.LocalRegion.Locations.Add(campaign.HomeBase);
             campaign.AllLocations.Add(campaign.HomeBase);
             campaign.Regions.Add(campaign.LocalRegion);
             

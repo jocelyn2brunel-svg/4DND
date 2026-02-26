@@ -8,7 +8,7 @@ public class LuteSynthesizer : IDisposable
 {
     private const int SampleRate = 44100;
     private DynamicSoundEffectInstance _instance;
-    private readonly List<LuteString> _strings = new();
+    private readonly List<LuteString> _strings = [];
     private readonly byte[] _audioBuffer;
     private const int BufferSamples = 2205; // 50ms buffer
 
@@ -106,6 +106,7 @@ public class LuteSynthesizer : IDisposable
     {
         _instance?.Dispose();
         _instance = null!;
+        GC.SuppressFinalize(this);
     }
 }
 
@@ -126,7 +127,7 @@ internal class LuteString
         if (bufferLength < 2) bufferLength = 2;
 
         _ringBuffer = new float[bufferLength];
-        Random rand = new Random();
+        Random rand = new();
 
         // Initial excitation with white noise
         for (int i = 0; i < bufferLength; i++)
