@@ -255,23 +255,38 @@ namespace _4DND
 
         /// <summary>
         /// XP multipliers by number of monsters (DMG p.82).
+        /// Base values: 1 = ×1, 2 = ×1.5, 3–6 = ×2, 7–10 = ×2.5, 11–14 = ×3, 15+ = ×4.
+        /// For a small party (≤2 PCs), use one step higher; for a large party (≥6 PCs), use one step lower.
         /// </summary>
         private static float GetMonsterCountMultiplier(int monsterCount, int partySize)
         {
-            // Adjust multiplier bracket when party is very small (&lt;=2) or very large (>=6)
-            float[] multipliers = monsterCount switch
+            // Base multiplier index (0–5) from the DMG table
+            int baseIndex = monsterCount switch
             {
-                1 => new[] { 1.0f, 1.0f, 1.5f },
-                2 => new[] { 1.0f, 1.5f, 2.0f },
-                <= 6 => new[] { 1.5f, 2.0f, 2.5f },
-                <= 10 => new[] { 2.0f, 2.5f, 3.0f },
-                <= 14 => new[] { 2.5f, 3.0f, 4.0f },
-                _ => new[] { 3.0f, 4.0f, 5.0f },
+                1      => 0,  // ×1
+                2      => 1,  // ×1.5
+                <= 6   => 2,  // ×2
+                <= 10  => 3,  // ×2.5
+                <= 14  => 4,  // ×3
+                _      => 5,  // ×4
             };
 
-            // Index 0 = small party (1-2), 1 = standard party (3-5), 2 = large party (6+)
-            int bracket = partySize <= 2 ? 0 : partySize >= 6 ? 2 : 1;
-            return multipliers[bracket];
+            // Adjust one step for very small or very large parties
+            int adjustedIndex = partySize <= 2 ? baseIndex + 1
+                              : partySize >= 6 ? baseIndex - 1
+                              : baseIndex;
+
+            adjustedIndex = Math.Clamp(adjustedIndex, 0, 5);
+
+            return adjustedIndex switch
+            {
+                0 => 1.0f,
+                1 => 1.5f,
+                2 => 2.0f,
+                3 => 2.5f,
+                4 => 3.0f,
+                _ => 4.0f,
+            };
         }
 
         /// <summary>
