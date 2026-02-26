@@ -318,6 +318,14 @@ public static class CharacterD20Extensions
         if (character.IsWearingNonProficientArmor)
             hasDisadvantage = true;
 
+        // Stealth: disadvantage if equipped armor has the Stealth Disadvantage property
+        if (skillName == "Stealth" && character.InventoryData.EquippedArmor != null)
+        {
+            var armorData = ItemDatabase.GetItem(character.InventoryData.EquippedArmor.Name);
+            if (armorData.StealthDisadvantage)
+                hasDisadvantage = true;
+        }
+
         (string ability, bool proficient, int abilityScore) = skillName switch
         {
             "Acrobatics" => ("DEX", character.AcrobaticsProficiency, character.Dexterity),
