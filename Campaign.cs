@@ -180,6 +180,19 @@ namespace _4DND
 
         public string GameTimeDisplay => $"Jour {GameDay}, {GameHour:D2}:{GameMinute:D2}";
 
+        /// <summary>
+        /// Gets the current light level based on the time of day.
+        /// </summary>
+        public LightType GetCurrentLightLevel()
+        {
+            int hour = GameHour;
+            if (hour < 6 || hour >= 20)
+                return LightType.Darkness;
+            if (hour < 8 || hour >= 18)
+                return LightType.Dim;
+            return LightType.Bright;
+        }
+
         public double LastSurvivalCheckMinutes { get; set; } = 8 * 60;
         public float HoursTraveledToday { get; set; } = 0f;
 

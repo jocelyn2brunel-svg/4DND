@@ -714,7 +714,7 @@ public class CombatManager
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+            if (lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
 
@@ -1307,7 +1307,7 @@ public class CombatManager
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+            if (lightLevel == LightType.Bright)
             {
                 hasDisadvantage = true;
             }
@@ -1434,7 +1434,7 @@ public class CombatManager
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+            if (lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
 
@@ -1569,7 +1569,7 @@ public class CombatManager
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+            if (lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
 
@@ -1661,7 +1661,7 @@ public class CombatManager
         if (visionSystem != null && attacker.HasSunlightSensitivity)
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (visionSystem.GlobalDaylight || lightLevel == LightType.Bright)
+            if (lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
 

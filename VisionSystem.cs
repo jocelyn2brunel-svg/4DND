@@ -22,7 +22,7 @@ public class VisionSystem
     private HashSet<(int, int, int)> _exploredTiles = new();
     private bool _lightingNeedsUpdate = true;
     
-    public bool GlobalDaylight { get; set; } = false;
+    public LightType AmbientLight { get; set; } = LightType.Bright;
 
     public void MarkLightingDirty() => _lightingNeedsUpdate = true;
     
@@ -70,12 +70,15 @@ public class VisionSystem
     
     public void CalculateLighting()
     {
-        if (!_lightingNeedsUpdate && !GlobalDaylight) return;
+        if (!_lightingNeedsUpdate) return;
 
         _lightMap.Clear();
         
-        if (GlobalDaylight)
+        // If ambient is already bright, we don't need to process other light sources
+        // as they won't make it any brighter (LightType.Bright is the minimum value 0).
+        if (AmbientLight == LightType.Bright)
         {
+            _lightingNeedsUpdate = false;
             return;
         }
         
@@ -115,41 +118,17 @@ public class VisionSystem
             }
         }
         
-        foreach (var effect in _areaEffects)
-        {
-            if (!effect.IsActive) continue;
-            
-            int effectTiles = Math.Min(effect.Radius / 5, 20); // Limit to reasonable range
-            
-            for (int dz = -effectTiles; dz <= effectTiles; dz++)
-            {
-                for (int dy = -effectTiles; dy <= effectTiles; dy++)
-                {
-                    for (int dx = -effectTiles; dx <= effectTiles; dx++)
-                    {
-                        int tx = effect.X + dx;
-                        int ty = effect.Y + dy;
-                        int tz = effect.Z + dz;
-                        
-                        int distance = Math.Max(Math.Max(Math.Abs(dx), Math.Abs(dy)), Math.Abs(dz));
-                        
-                        if (distance <= effectTiles)
-                        {
-                            if (effect.EffectType == LightType.Darkness)
-                            {
-                                SetLightLevel(tx, ty, tz, LightType.Darkness);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Note: AreaEffects that block vision or cause Darkness are handled in GetLightLevel
+        // and vision casting logic to ensure they override other light sources properly.
+
+        _lightingNeedsUpdate = false;
     }
     
     private void SetLightLevel(int x, int y, int z, LightType level)
     {
         var key = (x, y, z);
-        if (!_lightMap.ContainsKey(key) || level > _lightMap[key])
+        // Smaller value means brighter light (Bright=0, Dim=1, Darkness=2)
+        if (!_lightMap.ContainsKey(key) || level < _lightMap[key])
         {
             _lightMap[key] = level;
         }
@@ -157,27 +136,25 @@ public class VisionSystem
     
     public LightType GetLightLevel(int x, int y, int z = 0)
     {
-        if (GlobalDaylight)
+        // 1. Magical Darkness priority override
+        foreach (var effect in _areaEffects)
         {
-            foreach (var effect in _areaEffects)
+            if (!effect.IsActive || effect.EffectType != LightType.Darkness) continue;
+
+            int distance = Math.Max(Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y)), Math.Abs(z - effect.Z));
+            int effectTiles = effect.Radius / 5;
+
+            if (distance <= effectTiles)
             {
-                if (!effect.IsActive) continue;
-                if (effect.EffectType != LightType.Darkness) continue;
-                
-                int distance = Math.Max(Math.Max(Math.Abs(x - effect.X), Math.Abs(y - effect.Y)), Math.Abs(z - effect.Z));
-                int effectTiles = effect.Radius / 5;
-                
-                if (distance <= effectTiles)
-                {
-                    return LightType.Darkness;
-                }
+                return LightType.Darkness;
             }
-            
-            return LightType.Bright;
         }
         
+        // 2. Best of Ambient and local Light Sources
         var key = (x, y, z);
-        return _lightMap.ContainsKey(key) ? _lightMap[key] : LightType.Darkness;
+        LightType sourceLight = _lightMap.TryGetValue(key, out var level) ? level : LightType.Darkness;
+
+        return (LightType)Math.Min((int)AmbientLight, (int)sourceLight);
     }
     
     public void CalculateVisibility(Creature observer)

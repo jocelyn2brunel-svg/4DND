@@ -251,7 +251,7 @@ public class Game1 : Game
         Initialize3DRendering();
         _combatManager.TacticalMap = _tacticalMap;
         _visionSystem.TacticalMap = _tacticalMap;
-        _visionSystem.GlobalDaylight = true; // Morning/Daylight by default
+        _visionSystem.AmbientLight = _currentCampaign?.GetCurrentLightLevel() ?? LightType.Bright;
 
         // Procedural ground is now handled by InfiniteGrid3D factory.
         
@@ -2475,6 +2475,18 @@ public class Game1 : Game
             float dtPlaying = (float)gameTime.ElapsedGameTime.TotalSeconds;
             _luteMusic.Update(dtPlaying);
             _luteSynth.Update();
+
+            // Synchronize vision system with campaign time
+            if (_currentCampaign != null)
+            {
+                var campaignLight = _currentCampaign.GetCurrentLightLevel();
+                if (_visionSystem.AmbientLight != campaignLight)
+                {
+                    _visionSystem.AmbientLight = campaignLight;
+                    _visionSystem.MarkLightingDirty();
+                    UpdateVision();
+                }
+            }
 
             bool wasCharacterSheetOpen = _showCharacterSheet;
             bool wasJournalOpen = _showJournal;
