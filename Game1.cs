@@ -15,7 +15,7 @@ namespace _4DND;
 public class Game1 : Game
 {
     private GraphicsDeviceManager _graphics;
-    private SpriteBatch _spriteBatch;
+    private SpriteBatch _spriteBatch = null!;
 
     private InfiniteGrid3D<TileType> _tacticalMap = null!;
     private Texture2D _pixel = null!;
@@ -75,8 +75,8 @@ public class Game1 : Game
     private string _savesDir = "saves";
     private string _charsFile = "characters.json";
     private string _campaignsFile = "campaigns.json";
-    private Character _currentCharacter = null;
-    private Campaign _currentCampaign = null;
+    private Character _currentCharacter = null!;
+    private Campaign _currentCampaign = null!;
     private bool _isMultiplayerMode = false;
     
     private List<Campaign> _campaigns = new();
@@ -105,7 +105,7 @@ public class Game1 : Game
     private bool _showJournal = false;
 
     private CombatManager _combatManager = new();
-    private Creature _playerCreature = null;
+    private Creature _playerCreature = null!;
     private List<string> _combatLog = new();
     private const int MAX_COMBAT_LOG = 5;
     
@@ -145,7 +145,7 @@ public class Game1 : Game
     private bool _showEnemyContextMenu = false;
     private Rectangle _enemyContextMenuRect;
     private Rectangle _enemyExamineOptionRect;
-    private Creature _contextTargetEnemy = null;
+    private Creature? _contextTargetEnemy = null;
     private string _enemyExamineText = "";
     private Rectangle _enemyExaminePopupRect;
     private Spell? _activeSpell = null;
@@ -565,13 +565,13 @@ public class Game1 : Game
 
             // Reveal surroundings in the global fog of war
             // Filter to only active party members for this campaign
-            var activeParty = _characters.Where(c => _currentCampaign.PartyMembers.Contains(c.Name)).ToList();
+            var activeParty = _characters.Where(c => _currentCampaign!.PartyMembers.Contains(c.Name)).ToList();
             if (activeParty.Count == 0 && _currentCharacter != null) activeParty.Add(_currentCharacter);
 
-            float revealRadius = VisionSystem.GetRevealRadius(_currentCampaign, activeParty);
-            Vector2 partyPos = new Vector2(_currentCampaign.PartyX, _currentCampaign.PartyY);
+            float revealRadius = VisionSystem.GetRevealRadius(_currentCampaign!, activeParty);
+            Vector2 partyPos = new Vector2(_currentCampaign!.PartyX, _currentCampaign!.PartyY);
             _visionSystem.RevealPath(partyPos, partyPos, revealRadius);
-            _currentCampaign.DiscoverLocations(revealRadius, msg => AddToCombatLog(msg));
+            _currentCampaign!.DiscoverLocations(revealRadius, msg => AddToCombatLog(msg));
 
             _playerCreature.X = originalX;
             _playerCreature.Y = originalY;
@@ -1952,7 +1952,7 @@ public class Game1 : Game
             {
                 var json = File.ReadAllText(path);
                 var campaigns = JsonSerializer.Deserialize<List<Campaign>>(json) ?? new List<Campaign>();
-                _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName);
+                _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName)!;
                 RestoreVisionExplorationFromCampaign();
                 RestoreGroundItemsFromCampaign();
             }
@@ -2985,7 +2985,7 @@ public class Game1 : Game
                             if (_selectedAction == CombatAction.Attack)
                             {
                                 // Reset stats from current equipped if they were changed
-                                _playerCreature.SetupAttackFromWeapon(_currentCharacter.InventoryData.EquippedWeapon?.Name ?? "Unarmed Strike", _currentCharacter);
+                                _playerCreature!.SetupAttackFromWeapon(_currentCharacter.InventoryData.EquippedWeapon?.Name ?? "Unarmed Strike", _currentCharacter);
                             }
                             _selectedAction = CombatAction.Attack;
                             _activeSpell = null;
@@ -2998,7 +2998,7 @@ public class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter?.Class))
+                        else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter.Class))
                         {
                             if (_selectedAction == CombatAction.CastSpell)
                             {
@@ -3007,7 +3007,7 @@ public class Game1 : Game
                                 if (relevantSpells.Count > 0)
                                 {
                                     _activeSpell = relevantSpells[0];
-                                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                                    _playerCreature!.SetupAttackFromSpell(_activeSpell, _currentCharacter);
                                 }
                             }
                             else if (_activeSpell == null)
@@ -3016,7 +3016,7 @@ public class Game1 : Game
                                 if (relevantSpells.Count > 0)
                                 {
                                     _activeSpell = relevantSpells[0];
-                                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                                    _playerCreature!.SetupAttackFromSpell(_activeSpell, _currentCharacter);
                                 }
                             }
                             _selectedAction = CombatAction.CastSpell;
@@ -3147,7 +3147,7 @@ public class Game1 : Game
 
                 if (_characterSheet.AttackRequestedWithItem != null)
                 {
-                    _playerCreature.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter, _characterSheet.AttackRequestedIsOffhand);
+                    _playerCreature!.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter, _characterSheet.AttackRequestedIsOffhand);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithItem = null;
@@ -3157,14 +3157,14 @@ public class Game1 : Game
                 if (_characterSheet.AttackRequestedWithSpell != null)
                 {
                     _activeSpell = _characterSheet.AttackRequestedWithSpell;
-                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                    _playerCreature!.SetupAttackFromSpell(_activeSpell, _currentCharacter);
                     _selectedAction = CombatAction.CastSpell;
                     _characterSheet.AttackRequestedWithSpell = null;
                 }
 
                 if (_characterSheet.AttackRequestedWithUnarmed)
                 {
-                    _playerCreature.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter);
+                    _playerCreature!.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithUnarmed = false;
@@ -3235,7 +3235,7 @@ public class Game1 : Game
             if (rightClickedThisFrame)
             {
                 var hovered = GetHoveredTile();
-                Creature target = null;
+                Creature? target = null;
                 if (hovered.HasValue)
                 {
                     target = _combatManager.GetCreatureAt(hovered.Value.x, hovered.Value.y, hovered.Value.z);
@@ -4712,7 +4712,7 @@ public class Game1 : Game
                                 _selectedAction == CombatAction.Grapple);
                         }
 
-                        bool canCastSpell = IsSpellcasterClass(_currentCharacter?.Class);
+                        bool canCastSpell = IsSpellcasterClass(_currentCharacter!.Class);
                         DrawCombatActionButton(
                             GetCombatCastSpellButtonRect(vp),
                             "Cast Spell",

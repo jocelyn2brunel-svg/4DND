@@ -83,7 +83,6 @@ public class JournalUI
         var previousScissor = graphics.ScissorRectangle;
 
         // Calculate total content height first
-        int currentY = 0;
         int wrapWidth = contentRect.Width - 40;
 
         // Measure sections

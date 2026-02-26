@@ -40,7 +40,6 @@ public class CharacterCreation
     
     // Hover tooltip
     private string _tooltipText = "";
-    private Vector2 _tooltipPosition;
     private static readonly string[] _namePrefixes =
     {
         "Ara", "Bel", "Cor", "Dra", "Ela", "Fen", "Gal", "Ira", "Kae", "Lun",

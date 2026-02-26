@@ -407,7 +407,6 @@ public class CharacterSheet
     private int DrawHeader(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
     {
         int padding = 10;
-        int nameAreaHeight = 60;
         
         if (spriteBatch != null)
         {
@@ -502,7 +501,6 @@ public class CharacterSheet
     
     private int DrawProficienciesBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
     {
-        int padding = 10;
         int contentY = 25;
         
         // Armor proficiencies
@@ -875,7 +873,7 @@ public class CharacterSheet
                 string damage = GetWeaponDamage(weapon);
 
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
-                bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && creature.IsMeleeAttack == !weaponItem.IsRanged;
+                bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && creature.IsMeleeAttack == !(weaponItem?.IsRanged ?? false);
 
                 DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, Color.Black, isActive);
                 RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
@@ -1030,7 +1028,7 @@ public class CharacterSheet
 
                 RegisterTooltip(itemRect, BuildItemTooltip(item, isEquipped));
 
-                _inventoryItemRects.Add((itemRect, item, isEquipped, itemData.IsEquippable));
+                _inventoryItemRects.Add((itemRect, item, isEquipped, itemData?.IsEquippable ?? false));
 
                 if (!left) currentItemY += lineHeight;
                 left = !left;
