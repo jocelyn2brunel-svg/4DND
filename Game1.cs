@@ -1897,6 +1897,7 @@ public class Game1 : Game
             if (_currentCampaign == null) return;
 
             SyncVisionExplorationToCampaign();
+            SyncGroundItemsToCampaign();
             
             // Load existing campaigns
             LoadCampaigns();
@@ -1921,6 +1922,8 @@ public class Game1 : Game
     {
         try
         {
+            _groundItems.Clear();
+
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir, _campaignsFile);
             if (File.Exists(path))
             {
@@ -1928,6 +1931,7 @@ public class Game1 : Game
                 var campaigns = JsonSerializer.Deserialize<List<Campaign>>(json) ?? new List<Campaign>();
                 _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName);
                 RestoreVisionExplorationFromCampaign();
+                RestoreGroundItemsFromCampaign();
             }
         }
         catch (Exception ex)
@@ -1943,6 +1947,46 @@ public class Game1 : Game
 
         _currentCampaign.ExploredTiles = _visionSystem.GetExploredTilesSnapshot();
         _currentCampaign.ExploredHexes = _visionSystem.GetExploredHexesSnapshot();
+    }
+
+    private void SyncGroundItemsToCampaign()
+    {
+        if (_currentCampaign == null)
+            return;
+
+        _currentCampaign.GroundItems = _groundItems
+            .Select(gi => new GroundItemData
+            {
+                X = gi.X,
+                Y = gi.Y,
+                Z = gi.Z,
+                Item = gi.Item
+            })
+            .ToList();
+    }
+
+    private void RestoreGroundItemsFromCampaign()
+    {
+        _groundItems.Clear();
+
+        if (_currentCampaign?.GroundItems == null)
+            return;
+
+        foreach (var gi in _currentCampaign.GroundItems)
+        {
+            if (gi.Item == null)
+                continue;
+
+            _groundItems.Add(new GroundItem
+            {
+                X = gi.X,
+                Y = gi.Y,
+                Z = gi.Z,
+                Item = gi.Item
+            });
+        }
+
+        RefreshLightSources();
     }
 
     private void RestoreVisionExplorationFromCampaign()

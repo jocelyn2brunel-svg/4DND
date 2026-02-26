@@ -26,6 +26,17 @@ namespace _4DND
         Normal,  // 3 miles/hour, 24 miles/day
         Slow     // 2 miles/hour, 18 miles/day
     }
+
+    /// <summary>
+    /// Serializable data for an item dropped on the tactical ground.
+    /// </summary>
+    public class GroundItemData
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Z { get; set; }
+        public ItemInstance Item { get; set; } = new();
+    }
     
     /// <summary>
     /// Represents the type of settlement in the campaign world.
@@ -157,6 +168,7 @@ namespace _4DND
         public List<Location> AllLocations { get; set; } = new();
         public List<ExploredTileData> ExploredTiles { get; set; } = new();
         public List<ExploredHexData> ExploredHexes { get; set; } = new();
+        public List<GroundItemData> GroundItems { get; set; } = new();
         
         // Campaign progress
         public int SessionCount { get; set; }
