@@ -120,33 +120,16 @@ namespace _4DND
             
             // Zoom with +/-
             if (kb.IsKeyDown(Keys.OemPlus) && !prevKb.IsKeyDown(Keys.OemPlus))
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + 0.1f, 0.5f, 2.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + 0.1f, campaign);
             if (kb.IsKeyDown(Keys.OemMinus) && !prevKb.IsKeyDown(Keys.OemMinus))
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom - 0.1f, 0.5f, 2.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom - 0.1f, campaign);
             
             // Zoom with mouse wheel
             int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
             if (scrollDelta != 0)
             {
-                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + scrollDelta * 0.001f, 0.3f, 3.0f);
+                ZoomAtScreenPosition(mouse.Position.ToVector2(), center, _zoom + scrollDelta * 0.001f, campaign);
                 _prevScrollValue = mouse.ScrollWheelValue;
-            }
-            
-            // Switch map scale with 1, 2, 3 keys
-            if (kb.IsKeyDown(Keys.D1) && !prevKb.IsKeyDown(Keys.D1))
-            {
-                campaign.CurrentScale = MapScale.Province;
-                System.Console.WriteLine($"Switched to Province scale (1 hex = {Campaign.GetHexSize(MapScale.Province)} mile)");
-            }
-            if (kb.IsKeyDown(Keys.D2) && !prevKb.IsKeyDown(Keys.D2))
-            {
-                campaign.CurrentScale = MapScale.Kingdom;
-                System.Console.WriteLine($"Switched to Kingdom scale (1 hex = {Campaign.GetHexSize(MapScale.Kingdom)} miles)");
-            }
-            if (kb.IsKeyDown(Keys.D3) && !prevKb.IsKeyDown(Keys.D3))
-            {
-                campaign.CurrentScale = MapScale.Continent;
-                System.Console.WriteLine($"Switched to Continent scale (1 hex = {Campaign.GetHexSize(MapScale.Continent)} miles)");
             }
             
             // Switch travel pace with F4/F5/F6 keys
@@ -322,7 +305,7 @@ namespace _4DND
             // Instructions
             if (_font != null)
             {
-                sb.DrawString(_font, "WASD: Pan | Zoom: Wheel | [1][2][3]: Scale | [F4]Fast [F5]Normal [F6]Slow: Pace | J: Journal | M: Close", new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr("Map Legend"), new Vector2(10, vp.Height - 30), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             }
         }
         
@@ -336,18 +319,18 @@ namespace _4DND
             DrawBorder(sb, panelRect, Color.SaddleBrown, 2);
 
             int y = panelRect.Y + 10;
-            sb.DrawString(_font, "Travel Pace", new Vector2(panelRect.X + 10, y), new Color(205, 133, 63), 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Travel Pace"), new Vector2(panelRect.X + 10, y), new Color(205, 133, 63), 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
             y += 22;
 
             // Header row
-            sb.DrawString(_font, "Pace       ft/min  mi/hr  mi/day  Effect", new Vector2(panelRect.X + 10, y), Color.Gray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, $"{Loc.Tr("Pace")}       ft/min  mi/hr  mi/day  {Loc.Tr("Effect")}", new Vector2(panelRect.X + 10, y), Color.Gray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
             y += 14;
 
             var paces = new[]
             {
-                (TravelPace.Fast,   "[F4] Fast  ", 400, 4, 30, "-5 passive Percep."),
-                (TravelPace.Normal, "[F5] Normal", 300, 3, 24, string.Empty),
-                (TravelPace.Slow,   "[F6] Slow  ", 200, 2, 18, "Stealth available"),
+                (TravelPace.Fast,   $"[F4] {Loc.Tr("Fast")}  ", 400, 4, 30, Loc.Tr("-5 passive Percep.")),
+                (TravelPace.Normal, $"[F5] {Loc.Tr("Normal")}", 300, 3, 24, string.Empty),
+                (TravelPace.Slow,   $"[F6] {Loc.Tr("Slow")}  ", 200, 2, 18, Loc.Tr("Stealth available")),
             };
 
             foreach (var (pace, label, ftMin, miHr, miDay, effect) in paces)
@@ -370,7 +353,7 @@ namespace _4DND
             
             int y = panelRect.Y + 10;
             
-            sb.DrawString(_font, "Map Scale", new Vector2(panelRect.X + 10, y), Color.Gold, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Map Scale"), new Vector2(panelRect.X + 10, y), Color.Gold, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
             y += 25;
             
             // Draw all three scales with current one highlighted
@@ -382,14 +365,14 @@ namespace _4DND
                 
                 string scaleName = scale switch
                 {
-                    MapScale.Province => "[1] Province",
-                    MapScale.Kingdom => "[2] Kingdom",
-                    MapScale.Continent => "[3] Continent",
+                    MapScale.Province => Loc.Tr("Province"),
+                    MapScale.Kingdom => Loc.Tr("Kingdom"),
+                    MapScale.Continent => Loc.Tr("Continent"),
                     _ => "Unknown"
                 };
                 
                 int hexSize = Campaign.GetHexSize(scale);
-                string scaleText = $"{scaleName}: 1 hex = {hexSize} mile{(hexSize > 1 ? "s" : "")}";
+                string scaleText = $"{scaleName}: {Loc.Tr("1 hex = {0} mile{1}", hexSize, hexSize > 1 ? "s" : "")}";
                 
                 sb.DrawString(_font, scaleText, new Vector2(panelRect.X + 15, y), color, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 y += 22;
@@ -400,9 +383,9 @@ namespace _4DND
             // Scale description
             string description = campaign.CurrentScale switch
             {
-                MapScale.Province => "Detailed local exploration",
-                MapScale.Kingdom => "Regional travel overview",
-                MapScale.Continent => "Continental geography",
+                MapScale.Province => Loc.Tr("Detailed local exploration"),
+                MapScale.Kingdom => Loc.Tr("Regional travel overview"),
+                MapScale.Continent => Loc.Tr("Continental geography"),
                 _ => ""
             };
             
@@ -410,7 +393,7 @@ namespace _4DND
             y += 25;
             
             // Show what's visible at current scale
-            sb.DrawString(_font, "Visible at this scale:", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Visible at this scale:"), new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
             y += 18;
             
             var visibleTypes = GetVisibleSettlementTypes(campaign.CurrentScale);
@@ -418,16 +401,16 @@ namespace _4DND
             {
                 string typeName = type switch
                 {
-                    SettlementType.Hamlet => "Hamlets",
-                    SettlementType.Village => "Villages",
-                    SettlementType.Town => "Towns",
-                    SettlementType.City => "Cities",
-                    SettlementType.Metropolis => "Metropolises",
-                    SettlementType.Fort => "Forts",
-                    SettlementType.Castle => "Castles",
-                    SettlementType.Monastery => "Monasteries",
-                    SettlementType.Dungeon => "Dungeons",
-                    SettlementType.Wilderness => "Wilderness",
+                    SettlementType.Hamlet => Loc.Tr("Hamlets"),
+                    SettlementType.Village => Loc.Tr("Villages"),
+                    SettlementType.Town => Loc.Tr("Towns"),
+                    SettlementType.City => Loc.Tr("Cities"),
+                    SettlementType.Metropolis => Loc.Tr("Metropolises"),
+                    SettlementType.Fort => Loc.Tr("Forts"),
+                    SettlementType.Castle => Loc.Tr("Castles"),
+                    SettlementType.Monastery => Loc.Tr("Monasteries"),
+                    SettlementType.Dungeon => Loc.Tr("Dungeons"),
+                    SettlementType.Wilderness => Loc.Tr("Wilderness"),
                     _ => "Unknown"
                 };
                 
@@ -525,7 +508,8 @@ namespace _4DND
         private void DrawProceduralFoliage(SpriteBatch sb, Vector2 center, BiomeType biome, int q, int r, int seed)
         {
             // Only draw foliage for certain biomes and if zoomed in enough
-            if (_zoom < 0.4f) return;
+            float foliageAlpha = MathHelper.Clamp((_zoom - 0.25f) / 0.15f, 0f, 1f);
+            if (foliageAlpha <= 0) return;
 
             int foliageCount = biome switch
             {
@@ -552,7 +536,7 @@ namespace _4DND
             }
 
             float size = _tileSize * _zoom;
-            Color foliageColor = new Color(30, 60, 20) * 0.5f;
+            Color foliageColor = new Color(30, 60, 20) * 0.5f * foliageAlpha;
             int dotSize = (int)Math.Max(2, 4 * _zoom);
 
             foreach (var offset in offsets)
@@ -639,6 +623,15 @@ namespace _4DND
             float scaleDivisor = Campaign.GetHexSize(currentScale);
             var pos = HexToScreen((float)location.X / scaleDivisor, (float)location.Y / scaleDivisor, center);
             
+            // Smoothly fade important locations at far zoom, but keep cities/metropolises visible longer
+            float baseAlpha = 1.0f;
+            if (currentScale == MapScale.Continent && _zoom < 0.6f && !location.IsHomeBase)
+            {
+                float threshold = location.Type == SettlementType.Metropolis ? 0.3f : 0.45f;
+                baseAlpha = MathHelper.Clamp((_zoom - threshold) / 0.15f, 0f, 1f);
+            }
+            if (baseAlpha <= 0) return;
+
             // Location color based on type
             Color locationColor = location.Type switch
             {
@@ -686,21 +679,25 @@ namespace _4DND
                 sb.Draw(_pixel, new Rectangle((int)pos.X - size/2 + 2, (int)pos.Y - size/2 + 2, size, size), Color.Black * 0.5f);
                 
                 // Draw main marker
-                sb.Draw(_pixel, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), locationColor);
+                sb.Draw(_pixel, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), locationColor * baseAlpha);
                 
                 // Draw border for cities and metropolises
                 if (location.Type == SettlementType.City || location.Type == SettlementType.Metropolis)
                 {
-                    DrawBorder(sb, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), Color.White * 0.7f, 1);
+                    DrawBorder(sb, new Rectangle((int)pos.X - size/2, (int)pos.Y - size/2, size, size), Color.White * 0.7f * baseAlpha, 1);
                 }
             }
             
             // Location name (only show if zoomed in enough or if it's an important location)
             if (_font != null)
             {
-                bool showName = _zoom > 0.7f || location.Type == SettlementType.City || location.Type == SettlementType.Metropolis || location.IsHomeBase;
-                
-                if (showName)
+                float nameAlpha = baseAlpha;
+                if (_zoom < 0.8f && location.Type != SettlementType.City && location.Type != SettlementType.Metropolis && !location.IsHomeBase)
+                {
+                    nameAlpha *= MathHelper.Clamp((_zoom - 0.5f) / 0.3f, 0f, 1f);
+                }
+
+                if (nameAlpha > 0.05f)
                 {
                     float nameScale = location.Type switch
                     {
@@ -713,9 +710,9 @@ namespace _4DND
                     var namePos = pos + new Vector2(-nameSize.X * 0.5f, _tileSize * _zoom * 0.6f);
                     
                     // Draw text shadow
-                    sb.DrawString(_font, location.Name, namePos + new Vector2(1, 1), Color.Black * 0.8f, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
+                    sb.DrawString(_font, location.Name, namePos + new Vector2(1, 1), Color.Black * 0.8f * nameAlpha, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
                     // Draw text
-                    sb.DrawString(_font, location.Name, namePos, Color.White, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
+                    sb.DrawString(_font, location.Name, namePos, Color.White * nameAlpha, 0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
                 }
             }
         }
@@ -736,32 +733,32 @@ namespace _4DND
             sb.DrawString(_font, campaign.GameTimeDisplay, new Vector2(panelRect.X + 10, y), Color.LimeGreen, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             y += 25;
 
-            sb.DrawString(_font, $"Home Base: {campaign.HomeBase.Name}", new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Home Base: {0}", campaign.HomeBase.Name), new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
 
             // Show location count for current scale
             var visibleLocations = campaign.GetLocationsAtScale(campaign.CurrentScale);
-            sb.DrawString(_font, $"Locations (visible): {visibleLocations.Count} / {campaign.AllLocations.Count}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Locations (visible): {0} / {1}", visibleLocations.Count, campaign.AllLocations.Count), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
 
-            sb.DrawString(_font, $"Session: {campaign.SessionCount}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, Loc.Tr("Session: {0}", campaign.SessionCount), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
 
             // Current scale info
             string scaleName = campaign.CurrentScale switch
             {
-                MapScale.Province => "Province",
-                MapScale.Kingdom => "Kingdom", 
-                MapScale.Continent => "Continent",
+                MapScale.Province => Loc.Tr("Province"),
+                MapScale.Kingdom => Loc.Tr("Kingdom"),
+                MapScale.Continent => Loc.Tr("Continent"),
                 _ => "Unknown"
             };
             int currentHexSize = Campaign.GetHexSize(campaign.CurrentScale);
-            sb.DrawString(_font, $"Scale: {scaleName} ({currentHexSize}mi/hex)", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, $"{Loc.Tr("Scale")}: {scaleName} ({Loc.Tr("{0}mi/hex", currentHexSize)})", new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 25;
 
             if (!string.IsNullOrEmpty(campaign.CurrentObjective))
             {
-                sb.DrawString(_font, "Objective:", new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr("Objective:"), new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 y += 18;
 
                 // Wrap objective text
@@ -773,7 +770,7 @@ namespace _4DND
             {
                 y += 18;
                 string selectedName = _selectedLocation != null ? _selectedLocation.Name : $"Hex ({_selectedHex.Value.q}, {_selectedHex.Value.r})";
-                sb.DrawString(_font, $"Selected: {selectedName}", new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, Loc.Tr("Selected: {0}", selectedName), new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
 
                 if (_selectedLocation == null && _selectedHex.HasValue)
                 {
@@ -781,7 +778,7 @@ namespace _4DND
                     int selectedHexSize = Campaign.GetHexSize(campaign.CurrentScale);
                     var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * selectedHexSize, _selectedHex.Value.r * selectedHexSize);
                     var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
-                    sb.DrawString(_font, $"Terrain: {biome}", new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    sb.DrawString(_font, Loc.Tr("Terrain: {0}", biome), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                 }
 
                 y += 25;
@@ -962,12 +959,61 @@ namespace _4DND
             return HexWorldToScreen(new Vector2(q, r), center);
         }
 
-        private void ZoomAtScreenPosition(Vector2 screenPosition, Vector2 center, float targetZoom, float minZoom, float maxZoom)
+        private void ZoomAtScreenPosition(Vector2 screenPosition, Vector2 center, float targetZoom, Campaign campaign)
         {
-            Vector2 worldUnderCursor = ScreenToHexWorld(screenPosition, center);
-            _zoom = MathHelper.Clamp(targetZoom, minZoom, maxZoom);
+            // 1. Get world position under cursor in miles before scale change
+            Vector2 worldUnderCursorHex = ScreenToHexWorld(screenPosition, center);
+            float hexSizeOld = Campaign.GetHexSize(campaign.CurrentScale);
+            var miles = Campaign.AxialToMiles(worldUnderCursorHex.X * hexSizeOld, worldUnderCursorHex.Y * hexSizeOld);
 
-            Vector2 withoutCamera = HexWorldToScreen(worldUnderCursor, center, includeCameraOffset: false);
+            // 2. Handle Scale Transitions with hysteresis
+            bool scaleChanged = false;
+
+            if (campaign.CurrentScale == MapScale.Province && targetZoom < 0.24f)
+            {
+                campaign.CurrentScale = MapScale.Kingdom;
+                targetZoom *= 6.0f;
+                scaleChanged = true;
+            }
+            else if (campaign.CurrentScale == MapScale.Kingdom)
+            {
+                if (targetZoom > 1.55f)
+                {
+                    campaign.CurrentScale = MapScale.Province;
+                    targetZoom /= 6.0f;
+                    scaleChanged = true;
+                }
+                else if (targetZoom < 0.24f)
+                {
+                    campaign.CurrentScale = MapScale.Continent;
+                    targetZoom *= 10.0f;
+                    scaleChanged = true;
+                }
+            }
+            else if (campaign.CurrentScale == MapScale.Continent && targetZoom > 2.55f)
+            {
+                campaign.CurrentScale = MapScale.Kingdom;
+                targetZoom /= 10.0f;
+                scaleChanged = true;
+            }
+
+            // Absolute clamping for each scale
+            if (campaign.CurrentScale == MapScale.Province) _zoom = MathHelper.Clamp(targetZoom, 0.2f, 4.0f);
+            else if (campaign.CurrentScale == MapScale.Continent) _zoom = MathHelper.Clamp(targetZoom, 0.1f, 3.0f);
+            else _zoom = MathHelper.Clamp(targetZoom, 0.2f, 2.0f); // Kingdom
+
+            if (scaleChanged)
+            {
+                _selectedHex = null; // Clear hex selection as grid changed
+                System.Console.WriteLine($"Scale changed to {campaign.CurrentScale}. Zoom: {_zoom}");
+            }
+
+            // 3. Recalculate camera offset to keep the SAME mile position under screenPosition
+            float hexSizeNew = Campaign.GetHexSize(campaign.CurrentScale);
+            var (qh_miles, rh_miles) = Campaign.MilesToAxial(miles.x, miles.y);
+            Vector2 worldUnderCursorNew = new Vector2(qh_miles / hexSizeNew, rh_miles / hexSizeNew);
+
+            Vector2 withoutCamera = HexWorldToScreen(worldUnderCursorNew, center, includeCameraOffset: false);
             _cameraOffset = screenPosition - withoutCamera;
         }
 
