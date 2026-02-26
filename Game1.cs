@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -181,6 +182,8 @@ public class Game1 : Game
 
     private LuteSynthesizer _luteSynth = null!;
     private LuteProceduralMusic _luteMusic = null!;
+    private SoundEffect? _mapOpenSfx;
+    private SoundEffect? _mapCloseSfx;
 
     private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
@@ -248,6 +251,7 @@ public class Game1 : Game
 
         _luteSynth = new LuteSynthesizer();
         _luteMusic = new LuteProceduralMusic(_luteSynth);
+        InitializeCampaignMapAudio();
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
         _campaignMapViewer.VisionSystem = _visionSystem;
@@ -2674,7 +2678,7 @@ public class Game1 : Game
                 mouseClickedThisFrame &&
                 mapButtonRect.Contains(mouse.Position))
             {
-                _showCampaignMap = true;
+                OpenCampaignMap();
                 clickedOnGameplayUiButton = true;
             }
 
@@ -2833,7 +2837,10 @@ public class Game1 : Game
             // Toggle campaign map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
             {
-                _showCampaignMap = !_showCampaignMap;
+                if (_showCampaignMap)
+                    CloseCampaignMap();
+                else
+                    OpenCampaignMap();
             }
             
             // Change view level with PageUp/PageDown
@@ -3459,7 +3466,11 @@ public class Game1 : Game
 
     private void CloseCampaignMap()
     {
+        if (!_showCampaignMap)
+            return;
+
         _showCampaignMap = false;
+        PlayCampaignMapCloseSfx();
 
         if (_campaignMapViewer.TravelOccurred || _campaignMapViewer.PartyPositionChanged)
         {
@@ -3470,6 +3481,59 @@ public class Game1 : Game
             UpdateVision();
             _campaignMapViewer.ResetTravelFlags();
         }
+    }
+
+    private void OpenCampaignMap()
+    {
+        if (_showCampaignMap)
+            return;
+
+        _showCampaignMap = true;
+        PlayCampaignMapOpenSfx();
+    }
+
+    private void InitializeCampaignMapAudio()
+    {
+        try
+        {
+            _mapOpenSfx = Content.Load<SoundEffect>("map_open");
+        }
+        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+        {
+            _mapOpenSfx = null;
+            System.Console.WriteLine("Warning: map_open not found. Falling back to lute synthesizer for map opening sound.");
+        }
+
+        try
+        {
+            _mapCloseSfx = Content.Load<SoundEffect>("map_close");
+        }
+        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+        {
+            _mapCloseSfx = null;
+        }
+    }
+
+    private void PlayCampaignMapOpenSfx()
+    {
+        if (_mapOpenSfx != null)
+        {
+            _mapOpenSfx.Play(0.45f, 0.0f, 0.0f);
+            return;
+        }
+
+        _luteSynth.PlayNote(659.25f, 0.55f);
+    }
+
+    private void PlayCampaignMapCloseSfx()
+    {
+        if (_mapCloseSfx != null)
+        {
+            _mapCloseSfx.Play(0.4f, -0.1f, 0.0f);
+            return;
+        }
+
+        _luteSynth.PlayNote(493.88f, 0.45f);
     }
 
     private void DrawLine(SpriteBatch sb, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
