@@ -456,9 +456,9 @@ public class VisionSystem
         return _exploredHexes.Contains((q, r));
     }
 
-    public static float GetRevealRadius(Campaign campaign, List<Character> characters)
+    public static float GetRevealRadius(Campaign campaign, List<Character>? characters)
     {
-        if (campaign == null) return 100f;
+        if (campaign == null) return 0f;
 
         var lightLevel = campaign.GetCurrentLightLevel();
         if (lightLevel == LightType.Bright)
@@ -490,7 +490,7 @@ public class VisionSystem
 
     public void RevealPath(Vector2 startMiles, Vector2 endMiles, float radiusFeet = 100f)
     {
-        if (radiusFeet <= 0) return;
+        if (radiusFeet <= 1.0f) return; // Don't reveal anything if radius is effectively zero
 
         // Use hex-based exploration for large radii (>= 0.5 miles)
         if (radiusFeet >= 5280f * 0.5f)
@@ -663,7 +663,7 @@ public class VisionSystem
                 continue;
             }
 
-            int distToEffect = Math.Max(Math.Abs(targetX - effect.X), Math.Abs(targetY - effect.Y));
+            int distToEffect = Math.Max(Math.Max(Math.Abs(targetX - effect.X), Math.Abs(targetY - effect.Y)), Math.Abs(targetZ - effect.Z));
             int effectTiles = effect.Radius / 5;
             
             if (distToEffect <= effectTiles)

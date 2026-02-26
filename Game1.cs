@@ -563,7 +563,11 @@ public class Game1 : Game
             _visionSystem.CalculateVisibility(_playerCreature);
 
             // Reveal surroundings in the global fog of war
-            float revealRadius = VisionSystem.GetRevealRadius(_currentCampaign, _characters);
+            // Filter to only active party members for this campaign
+            var activeParty = _characters.Where(c => _currentCampaign.PartyMembers.Contains(c.Name)).ToList();
+            if (activeParty.Count == 0 && _currentCharacter != null) activeParty.Add(_currentCharacter);
+
+            float revealRadius = VisionSystem.GetRevealRadius(_currentCampaign, activeParty);
             Vector2 partyPos = new Vector2(_currentCampaign.PartyX, _currentCampaign.PartyY);
             _visionSystem.RevealPath(partyPos, partyPos, revealRadius);
             _currentCampaign.DiscoverLocations(revealRadius, msg => AddToCombatLog(msg));
