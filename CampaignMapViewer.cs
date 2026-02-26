@@ -68,6 +68,13 @@ namespace _4DND
             // Handle travel movement
             if (_isTraveling)
             {
+                // Block travel if anyone is donning/doffing
+                bool isAnyMemberBusy = characters.Exists(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+                if (isAnyMemberBusy)
+                {
+                    return;
+                }
+
                 float gameMinutesPassed = dt * TimeScale;
                 campaign.TotalGameMinutes += gameMinutesPassed;
 
@@ -177,6 +184,14 @@ namespace _4DND
                     }
                     else if (_selectedLocation != null || _selectedHex != null)
                     {
+                        // Check if anyone is busy
+                        var busyMember = characters.Find(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+                        if (busyMember != null)
+                        {
+                            SetTravelMessage(Loc.Tr("Cannot travel: {0} is busy.", busyMember.Name));
+                            return;
+                        }
+
                         // Start Travel
                         float tx, ty;
                         if (_selectedLocation != null)
@@ -787,6 +802,22 @@ namespace _4DND
 
             sb.DrawString(_font, Loc.Tr("Session: {0}", campaign.SessionCount), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             y += 20;
+
+            // Show busy members (Donning/Doffing)
+            var busyMembers = characters.FindAll(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+            if (busyMembers.Count > 0)
+            {
+                sb.DrawString(_font, Loc.Tr("Busy Members:"), new Vector2(panelRect.X + 10, y), Color.Orange, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                y += 20;
+                foreach (var c in busyMembers)
+                {
+                    var proc = c.CurrentDonDoffProcess;
+                    string action = proc.IsDoffing ? Loc.Tr("Doffing") : Loc.Tr("Donning");
+                    string label = $"{c.Name}: {action} ({(int)Math.Ceiling(proc.MinutesRemaining)}m)";
+                    sb.DrawString(_font, label, new Vector2(panelRect.X + 20, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    y += 16;
+                }
+            }
 
             // Current scale info
             string scaleName = campaign.CurrentScale switch

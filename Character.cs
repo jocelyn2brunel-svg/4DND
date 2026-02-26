@@ -87,6 +87,7 @@ public class Character
 
     // Inventory system
     public Inventory InventoryData { get; set; } = new Inventory();
+    public DonDoffProcess? CurrentDonDoffProcess { get; set; }
     
     // Wealth
     public int GoldPieces { get; set; } = 0;
@@ -250,6 +251,16 @@ public class Character
         // Speed based on race
         var raceData = _4DND.Race.GetRace(Race);
         Speed = raceData.BaseSpeed;
+
+        // Heavy armor speed penalty
+        if (InventoryData.EquippedArmor != null)
+        {
+            var armorItem = ItemDatabase.GetItem(InventoryData.EquippedArmor.Name);
+            if (armorItem.StrengthRequirement > 0 && Strength < armorItem.StrengthRequirement)
+            {
+                Speed = Math.Max(0, Speed - 10);
+            }
+        }
         
         // Darkvision from race
         DarkvisionRange = raceData.DarkvisionRange;

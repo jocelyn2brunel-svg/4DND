@@ -415,6 +415,21 @@ public class Creature
     /// </summary>
     public bool IsDead { get; set; } = false;
 
+    /// <summary>Whether the creature has taken the Disengage action this turn (PHB p.192).</summary>
+    public bool IsDisengaged { get; set; } = false;
+
+    /// <summary>Whether the creature has taken the Dodge action this turn (PHB p.192).</summary>
+    public bool IsDodging { get; set; } = false;
+
+    /// <summary>Whether the creature is currently hidden from others (PHB p.177).</summary>
+    public bool IsHidden { get; set; } = false;
+
+    /// <summary>The result of the Dexterity (Stealth) check made to hide.</summary>
+    public int HiddenStealthResult { get; set; } = 0;
+
+    /// <summary>Whether the creature is being helped by an ally, granting advantage on its next attack.</summary>
+    public bool IsBeingHelped { get; set; } = false;
+
     /// <summary>
     /// Whether this creature is wearing armor or a shield it is not proficient with.
     /// Causes disadvantage on STR/DEX ability checks, saving throws, and attack rolls; cannot cast spells.
@@ -434,41 +449,6 @@ public class Creature
     /// Allows the creature to take the Disengage or Hide action as a bonus action on each of its turns.
     /// </summary>
     public bool HasNimbleEscape { get; set; } = false;
-
-    /// <summary>
-    /// Whether this creature has taken the Disengage action this turn.
-    /// Its movement does not provoke opportunity attacks until the start of its next turn.
-    /// </summary>
-    public bool IsDisengaged { get; set; } = false;
-
-    /// <summary>
-    /// Whether this creature has taken the Dodge action this turn.
-    /// Until the start of its next turn, attack rolls against it have disadvantage if it can see the attacker,
-    /// and it makes Dexterity saving throws with advantage.
-    /// This benefit is lost if the creature is incapacitated or its speed drops to 0.
-    /// </summary>
-    public bool IsDodging { get; set; } = false;
-
-    /// <summary>
-    /// Whether this creature is currently hidden following a successful Dexterity (Stealth) check.
-    /// A hidden creature benefits from the Unseen Attacker rule: its attack rolls have advantage
-    /// and attack rolls against it have disadvantage (from attackers that cannot see it).
-    /// The hidden condition ends when the creature attacks, casts a spell, or is detected.
-    /// </summary>
-    public bool IsHidden { get; set; } = false;
-
-    /// <summary>
-    /// The result of the last Dexterity (Stealth) check used to hide.
-    /// Observers with a passive Perception equal to or greater than this value detect the creature.
-    /// </summary>
-    public int HiddenStealthResult { get; set; } = 0;
-
-    /// <summary>
-    /// Whether a friendly creature has used the Help action to distract this creature.
-    /// The next attack roll made against this creature by a friendly creature has advantage.
-    /// Cleared after the first attack that benefits from it, or at the start of this creature's next turn.
-    /// </summary>
-    public bool IsBeingHelped { get; set; } = false;
 
     /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
@@ -515,6 +495,9 @@ public class Creature
     public int[] SpellSlotsRemaining { get; set; } = new int[9];
     /// <summary>Maximum spell slots per level (indices 0–8 for spell levels 1–9).</summary>
     public int[] SpellSlotsMax { get; set; } = new int[9];
+
+    // Armor donning/doffing
+    public DonDoffProcess? CurrentDonDoffProcess { get; set; }
 
     // Cleric-specific
     /// <summary>Channel Divinity uses remaining (recharges on short or long rest).</summary>
@@ -1297,7 +1280,8 @@ public class Creature
             WisdomSaveProficiency = character.WisdomSaveProficiency,
             CharismaSaveProficiency = character.CharismaSaveProficiency,
             StealthProficiency = character.StealthProficiency,
-            PerceptionProficiency = character.PerceptionProficiency
+            PerceptionProficiency = character.PerceptionProficiency,
+            CurrentDonDoffProcess = character.CurrentDonDoffProcess
         };
         
         // Apply race-specific vision traits
@@ -1437,6 +1421,8 @@ public class Creature
         character.DaysWithoutFood = DaysWithoutFood;
         character.FoodConsumedToday = FoodConsumedToday;
         character.WaterConsumedToday = WaterConsumedToday;
+
+        character.CurrentDonDoffProcess = CurrentDonDoffProcess;
 
         if (character.Class == "Bard")
         {

@@ -346,6 +346,31 @@ public class CombatManager
     
     private void ProcessStartOfTurnEffects(Creature creature)
     {
+        // Armor donning/doffing progress
+        if (creature.CurrentDonDoffProcess != null && creature.CurrentDonDoffProcess.IsActive)
+        {
+            var process = creature.CurrentDonDoffProcess;
+            process.RoundsRemaining--;
+            process.MinutesRemaining -= 0.1; // 6 seconds
+
+            if (process.RoundsRemaining <= 0 || process.MinutesRemaining <= 0)
+            {
+                process.IsActive = false;
+                // The actual equipment change will be handled by the Game loop when it sees IsActive = false
+                if (process.IsDoffing)
+                    TurnMessages.Add(Loc.Tr("{0} finished doffing {1}.", creature.Name, process.Item?.Name ?? "Armor"));
+                else
+                    TurnMessages.Add(Loc.Tr("{0} finished donning {1}.", creature.Name, process.Item?.Name ?? "Armor"));
+            }
+            else
+            {
+                if (process.IsDoffing)
+                    TurnMessages.Add(Loc.Tr("{0} is doffing {1} ({2} rounds left).", creature.Name, process.Item?.Name ?? "Armor", process.RoundsRemaining));
+                else
+                    TurnMessages.Add(Loc.Tr("{0} is donning {1} ({2} rounds left).", creature.Name, process.Item?.Name ?? "Armor", process.RoundsRemaining));
+            }
+        }
+
         // Death Saving Throw: players at 0 HP make a death saving throw at the start of each turn (PHB "Death Saving Throws").
         if (creature.IsPlayer && creature.CurrentHP == 0 && !creature.IsDead && !creature.IsStable)
         {
@@ -2259,11 +2284,6 @@ public class CombatManager
     {
         if (_inCombat && !helper.HasAction) return false;
         if (!target.IsAlive()) return false;
-        if (helper.IsPlayer == target.IsPlayer)
-        {
-            TurnMessages.Add($"{helper.Name} can only Help against an enemy.");
-            return false;
-        }
 
         if (!IsInMeleeRange(helper, target))
         {
@@ -2271,11 +2291,42 @@ public class CombatManager
             return false;
         }
 
-        if (_inCombat)
-            helper.HasAction = false;
-        target.IsBeingHelped = true;
-        TurnMessages.Add($"{helper.Name} uses Help to distract {target.Name}! Next attack against {target.Name} has advantage.");
-        return true;
+        // Help against enemy
+        if (helper.IsPlayer != target.IsPlayer)
+        {
+            if (_inCombat)
+                helper.HasAction = false;
+            target.IsBeingHelped = true;
+            TurnMessages.Add($"{helper.Name} uses Help to distract {target.Name}! Next attack against {target.Name} has advantage.");
+            return true;
+        }
+        else // Help ally
+        {
+            if (target.CurrentDonDoffProcess != null && target.CurrentDonDoffProcess.IsActive)
+            {
+                if (_inCombat)
+                    helper.HasAction = false;
+
+                var process = target.CurrentDonDoffProcess;
+                // Reduce remaining time by 1 minute (10 rounds)
+                int reduction = 10;
+                process.RoundsRemaining = Math.Max(0, process.RoundsRemaining - reduction);
+                process.MinutesRemaining = Math.Max(0, process.MinutesRemaining - 1.0);
+
+                if (process.RoundsRemaining <= 0 || process.MinutesRemaining <= 0)
+                {
+                    process.IsActive = false;
+                }
+
+                TurnMessages.Add(Loc.Tr("{0} helps {1} with armor!", helper.Name, target.Name));
+                return true;
+            }
+            else
+            {
+                TurnMessages.Add($"{target.Name} doesn't need help right now.");
+                return false;
+            }
+        }
     }
 }
 
