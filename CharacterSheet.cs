@@ -781,8 +781,8 @@ public class CharacterSheet
         currentY += DrawAttacksBox(spriteBatch, c, x, currentY, width, creature);
         currentY += 10;
 
-        currentY += DrawEquipmentBox(spriteBatch, c, x, currentY, width);
-        
+        currentY += DrawEquipmentBox(spriteBatch, c, x, currentY, width, creature);
+
         return currentY - y;
     }
 
@@ -961,7 +961,7 @@ public class CharacterSheet
         return height;
     }
     
-    private int DrawEquipmentBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
+    private int DrawEquipmentBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width, Creature? creature = null)
     {
         int lineHeight = 18;
         int inventoryCount = c.InventoryData.Items.Count;
