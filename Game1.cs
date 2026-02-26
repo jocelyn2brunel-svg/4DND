@@ -123,6 +123,10 @@ public class Game1 : Game
     private int _combatTopPanelHeight = 125; // Reduced from 220
     private MouseState _prevMouse;
 
+    // Auto-save timer
+    private double _autoSaveTimer = 0;
+    private const double AutoSaveInterval = 5 * 60; // 5 minutes in seconds
+
     // Draggable Combat Log
     private Rectangle _combatLogWindowRect = new Rectangle(10, 120, 350, 120);
     private bool _isDraggingCombatLog = false;
@@ -1818,6 +1822,27 @@ public class Game1 : Game
         }
     }
 
+    /// <summary>
+    /// Saves the current campaign and characters to disk.
+    /// </summary>
+    private void SaveCurrentProgress()
+    {
+        if (_state == AppState.Playing && _currentCampaign != null)
+        {
+            // Update character data from current creature state (HP, etc.)
+            if (_playerCreature != null && _currentCharacter != null)
+            {
+                _playerCreature.UpdateCharacter(_currentCharacter);
+            }
+
+            // Persistence
+            SaveCampaign();
+            SaveCharacters();
+
+            _autoSaveTimer = 0; // Reset timer after any save
+        }
+    }
+
     private bool IsExistingCharacterIndex(int index)
     {
         return _characters != null && index >= 0 && index < _characters.Count;
@@ -1892,6 +1917,7 @@ public class Game1 : Game
             }
             else if (index == 2) // Main Menu
             {
+                SaveCurrentProgress();
                 _luteMusic.Stop();
                 _state = AppState.MainMenu;
                 _isMenuOpen = false;
@@ -1899,6 +1925,7 @@ public class Game1 : Game
             }
             else if (index == 3) // Desktop
             {
+                // OnExiting handles the save
                 Exit();
             }
         }
@@ -1925,6 +1952,7 @@ public class Game1 : Game
     
     protected override void OnExiting(object sender, Microsoft.Xna.Framework.ExitingEventArgs args)
     {
+        SaveCurrentProgress();
         _luteSynth?.Dispose();
         base.OnExiting(sender, args);
     }
@@ -2477,6 +2505,15 @@ public class Game1 : Game
         if (_state == AppState.Playing)
         {
             float dtPlaying = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Increment and check auto-save timer
+            _autoSaveTimer += dtPlaying;
+            if (_autoSaveTimer >= AutoSaveInterval)
+            {
+                SaveCurrentProgress();
+                System.Console.WriteLine("Auto-save triggered (interval reached).");
+            }
+
             _luteMusic.Update(dtPlaying);
             _luteSynth.Update();
 
