@@ -1549,11 +1549,15 @@ public static class ItemDatabase
         ["Torch"] = new Item
         {
             Name = "Torch",
-            Description = "Sheds bright light in a 20-foot radius for 1 hour",
-            Type = ItemType.Misc,
+            Description = "Sheds bright light in a 20-foot radius for 1 hour; can be wielded as an improvised light weapon",
+            Type = ItemType.Weapon,
+            WeaponCategory = WeaponType.Simple,
+            DamageDice = "1d4",
+            DamageType = DamageType.Bludgeoning,
+            IsLight = true,
             Weight = 1,
             Value = 0,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Vial"] = new Item
         {
