@@ -178,6 +178,8 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsTwoHanded = true,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Crossbow bolts (20)",
             Range = 80,
             LongRange = 320,
             Weight = 5,
@@ -210,6 +212,8 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsTwoHanded = true,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Arrows (20)",
             Range = 80,
             LongRange = 320,
             Weight = 2,
@@ -225,6 +229,8 @@ public static class ItemDatabase
             DamageDice = "1d4",
             DamageType = DamageType.Bludgeoning,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Sling bullets (20)",
             Range = 30,
             LongRange = 120,
             Weight = 0,
@@ -483,6 +489,8 @@ public static class ItemDatabase
             DamageDice = "1",
             DamageType = DamageType.Piercing,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Blowgun needles (50)",
             Range = 25,
             LongRange = 100,
             Weight = 1,
@@ -498,6 +506,8 @@ public static class ItemDatabase
             DamageDice = "1d6",
             DamageType = DamageType.Piercing,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Crossbow bolts (20)",
             Range = 30,
             LongRange = 120,
             Weight = 3,
@@ -514,6 +524,8 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsTwoHanded = true,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Crossbow bolts (20)",
             Range = 100,
             LongRange = 400,
             Weight = 18,
@@ -530,6 +542,8 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsTwoHanded = true,
             IsRanged = true,
+            IsAmmunition = true,
+            AmmoType = "Ammunition - Arrows (20)",
             Range = 150,
             LongRange = 600,
             Weight = 2,
@@ -753,7 +767,8 @@ public static class ItemDatabase
             Type = ItemType.Misc,
             Weight = 1,
             Value = 1,
-            IsEquippable = false
+            IsEquippable = false,
+            DefaultQuantity = 20
         },
         ["Ammunition - Blowgun needles (50)"] = new Item
         {
@@ -762,7 +777,8 @@ public static class ItemDatabase
             Type = ItemType.Misc,
             Weight = 1,
             Value = 1,
-            IsEquippable = false
+            IsEquippable = false,
+            DefaultQuantity = 50
         },
         ["Ammunition - Crossbow bolts (20)"] = new Item
         {
@@ -771,7 +787,8 @@ public static class ItemDatabase
             Type = ItemType.Misc,
             Weight = 1,
             Value = 1,
-            IsEquippable = false
+            IsEquippable = false,
+            DefaultQuantity = 20
         },
         ["Ammunition - Sling bullets (20)"] = new Item
         {
@@ -780,7 +797,8 @@ public static class ItemDatabase
             Type = ItemType.Misc,
             Weight = 1,
             Value = 0,
-            IsEquippable = false
+            IsEquippable = false,
+            DefaultQuantity = 20
         },
         ["Antitoxin (vial)"] = new Item
         {

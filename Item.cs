@@ -53,6 +53,22 @@ public class Item
     public bool IsThrown { get; set; }
     public int Range { get; set; }      // Normal range in feet
     public int LongRange { get; set; }  // Maximum range in feet (0 = Range * 3 for most weapons)
+    /// <summary>
+    /// True for weapons with the Ammunition property (bows, crossbows, sling, blowgun).
+    /// Requires ammunition from the inventory to make a ranged attack (PHB "Ammunition").
+    /// When used to make a melee attack, the weapon is treated as an improvised weapon.
+    /// </summary>
+    public bool IsAmmunition { get; set; }
+    /// <summary>
+    /// The ItemDatabase key for the ammunition this weapon requires (e.g. "Ammunition - Arrows (20)").
+    /// Empty string for weapons that do not have the Ammunition property.
+    /// </summary>
+    public string AmmoType { get; set; } = "";
+    /// <summary>
+    /// For ammunition items: the number of units in a full pack (e.g. 20 for arrows, 50 for blowgun needles).
+    /// 0 for non-ammunition items.
+    /// </summary>
+    public int DefaultQuantity { get; set; } = 0;
     
     // Armor properties
     public ArmorType ArmorCategory { get; set; }

@@ -170,6 +170,9 @@ public class Game1 : Game
     private List<FloatingTooltip> _activeTooltips = new();
     private Dictionary<Creature, int> _creatureHPTracker = new();
 
+    // Ammo tracking for post-battle recovery (PHB "Ammunition")
+    private readonly Dictionary<string, int> _ammoFiredThisCombat = new();
+
     private void AddTooltip(Creature creature, string text, Color color)
     {
         // Find the highest stack index currently active for this creature to stack above it
@@ -299,6 +302,7 @@ public class Game1 : Game
     
     private void StartCombatWithNearbyEnemies()
     {
+        _ammoFiredThisCombat.Clear();
         _luteMusic.Stop();
         if (_currentCharacter == null || _playerCreature == null) return;
         
