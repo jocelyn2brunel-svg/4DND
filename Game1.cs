@@ -2993,6 +2993,7 @@ public class Game1 : Game
                 if (_characterSheet.Update(mouse, _currentCharacter))
                 {
                     SaveCharacters();
+                    UpdateVision();
                 }
 
                 if (_characterSheet.DroppedItem != null)
