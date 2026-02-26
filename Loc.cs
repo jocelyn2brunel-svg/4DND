@@ -339,6 +339,44 @@ public static class Loc
         _en["Open Map [M]"] = "Open Map [M]"; _fr["Open Map [M]"] = "Ouvrir map [M]";
         _en["Close Map [M]"] = "Close Map [M]"; _fr["Close Map [M]"] = "Fermer map [M]";
 
+        // Map Scale UI
+        _en["Map Scale"] = "Map Scale"; _fr["Map Scale"] = "Échelle de la carte";
+        _en["Visible at this scale:"] = "Visible at this scale:"; _fr["Visible at this scale:"] = "Visible à cette échelle :";
+        _en["Province"] = "Province"; _fr["Province"] = "Province";
+        _en["Kingdom"] = "Kingdom"; _fr["Kingdom"] = "Royaume";
+        _en["Continent"] = "Continent"; _fr["Continent"] = "Continent";
+        _en["Detailed local exploration"] = "Detailed local exploration"; _fr["Detailed local exploration"] = "Exploration locale détaillée";
+        _en["Regional travel overview"] = "Regional travel overview"; _fr["Regional travel overview"] = "Aperçu du voyage régional";
+        _en["Continental geography"] = "Continental geography"; _fr["Continental geography"] = "Géographie continentale";
+        _en["Hamlets"] = "Hamlets"; _fr["Hamlets"] = "Hameaux";
+        _en["Villages"] = "Villages"; _fr["Villages"] = "Villages";
+        _en["Towns"] = "Towns"; _fr["Towns"] = "Bourgs";
+        _en["Cities"] = "Cities"; _fr["Cities"] = "Villes";
+        _en["Metropolises"] = "Metropolises"; _fr["Metropolises"] = "Métropoles";
+        _en["Forts"] = "Forts"; _fr["Forts"] = "Forts";
+        _en["Castles"] = "Castles"; _fr["Castles"] = "Châteaux";
+        _en["Monasteries"] = "Monasteries"; _fr["Monasteries"] = "Monastères";
+        _en["Dungeons"] = "Dungeons"; _fr["Dungeons"] = "Donjons";
+        _en["Wilderness"] = "Wilderness"; _fr["Wilderness"] = "Nature";
+        _en["Travel Pace"] = "Travel Pace"; _fr["Travel Pace"] = "Allure de voyage";
+        _en["Pace"] = "Pace"; _fr["Pace"] = "Allure";
+        _en["Effect"] = "Effect"; _fr["Effect"] = "Effet";
+        _en["Stealth available"] = "Stealth available"; _fr["Stealth available"] = "Discrétion possible";
+        _en["-5 passive Percep."] = "-5 passive Percep."; _fr["-5 passive Percep."] = "-5 Perception passive";
+        _en["Fast"] = "Fast"; _fr["Fast"] = "Rapide";
+        _en["Normal"] = "Normal"; _fr["Normal"] = "Normale";
+        _en["Slow"] = "Slow"; _fr["Slow"] = "Lente";
+        _en["Map Legend"] = "WASD: Pan | Zoom: Wheel | J: Journal | M: Close"; _fr["Map Legend"] = "ZQSD : Déplacement | Molette : Zoom | J : Journal | M : Fermer";
+        _en["Home Base: {0}"] = "Home Base: {0}"; _fr["Home Base: {0}"] = "Base : {0}";
+        _en["Locations (visible): {0} / {1}"] = "Locations (visible): {0} / {1}"; _fr["Locations (visible): {0} / {1}"] = "Lieux (visibles) : {0} / {1}";
+        _en["Session: {0}"] = "Session: {0}"; _fr["Session: {0}"] = "Session : {0}";
+        _en["Objective:"] = "Objective:"; _fr["Objective:"] = "Objectif :";
+        _en["Selected: {0}"] = "Selected: {0}"; _fr["Selected: {0}"] = "Sélection : {0}";
+        _en["Terrain: {0}"] = "Terrain: {0}"; _fr["Terrain: {0}"] = "Terrain : {0}";
+        _en["Scale"] = "Scale"; _fr["Scale"] = "Échelle";
+        _en["1 hex = {0} mile{1}"] = "1 hex = {0} mile{1}"; _fr["1 hex = {0} mile{1}"] = "1 hex = {0} mille{1}";
+        _en["{0}mi/hex"] = "{0}mi/hex"; _fr["{0}mi/hex"] = "{0} mi/hex";
+
         // Legacy aliases (temporary: remove after global key cleanup)
         _en["Inventaire [C]"] = _en["Inventory [C]"]; _fr["Inventaire [C]"] = _fr["Inventory [C]"];
         _en["Ouvrir map [M]"] = _en["Open Map [M]"]; _fr["Ouvrir map [M]"] = _fr["Open Map [M]"];
