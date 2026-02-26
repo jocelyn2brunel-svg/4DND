@@ -570,6 +570,12 @@ public class Game1 : Game
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir, _charsFile);
             var json = JsonSerializer.Serialize(_characters);
             File.WriteAllText(path, json);
+
+            // Keep campaign/map exploration in sync when character updates trigger a save.
+            if (_state == AppState.Playing && _currentCampaign != null)
+            {
+                SaveCampaign();
+            }
         }
         catch (Exception ex)
         {
@@ -1784,6 +1790,8 @@ public class Game1 : Game
         try
         {
             if (_currentCampaign == null) return;
+
+            SyncVisionExplorationToCampaign();
             
             // Load existing campaigns
             LoadCampaigns();
@@ -1814,12 +1822,33 @@ public class Game1 : Game
                 var json = File.ReadAllText(path);
                 var campaigns = JsonSerializer.Deserialize<List<Campaign>>(json) ?? new List<Campaign>();
                 _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName);
+                RestoreVisionExplorationFromCampaign();
             }
         }
         catch (Exception ex)
         {
             System.Console.WriteLine("Failed to load campaign: " + ex.Message);
         }
+    }
+
+    private void SyncVisionExplorationToCampaign()
+    {
+        if (_currentCampaign == null)
+            return;
+
+        _currentCampaign.ExploredTiles = _visionSystem.GetExploredTilesSnapshot();
+        _currentCampaign.ExploredHexes = _visionSystem.GetExploredHexesSnapshot();
+    }
+
+    private void RestoreVisionExplorationFromCampaign()
+    {
+        if (_currentCampaign == null)
+        {
+            _visionSystem.ResetExploration();
+            return;
+        }
+
+        _visionSystem.SetExploredState(_currentCampaign.ExploredTiles, _currentCampaign.ExploredHexes);
     }
 
     /// <summary>
@@ -2251,6 +2280,7 @@ public class Game1 : Game
                 if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
                 {
                     _currentCampaign = _campaigns[_campaignIndex];
+                    RestoreVisionExplorationFromCampaign();
                     if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
                     {
                         _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
@@ -2328,6 +2358,7 @@ public class Game1 : Game
                             if (i < _campaigns.Count)
                             {
                                 _currentCampaign = _campaigns[i];
+                                RestoreVisionExplorationFromCampaign();
                                 if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
                                 {
                                     _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
@@ -2374,6 +2405,7 @@ public class Game1 : Game
             else if (newCampaign != null)
             {
                 _currentCampaign = newCampaign;
+                RestoreVisionExplorationFromCampaign();
                 if (_currentCharacter != null)
                 {
                     _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
