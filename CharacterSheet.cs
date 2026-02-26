@@ -821,7 +821,6 @@ public class CharacterSheet
             spriteBatch.Draw(_pixel, new Rectangle(x + 5, headerY + 15, width - 10, 1), Color.Black * 0.3f);
 
             int entryY = headerY + 20;
-            Color equippedEntryTextColor = Color.White;
 
             void DrawEntry(string name, string bonus, string damage, Rectangle clickRect, Color color, bool isActive)
             {
@@ -861,7 +860,7 @@ public class CharacterSheet
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
                 bool isActive = creature != null && creature.AttackName == weapon && creature.IsMeleeAttack == !weaponItem.IsRanged;
 
-                DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, equippedEntryTextColor, isActive);
+                DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, Color.Black, isActive);
                 RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
                 _attackEntryRects.Add((clickRect, item, null));
                 entryY += entryHeight;
@@ -886,7 +885,7 @@ public class CharacterSheet
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
                 bool isActive = creature != null && creature.AttackName == offhand; // simplified check
 
-                DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, equippedEntryTextColor, isActive);
+                DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, new Color(80, 80, 180), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
                 _attackEntryRects.Add((clickRect, item, null));
                 entryY += entryHeight;
