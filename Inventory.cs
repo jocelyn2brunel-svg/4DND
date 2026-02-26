@@ -13,6 +13,7 @@ public class Inventory
     public ItemInstance? OffhandWeapon { get; set; }
     public ItemInstance? EquippedArmor { get; set; }
     public ItemInstance? EquippedShield { get; set; }
+    public ItemInstance? EquippedFocus { get; set; }
     
     public List<ItemInstance> Items { get; set; } = new();
     
@@ -39,6 +40,7 @@ public class Inventory
             if (OffhandWeapon == item) OffhandWeapon = null;
             if (EquippedArmor == item) EquippedArmor = null;
             if (EquippedShield == item) EquippedShield = null;
+            if (EquippedFocus == item) EquippedFocus = null;
             return Items.Remove(item);
         }
         return false;
@@ -50,6 +52,7 @@ public class Inventory
         if (OffhandWeapon == instance) OffhandWeapon = null;
         if (EquippedArmor == instance) EquippedArmor = null;
         if (EquippedShield == instance) EquippedShield = null;
+        if (EquippedFocus == instance) EquippedFocus = null;
         return Items.Remove(instance);
     }
     
@@ -139,6 +142,11 @@ public class Inventory
                 EquippedShield = instance;
                 return true;
             default:
+                if (itemData.IsArcaneFocus)
+                {
+                    EquippedFocus = instance;
+                    return true;
+                }
                 return false;
         }
     }
@@ -192,6 +200,11 @@ public class Inventory
             EquippedShield = null;
             return true;
         }
+        if (EquippedFocus?.Name == itemName)
+        {
+            EquippedFocus = null;
+            return true;
+        }
         return false;
     }
 
@@ -215,6 +228,11 @@ public class Inventory
         if (EquippedShield == instance)
         {
             EquippedShield = null;
+            return true;
+        }
+        if (EquippedFocus == instance)
+        {
+            EquippedFocus = null;
             return true;
         }
         return false;

@@ -838,47 +838,52 @@ public static class ItemDatabase
         ["Arcane Focus - Crystal"] = new Item
         {
             Name = "Crystal",
-            Description = "Arcane spellcasting focus",
+            Description = "An arcane focus. A sorcerer, warlock, or wizard can use this crystal as a spellcasting focus.",
             Type = ItemType.Misc,
+            IsArcaneFocus = true,
             Weight = 1,
             Value = 1000,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Arcane Focus - Orb"] = new Item
         {
             Name = "Orb",
-            Description = "Arcane spellcasting focus",
+            Description = "An arcane focus. A sorcerer, warlock, or wizard can use this orb as a spellcasting focus.",
             Type = ItemType.Misc,
+            IsArcaneFocus = true,
             Weight = 3,
             Value = 2000,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Arcane Focus - Rod"] = new Item
         {
             Name = "Rod",
-            Description = "Arcane spellcasting focus",
+            Description = "An arcane focus. A sorcerer, warlock, or wizard can use this rod as a spellcasting focus.",
             Type = ItemType.Misc,
+            IsArcaneFocus = true,
             Weight = 2,
             Value = 1000,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Arcane Focus - Staff"] = new Item
         {
             Name = "Staff",
-            Description = "Arcane spellcasting focus",
+            Description = "An arcane focus. A sorcerer, warlock, or wizard can use this specially constructed staff as a spellcasting focus.",
             Type = ItemType.Misc,
+            IsArcaneFocus = true,
             Weight = 4,
             Value = 500,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Arcane Focus - Wand"] = new Item
         {
             Name = "Wand",
-            Description = "Arcane spellcasting focus",
+            Description = "An arcane focus. A sorcerer, warlock, or wizard can use this wand as a spellcasting focus.",
             Type = ItemType.Misc,
+            IsArcaneFocus = true,
             Weight = 1,
             Value = 1000,
-            IsEquippable = false
+            IsEquippable = true
         },
         ["Backpack"] = new Item
         {

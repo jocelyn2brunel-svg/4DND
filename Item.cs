@@ -109,4 +109,11 @@ public class Item
     public int IntelligenceModifier { get; set; }
     public int WisdomModifier { get; set; }
     public int CharismaModifier { get; set; }
+
+    // Focus properties
+    /// <summary>
+    /// True for arcane focus items (orb, crystal, rod, staff, wand).
+    /// A sorcerer, warlock, or wizard can use such an item as a spellcasting focus (PHB ch. 5).
+    /// </summary>
+    public bool IsArcaneFocus { get; set; }
 }
