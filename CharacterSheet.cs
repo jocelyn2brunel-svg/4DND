@@ -40,6 +40,7 @@ public class CharacterSheet
     private bool _isPendingOffhand;
     private Rectangle _confirmButtonRect;
     private Rectangle _cancelButtonRect;
+    private Rectangle _twoHandedConfirmDialogRect;
 
     public bool PlayLuteRequested { get; set; }
     public bool TorchIgniteRequested { get; set; }
@@ -210,7 +211,7 @@ public class CharacterSheet
                     _pendingEquipItem = null;
                     _isPendingOffhand = false;
                 }
-                else if (_cancelButtonRect.Contains(_mousePosition) || !new Rectangle((graphics.Viewport.Width - 440) / 2, (graphics.Viewport.Height - 180) / 2, 440, 180).Contains(_mousePosition))
+                else if (_cancelButtonRect.Contains(_mousePosition) || !_twoHandedConfirmDialogRect.Contains(_mousePosition))
                 {
                     _showTwoHandedConfirmation = false;
                     _pendingEquipItem = null;
@@ -463,6 +464,7 @@ public class CharacterSheet
         int x = (viewport.Width - width) / 2;
         int y = (viewport.Height - height) / 2;
         var rect = new Rectangle(x, y, width, height);
+        _twoHandedConfirmDialogRect = rect;
 
         spriteBatch.Draw(_pixel, new Rectangle(0, 0, viewport.Width, viewport.Height), Color.Black * 0.5f);
         spriteBatch.Draw(_pixel, rect, new Color(30, 30, 30));
