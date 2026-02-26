@@ -829,7 +829,7 @@ public static class ItemDatabase
         ["Antitoxin (vial)"] = new Item
         {
             Name = "Antitoxin (vial)",
-            Description = "Grants advantage on saving throws against poison for 1 hour",
+            Description = "A creature that drinks this vial of liquid gains advantage on saving throws against poison for 1 hour. It confers no benefit to undead or constructs.",
             Type = ItemType.Consumable,
             Weight = 0,
             Value = 5000,
