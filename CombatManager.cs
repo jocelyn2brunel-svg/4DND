@@ -404,6 +404,14 @@ public class CombatManager
             // Future: implement ongoing poison damage
         }
 
+        // Burning: 1d4 fire damage at the start of the turn (PHB "Adventuring Gear: Alchemist's Fire").
+        if (creature.Conditions.HasCondition(Condition.Burning))
+        {
+            int burnDamage = RollDamage("1d4", 0, false);
+            creature.TakeDamage(burnDamage, DamageType.Fire, false);
+            TurnMessages.Add(Loc.Tr("{0} takes {1} fire damage from alchemist's fire.", creature.Name, burnDamage));
+        }
+
         // Rage ends immediately if the creature is knocked unconscious
         if (creature.IsRaging && creature.Conditions.HasCondition(Condition.Unconscious))
         {
@@ -2541,6 +2549,153 @@ public class CombatManager
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Throws a flask of alchemist's fire at the target as an action (PHB "Adventuring Gear: Alchemist's Fire").
+    /// Range: 20 ft. Treated as an improvised ranged weapon: DEX modifier, no proficiency bonus.
+    /// On a hit, the target gains the <see cref="Condition.Burning"/> condition and takes 1d4 fire damage
+    /// at the start of each of its turns until the flames are extinguished. The flask is consumed regardless.
+    /// </summary>
+    /// <param name="thrower">The creature throwing the flask.</param>
+    /// <param name="target">The target creature.</param>
+    /// <param name="character">The character whose inventory will lose the flask.</param>
+    /// <param name="visionSystem">Optional vision system for line-of-sight checks.</param>
+    /// <returns>An <see cref="AttackResult"/> describing the outcome.</returns>
+    public AttackResult ThrowAlchemistsFire(Creature thrower, Creature target, Character character, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult { Attacker = thrower, Target = target };
+
+        if (_inCombat && !thrower.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        // Range check: 20 ft = 4 squares
+        int distanceSquares = CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
+        if (distanceSquares > 4)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} cannot throw the alchemist's fire that far — maximum range is 20 ft.", thrower.Name));
+            return result;
+        }
+
+        // Total cover: cannot be targeted
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} has total cover and cannot be targeted.", target.Name));
+            return result;
+        }
+
+        if (_inCombat)
+            thrower.HasAction = false;
+
+        // Consume the flask regardless of hit or miss
+        character.InventoryData.RemoveItem("Alchemist's Fire (flask)");
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(thrower, target)
+            : !thrower.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
+                            target.Conditions.HasCondition(Condition.Paralyzed) ||
+                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.Conditions.HasCondition(Condition.Restrained) ||
+                            target.IsSqueezingThrough ||
+                            thrower.IsHidden ||
+                            thrower.Conditions.HasCondition(Condition.Invisible);
+        bool hasDisadvantage = !attackerCanSee ||
+                               thrower.IsSqueezingThrough ||
+                               thrower.Conditions.HasCondition(Condition.Restrained) ||
+                               thrower.HasArmorNonProficiencyPenalty;
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, thrower)
+                : !target.IsBlinded() && !thrower.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        if (visionSystem != null && thrower.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(thrower.X, thrower.Y, thrower.Z);
+            if (lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        thrower.IsHidden = false;
+
+        // Improvised ranged attack: DEX modifier, no proficiency bonus
+        int dexMod = thrower.GetAbilityModifier(thrower.Dexterity);
+        int attackBonus = dexMod;
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            "Alchemist's Fire (flask)",
+            attackBonus,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0);
+
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
+        result.IsNonProficient = true;
+        result.DamageType = DamageType.Fire;
+
+        if (result.IsHit)
+        {
+            target.Conditions = target.Conditions.AddCondition(Condition.Burning);
+            thrower.HasAttackedThisRound = true;
+            TurnMessages.Add(Loc.Tr("{0} is set ablaze by alchemist's fire!", target.Name));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Uses an action to attempt to extinguish alchemist's fire (PHB "Adventuring Gear: Alchemist's Fire").
+    /// The creature makes a DC 10 Dexterity check; on a success the <see cref="Condition.Burning"/> condition is removed.
+    /// </summary>
+    /// <param name="creature">The creature using its action to extinguish the flames.</param>
+    /// <returns>True if the check succeeds and the flames are extinguished; false otherwise.</returns>
+    public bool TryExtinguishFlames(Creature creature)
+    {
+        if (!creature.Conditions.HasCondition(Condition.Burning))
+        {
+            TurnMessages.Add(Loc.Tr("{0} is not on fire.", creature.Name));
+            return false;
+        }
+
+        if (_inCombat && !creature.HasAction)
+            return false;
+
+        if (_inCombat)
+            creature.HasAction = false;
+
+        var check = creature.MakeAbilityCheck("DEX", 10);
+        bool success = check.Success;
+
+        if (success)
+        {
+            creature.Conditions = creature.Conditions.RemoveCondition(Condition.Burning);
+            TurnMessages.Add(Loc.Tr("{0} extinguishes the flames! (rolled {1} vs DC 10)", creature.Name, check.Total));
+        }
+        else
+        {
+            TurnMessages.Add(Loc.Tr("{0} fails to extinguish the flames. (rolled {1} vs DC 10)", creature.Name, check.Total));
+        }
+
+        return success;
     }
 
     /// <summary>
