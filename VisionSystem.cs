@@ -20,6 +20,7 @@ public class VisionSystem
     private Dictionary<(int, int, int), LightType> _lightMap = new();
     private HashSet<(int, int, int)> _visibleTiles = new();
     private HashSet<(int, int, int)> _exploredTiles = new();
+    private HashSet<(int, int)> _exploredHexes = new();
     private bool _lightingNeedsUpdate = true;
     
     public LightType AmbientLight { get; set; } = LightType.Bright;
@@ -66,6 +67,7 @@ public class VisionSystem
     {
         _visibleTiles.Clear();
         _exploredTiles.Clear();
+        _exploredHexes.Clear();
     }
     
     public void CalculateLighting()
@@ -412,11 +414,65 @@ public class VisionSystem
     {
         int wx = x + (int)(WorldOffset.X * Campaign.TacticalUnitsPerMile);
         int wy = y + (int)(WorldOffset.Y * Campaign.TacticalUnitsPerMile);
-        return _exploredTiles.Contains((wx, wy, z));
+        if (_exploredTiles.Contains((wx, wy, z))) return true;
+
+        if (z == 0)
+        {
+            var (hq, hr) = Campaign.CartesianToAxial((float)wx / Campaign.TacticalUnitsPerMile, (float)wy / Campaign.TacticalUnitsPerMile);
+            if (_exploredHexes.Contains((hq, hr))) return true;
+        }
+
+        return false;
+    }
+
+    public bool IsHexExplored(int q, int r)
+    {
+        return _exploredHexes.Contains((q, r));
+    }
+
+    public static float GetRevealRadius(Campaign campaign, List<Character> characters)
+    {
+        if (campaign == null) return 100f;
+
+        var lightLevel = campaign.GetCurrentLightLevel();
+        if (lightLevel == LightType.Bright)
+        {
+            return 2.0f * 5280f; // 2 miles during the day
+        }
+        else
+        {
+            // Twilight/Night/Dawn: use Darkvision or light sources
+            int maxDarkvision = 0;
+            if (characters != null && characters.Count > 0)
+            {
+                maxDarkvision = characters.Max(c => c.DarkvisionRange);
+            }
+
+            float lightSourceRange = 0;
+            if (characters != null)
+            {
+                bool hasLantern = characters.Any(c => c.InventoryData.HasItem("Lantern, hooded") || c.InventoryData.HasItem("Lantern, bullseye"));
+                bool hasTorch = characters.Any(c => c.InventoryData.HasItem("Torch"));
+
+                if (hasLantern) lightSourceRange = 60f;
+                else if (hasTorch) lightSourceRange = 40f;
+            }
+
+            return Math.Max(maxDarkvision, lightSourceRange);
+        }
     }
 
     public void RevealPath(Vector2 startMiles, Vector2 endMiles, float radiusFeet = 100f)
     {
+        if (radiusFeet <= 0) return;
+
+        // Use hex-based exploration for large radii (>= 0.5 miles)
+        if (radiusFeet >= 5280f * 0.5f)
+        {
+            RevealPathHex(startMiles, endMiles, radiusFeet / 5280f);
+            return;
+        }
+
         Vector2 startTactical = startMiles * Campaign.TacticalUnitsPerMile;
         Vector2 endTactical = endMiles * Campaign.TacticalUnitsPerMile;
 
@@ -443,6 +499,32 @@ public class VisionSystem
                     {
                         _exploredTiles.Add((cx + dx, cy + dy, 0));
                     }
+                }
+            }
+        }
+    }
+
+    private void RevealPathHex(Vector2 startMiles, Vector2 endMiles, float radiusMiles)
+    {
+        float dist = Vector2.Distance(startMiles, endMiles);
+        // Step every 0.5 miles for hex exploration
+        int steps = (int)Math.Ceiling(dist / 0.5f);
+
+        int radiusHexes = (int)Math.Ceiling(radiusMiles);
+
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = steps == 0 ? 0 : (float)i / steps;
+            Vector2 pos = Vector2.Lerp(startMiles, endMiles, t);
+
+            var (cq, cr) = Campaign.CartesianToAxial(pos.X, pos.Y);
+
+            // Reveal hexes in range
+            for (int dq = -radiusHexes; dq <= radiusHexes; dq++)
+            {
+                for (int dr = Math.Max(-radiusHexes, -dq - radiusHexes); dr <= Math.Min(radiusHexes, -dq + radiusHexes); dr++)
+                {
+                    _exploredHexes.Add((cq + dq, cr + dr));
                 }
             }
         }

@@ -102,7 +102,14 @@ namespace _4DND
                     }
 
                     Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
-                    VisionSystem?.RevealPath(startPos, endPos);
+
+                    // Calculate reveal radius based on light level and party capabilities
+                    float revealRadiusFeet = VisionSystem.GetRevealRadius(campaign, characters);
+
+                    VisionSystem?.RevealPath(startPos, endPos, revealRadiusFeet);
+
+                    // Auto-discover locations revealed by the party's vision
+                    campaign.DiscoverLocations(revealRadiusFeet, msg => SetTravelMessage(msg));
                 }
             }
 
@@ -500,16 +507,33 @@ namespace _4DND
                         biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
                         _biomeCache[cacheKey] = biome;
                     }
-                    Color biomeColor = WorldGenerator.GetBiomeColor(biome);
+
+                    // Check if hex is explored
+                    int worldQ = q * hexSizeInMiles;
+                    int worldR = r * hexSizeInMiles;
+                    bool isExplored = VisionSystem?.IsHexExplored(worldQ, worldR) ?? true;
+
+                    if (!isExplored)
+                    {
+                        // Always show hexes very close to the party
+                        var (pq, pr) = Campaign.MilesToAxial(campaign.PartyX, campaign.PartyY);
+                        if (Campaign.GetHexDistance(worldQ, worldR, (int)Math.Round(pq), (int)Math.Round(pr)) <= 1)
+                            isExplored = true;
+                    }
+
+                    Color biomeColor = isExplored ? WorldGenerator.GetBiomeColor(biome) : Color.Black * 0.9f;
 
                     // Fill hexagon with biome color
-                    DrawHexagonFill(sb, pos, _tileSize * _zoom, biomeColor * 0.6f);
+                    DrawHexagonFill(sb, pos, _tileSize * _zoom, isExplored ? biomeColor * 0.6f : biomeColor);
 
-                    // Draw procedural foliage if biome supports it
-                    DrawProceduralFoliage(sb, pos, biome, q, r, campaign.Seed);
+                    if (isExplored)
+                    {
+                        // Draw procedural foliage if biome supports it
+                        DrawProceduralFoliage(sb, pos, biome, q, r, campaign.Seed);
+                    }
 
                     // Draw outline
-                    DrawHexagon(sb, pos, _tileSize * _zoom, Color.Black * 0.2f);
+                    DrawHexagon(sb, pos, _tileSize * _zoom, isExplored ? Color.Black * 0.2f : Color.White * 0.05f);
                 }
             }
         }

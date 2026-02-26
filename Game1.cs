@@ -448,6 +448,12 @@ public class Game1 : Game
             _visionSystem.CalculateLighting();
             _visionSystem.CalculateVisibility(_playerCreature);
 
+            // Reveal surroundings in the global fog of war
+            float revealRadius = VisionSystem.GetRevealRadius(_currentCampaign, _characters);
+            Vector2 partyPos = new Vector2(_currentCampaign.PartyX, _currentCampaign.PartyY);
+            _visionSystem.RevealPath(partyPos, partyPos, revealRadius);
+            _currentCampaign.DiscoverLocations(revealRadius, msg => AddToCombatLog(msg));
+
             _playerCreature.X = originalX;
             _playerCreature.Y = originalY;
             _playerCreature.Z = originalZ;

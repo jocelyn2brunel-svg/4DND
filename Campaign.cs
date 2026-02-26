@@ -332,6 +332,26 @@ namespace _4DND
             }
         }
 
+        public void DiscoverLocations(float revealRadiusFeet, Action<string>? onDiscovered = null)
+        {
+            float revealRadiusMiles = revealRadiusFeet / 5280f;
+            Vector2 partyPos = new Vector2(PartyX, PartyY);
+
+            foreach (var loc in AllLocations)
+            {
+                if (loc.IsDiscovered) continue;
+
+                var (lx, ly) = AxialToMiles(loc.X, loc.Y);
+                float dist = Vector2.Distance(partyPos, new Vector2(lx, ly));
+
+                if (dist <= revealRadiusMiles)
+                {
+                    loc.IsDiscovered = true;
+                    onDiscovered?.Invoke(Loc.Tr("Discovered: {0}!", loc.Name));
+                }
+            }
+        }
+
         /// <summary>
         /// Computes distance between two axial hex coordinates.
         /// </summary>
