@@ -1385,6 +1385,10 @@ public class CombatManager
         if (attacker.HasArmorNonProficiencyPenalty)
             hasDisadvantage = true;
 
+        // Heavy weapon: Small and Tiny creatures have disadvantage on attack rolls (PHB "Heavy")
+        if (attacker.IsHeavyWeaponAttack && attacker.Size <= CreatureSize.Small)
+            hasDisadvantage = true;
+
         // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,

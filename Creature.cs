@@ -450,6 +450,12 @@ public class Creature
     public bool HasWeaponNonProficiencyPenalty { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a Heavy weapon (PHB "Heavy").
+    /// Small and Tiny creatures have disadvantage on attack rolls with heavy weapons.
+    /// </summary>
+    public bool IsHeavyWeaponAttack { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -1337,6 +1343,7 @@ public class Creature
             creature.IsMeleeAttack = !isEffectivelyRanged;
             creature.NormalRange = isEffectivelyRanged ? weapon.Range : 0;
             creature.LongRange = isEffectivelyRanged ? weapon.LongRange : 0;
+            creature.IsHeavyWeaponAttack = weapon.IsHeavy;
             // Finesse: same modifier for attack and damage (PHB "Finesse").
             // Rage bonus only applies to STR-based melee attacks (PHB "Rage").
             creature.IsStrengthBasedAttack = weapon.IsFinesse
@@ -1420,6 +1427,7 @@ public class Creature
         bool isProficient = character.IsProficientWithWeapon(weapon.Name);
         HasWeaponNonProficiencyPenalty = !isProficient;
         AttackBonus = abilityMod + (isProficient ? character.ProficiencyBonus : 0);
+        IsHeavyWeaponAttack = weapon.IsHeavy;
 
         bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;

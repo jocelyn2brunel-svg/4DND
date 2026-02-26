@@ -40,6 +40,11 @@ public class Item
     public string DamageDice { get; set; } = ""; // e.g., "1d8"
     public DamageType DamageType { get; set; } = DamageType.None;
     public bool IsLight { get; set; }
+    /// <summary>
+    /// True for weapons with the Heavy property (PHB "Heavy").
+    /// Small creatures have disadvantage on attack rolls with heavy weapons.
+    /// </summary>
+    public bool IsHeavy { get; set; }
     public bool IsFinesse { get; set; }
     public bool IsTwoHanded { get; set; }
     public bool IsVersatile { get; set; }
