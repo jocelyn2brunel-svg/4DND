@@ -653,8 +653,8 @@ public class CombatManager
                 : !hostile.IsBlinded() && !mover.Conditions.HasCondition(Condition.Invisible);
             if (!hostileCanSeeMover) continue;
 
-            bool inRangeBefore = IsInMeleeRangeAt(mover.Size, from.X, from.Y, from.Z, hostile);
-            bool inRangeAfter  = IsInMeleeRangeAt(mover.Size, to.X,   to.Y,   to.Z,   hostile);
+            bool inRangeBefore = IsInMeleeRangeAt(mover.Size, from.X, from.Y, from.Z, hostile, hostile.IsReachWeapon ? 2 : 1);
+            bool inRangeAfter  = IsInMeleeRangeAt(mover.Size, to.X,   to.Y,   to.Z,   hostile, hostile.IsReachWeapon ? 2 : 1);
 
             if (inRangeBefore && !inRangeAfter)
             {
@@ -669,7 +669,7 @@ public class CombatManager
     /// (<paramref name="moverX"/>, <paramref name="moverY"/>, <paramref name="moverZ"/>)
     /// is within melee reach of <paramref name="target"/>.
     /// </summary>
-    private static bool IsInMeleeRangeAt(CreatureSize moverSize, int moverX, int moverY, int moverZ, Creature target)
+    private static bool IsInMeleeRangeAt(CreatureSize moverSize, int moverX, int moverY, int moverZ, Creature target, int reach = 1)
     {
         var (moverW, moverH)   = SizeHelper.GetSpaceInSquares(moverSize);
         var (targetW, targetH) = SizeHelper.GetSpaceInSquares(target.Size);
@@ -683,7 +683,7 @@ public class CombatManager
                 int dx = Math.Abs((moverX + ax) - (target.X + tx));
                 int dy = Math.Abs((moverY + ay) - (target.Y + ty));
                 int dz = Math.Abs(moverZ - target.Z);
-                if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
+                if (dx <= reach && dy <= reach && dz <= reach && (dx + dy + dz) > 0)
                     return true;
             }
         }
@@ -1980,28 +1980,29 @@ public class CombatManager
         // Get the size of both creatures in squares
         var (attackerWidth, attackerHeight) = SizeHelper.GetSpaceInSquares(attacker.Size);
         var (targetWidth, targetHeight) = SizeHelper.GetSpaceInSquares(target.Size);
-        
-        // Check if any square occupied by the attacker is adjacent to any square occupied by the target
+
+        // Reach weapons (PHB "Reach") extend melee reach by 5 feet (1 square).
+        int reach = attacker.IsReachWeapon ? 2 : 1;
+
+        // Check if any square occupied by the attacker is within reach of any square occupied by the target
         for (int ax = 0; ax < attackerWidth; ax++)
         {
             for (int ay = 0; ay < attackerHeight; ay++)
             {
                 int attackerTileX = attacker.X + ax;
                 int attackerTileY = attacker.Y + ay;
-                
+
                 for (int tx = 0; tx < targetWidth; tx++)
                 for (int ty = 0; ty < targetHeight; ty++)
                 {
                     int targetTileX = target.X + tx;
                     int targetTileY = target.Y + ty;
-                    
-                    // Check if these tiles are adjacent (including diagonally)
+
                     int dx = Math.Abs(attackerTileX - targetTileX);
                     int dy = Math.Abs(attackerTileY - targetTileY);
                     int dz = Math.Abs(attacker.Z - target.Z);
-                    
-                    // Adjacent if within 1 square on each axis (includes diagonals)
-                    if (dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0)
+
+                    if (dx <= reach && dy <= reach && dz <= reach && (dx + dy + dz) > 0)
                     {
                         return true;
                     }

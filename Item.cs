@@ -65,6 +65,12 @@ public class Item
     /// </summary>
     public bool IsAmmunition { get; set; }
     /// <summary>
+    /// True for weapons with the Reach property (PHB "Reach").
+    /// Adds 5 feet to the wielder's melee reach when attacking with this weapon,
+    /// as well as when determining opportunity attacks.
+    /// </summary>
+    public bool IsReach { get; set; }
+    /// <summary>
     /// True for weapons with the Loading property (crossbows, blowgun).
     /// Because of the time required to load, you can fire only one piece of ammunition
     /// from it when you use an action, bonus action, or reaction to fire it, regardless

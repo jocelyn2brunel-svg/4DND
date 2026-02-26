@@ -450,6 +450,12 @@ public class Creature
     public bool HasWeaponNonProficiencyPenalty { get; set; } = false;
 
     /// <summary>
+    /// Whether the current attack uses a weapon with the Reach property (PHB "Reach").
+    /// Adds 5 feet (1 square) to the creature's melee reach for attacks and opportunity attacks.
+    /// </summary>
+    public bool IsReachWeapon { get; set; } = false;
+
+    /// <summary>
     /// Whether the current attack uses a Heavy weapon (PHB "Heavy").
     /// Small and Tiny creatures have disadvantage on attack rolls with heavy weapons.
     /// </summary>
@@ -1359,7 +1365,7 @@ public class Creature
             creature.LongRange = isEffectivelyRanged ? weapon.LongRange : 0;
             creature.IsHeavyWeaponAttack = weapon.IsHeavy;
             creature.IsLoadingWeapon = weapon.IsLoading;
-            // Rage bonus only applies to STR-based melee attacks (PHB "Rage").
+            creature.IsReachWeapon = weapon.IsReach;
             creature.IsStrengthBasedAttack = weapon.IsFinesse
                 ? creature.GetAbilityModifier(creature.Strength) >= creature.GetAbilityModifier(creature.Dexterity)
                 : !isEffectivelyRanged;
@@ -1444,6 +1450,7 @@ public class Creature
         AttackBonus = abilityMod + (isProficient ? character.ProficiencyBonus : 0);
         IsHeavyWeaponAttack = weapon.IsHeavy;
         IsLoadingWeapon = weapon.IsLoading;
+        IsReachWeapon = weapon.IsReach;
 
         bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
