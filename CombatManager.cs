@@ -1283,6 +1283,34 @@ public class CombatManager
             return result;
         }
 
+        // Range validation (PHB "Ranged Attacks" and "Melee Attacks").
+        // Checked before consuming the action so an out-of-range click does not waste the turn.
+        bool beyondNormalRange = false;
+        if (attacker.IsMeleeAttack)
+        {
+            if (!IsInMeleeRange(attacker, target))
+            {
+                result.IsHit = false;
+                TurnMessages.Add(Loc.Tr("{0} cannot reach the target — must be within 5 ft. for a melee attack.", attacker.Name));
+                return result;
+            }
+        }
+        else
+        {
+            int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
+            int normalRange = attacker.NormalRange;
+            int longRange   = attacker.LongRange > 0 ? attacker.LongRange : normalRange * 3;
+
+            if (normalRange > 0 && distanceFeet > longRange)
+            {
+                result.IsHit = false;
+                TurnMessages.Add(Loc.Tr("{0}: target is out of range ({1} ft. away, max {2} ft.).", attacker.Name, distanceFeet, longRange));
+                return result;
+            }
+
+            beyondNormalRange = normalRange > 0 && distanceFeet > normalRange;
+        }
+
         // Consume the action
         if (_inCombat)
             attacker.HasAction = false;
@@ -1306,7 +1334,8 @@ public class CombatManager
                            attacker.IsHidden ||           // Unseen attacker (hidden via stealth): attack rolls have advantage
                            attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition): PHB "Unseen Attackers and Targets"
         bool hasDisadvantage = !attackerCanSee ||
-                               attacker.IsSqueezingThrough;  // Squeezing creature has disadvantage on attack rolls
+                               attacker.IsSqueezingThrough ||   // Squeezing creature has disadvantage on attack rolls
+                               beyondNormalRange;               // Ranged attack beyond normal range (PHB "Ranged Attacks")
 
         // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
         attacker.IsHidden = false;
@@ -1665,6 +1694,18 @@ public class CombatManager
         {
             result.IsHit = false;
             return result;
+        }
+
+        // Range validation for spell attacks.
+        if (attacker.NormalRange > 0)
+        {
+            int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
+            if (distanceFeet > attacker.NormalRange)
+            {
+                result.IsHit = false;
+                TurnMessages.Add(Loc.Tr("{0}: target is out of spell range ({1} ft. away, max {2} ft.).", attacker.Name, distanceFeet, attacker.NormalRange));
+                return result;
+            }
         }
 
         if (_inCombat)

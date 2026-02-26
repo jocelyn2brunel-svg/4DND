@@ -44,7 +44,13 @@ public class Item
     public bool IsTwoHanded { get; set; }
     public bool IsVersatile { get; set; }
     public string VersatileDamageDice { get; set; } = "";
+    /// <summary>True for dedicated ranged weapons (bow, crossbow, sling, blowgun).</summary>
     public bool IsRanged { get; set; }
+    /// <summary>
+    /// True for melee weapons that can also be thrown (e.g. Dagger, Handaxe, Javelin).
+    /// Thrown weapons are melee by default; the thrown range is stored in Range/LongRange.
+    /// </summary>
+    public bool IsThrown { get; set; }
     public int Range { get; set; }      // Normal range in feet
     public int LongRange { get; set; }  // Maximum range in feet (0 = Range * 3 for most weapons)
     

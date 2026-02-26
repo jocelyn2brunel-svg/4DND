@@ -1380,9 +1380,13 @@ public class Creature
         }
 
         AttackName = weapon.Name;
+
+        // Thrown weapons (e.g. Dagger, Handaxe) are melee weapons by default.
+        // Pure ranged weapons (bow, crossbow) use Dexterity.
+        bool isEffectivelyRanged = weapon.IsRanged && !weapon.IsThrown;
         int abilityMod = weapon.IsFinesse
             ? Math.Max(GetAbilityModifier(Strength), GetAbilityModifier(Dexterity))
-            : weapon.IsRanged
+            : isEffectivelyRanged
                 ? GetAbilityModifier(Dexterity)
                 : GetAbilityModifier(Strength);
 
@@ -1395,9 +1399,11 @@ public class Creature
         DamageBonus = isOffhand ? Math.Min(0, abilityMod) : abilityMod;
 
         CurrentDamageType = weapon.DamageType;
-        IsMeleeAttack = !weapon.IsRanged;
-        NormalRange = weapon.Range;
-        LongRange = weapon.LongRange;
+        // Thrown weapons are melee; pure ranged weapons are ranged.
+        IsMeleeAttack = !isEffectivelyRanged;
+        // Store the weapon's range for ranged weapons; thrown weapons keep 0 range here (melee use).
+        NormalRange = isEffectivelyRanged ? weapon.Range : 0;
+        LongRange   = isEffectivelyRanged ? weapon.LongRange : 0;
     }
 
     public void SetupAttackFromSpell(Spell spell, Character character)

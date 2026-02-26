@@ -31,11 +31,12 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsLight = true,
             IsFinesse = true,
+            IsThrown = true,
+            Range = 20,
+            LongRange = 60,
             Weight = 1,
             Value = 2,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 20
+            IsEquippable = true
         },
         ["Greatclub"] = new Item
         {
@@ -59,11 +60,12 @@ public static class ItemDatabase
             DamageDice = "1d6",
             DamageType = DamageType.Slashing,
             IsLight = true,
+            IsThrown = true,
+            Range = 20,
+            LongRange = 60,
             Weight = 2,
             Value = 5,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 20
+            IsEquippable = true
         },
         ["Javelin"] = new Item
         {
@@ -73,11 +75,12 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Simple,
             DamageDice = "1d6",
             DamageType = DamageType.Piercing,
+            IsThrown = true,
+            Range = 30,
+            LongRange = 120,
             Weight = 2,
             Value = 5,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 30
+            IsEquippable = true
         },
         ["Light Hammer"] = new Item
         {
@@ -88,11 +91,12 @@ public static class ItemDatabase
             DamageDice = "1d4",
             DamageType = DamageType.Bludgeoning,
             IsLight = true,
+            IsThrown = true,
+            Range = 20,
+            LongRange = 60,
             Weight = 2,
             Value = 2,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 20
+            IsEquippable = true
         },
         ["Mace"] = new Item
         {
@@ -143,11 +147,12 @@ public static class ItemDatabase
             VersatileDamageDice = "1d8",
             DamageType = DamageType.Piercing,
             IsVersatile = true,
+            IsThrown = true,
+            Range = 20,
+            LongRange = 60,
             Weight = 3,
             Value = 1,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 20
+            IsEquippable = true
         },
         ["Unarmed Strike"] = new Item
         {
@@ -174,6 +179,7 @@ public static class ItemDatabase
             IsTwoHanded = true,
             IsRanged = true,
             Range = 80,
+            LongRange = 320,
             Weight = 5,
             Value = 25,
             IsEquippable = true
@@ -188,6 +194,7 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsRanged = true,
             Range = 20,
+            LongRange = 60,
             IsFinesse = true,
             Weight = 0,
             Value = 0,
@@ -204,6 +211,7 @@ public static class ItemDatabase
             IsTwoHanded = true,
             IsRanged = true,
             Range = 80,
+            LongRange = 320,
             Weight = 2,
             Value = 25,
             IsEquippable = true
@@ -218,6 +226,7 @@ public static class ItemDatabase
             DamageType = DamageType.Bludgeoning,
             IsRanged = true,
             Range = 30,
+            LongRange = 120,
             Weight = 0,
             Value = 0,
             IsEquippable = true
@@ -417,11 +426,12 @@ public static class ItemDatabase
             VersatileDamageDice = "1d8",
             DamageType = DamageType.Piercing,
             IsVersatile = true,
+            IsThrown = true,
+            Range = 20,
+            LongRange = 60,
             Weight = 4,
             Value = 5,
-            IsEquippable = true,
-            IsRanged = true,
-            Range = 20
+            IsEquippable = true
         },
         ["War Pick"] = new Item
         {
@@ -474,6 +484,7 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsRanged = true,
             Range = 25,
+            LongRange = 100,
             Weight = 1,
             Value = 10,
             IsEquippable = true
@@ -488,6 +499,7 @@ public static class ItemDatabase
             DamageType = DamageType.Piercing,
             IsRanged = true,
             Range = 30,
+            LongRange = 120,
             Weight = 3,
             Value = 75,
             IsEquippable = true
@@ -503,6 +515,7 @@ public static class ItemDatabase
             IsTwoHanded = true,
             IsRanged = true,
             Range = 100,
+            LongRange = 400,
             Weight = 18,
             Value = 50,
             IsEquippable = true
@@ -518,6 +531,7 @@ public static class ItemDatabase
             IsTwoHanded = true,
             IsRanged = true,
             Range = 150,
+            LongRange = 600,
             Weight = 2,
             Value = 50,
             IsEquippable = true
