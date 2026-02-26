@@ -414,7 +414,7 @@ public class Game1 : Game
                 2 => Creature.CreateSkeleton(spawnX, spawnY, spawnZ),
                 3 => Creature.CreateWolf(spawnX, spawnY, spawnZ),
                 4 => Creature.CreateKobold(spawnX, spawnY, spawnZ),
-                5 => Creature.CreateUmberHulk(spawnX, spawnY, spawnZ),
+                5 => Creature.CreateZombie(spawnX, spawnY, spawnZ),
                 _ => Creature.CreateCouatl(spawnX, spawnY, spawnZ)
             };
 
