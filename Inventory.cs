@@ -9,52 +9,87 @@ public class Inventory
 {
     public int Capacity { get; set; } = 50;
     
-    public string? EquippedWeapon { get; set; }
-    public string? OffhandWeapon { get; set; }
-    public string? EquippedArmor { get; set; }
-    public string? EquippedShield { get; set; }
+    public ItemInstance? EquippedWeapon { get; set; }
+    public ItemInstance? OffhandWeapon { get; set; }
+    public ItemInstance? EquippedArmor { get; set; }
+    public ItemInstance? EquippedShield { get; set; }
     
-    public List<string> Items { get; set; } = new();
+    public List<ItemInstance> Items { get; set; } = new();
     
     public bool AddItem(string itemName)
     {
         if (Items.Count >= Capacity) return false;
-        Items.Add(itemName);
+        Items.Add(new ItemInstance(itemName));
+        return true;
+    }
+
+    public bool AddItemInstance(ItemInstance instance)
+    {
+        if (Items.Count >= Capacity) return false;
+        Items.Add(instance);
         return true;
     }
     
     public bool RemoveItem(string itemName)
     {
-        return Items.Remove(itemName);
+        var item = Items.FirstOrDefault(i => i.Name == itemName);
+        if (item != null)
+        {
+            if (EquippedWeapon == item) EquippedWeapon = null;
+            if (OffhandWeapon == item) OffhandWeapon = null;
+            if (EquippedArmor == item) EquippedArmor = null;
+            if (EquippedShield == item) EquippedShield = null;
+            return Items.Remove(item);
+        }
+        return false;
+    }
+
+    public bool RemoveItemInstance(ItemInstance instance)
+    {
+        if (EquippedWeapon == instance) EquippedWeapon = null;
+        if (OffhandWeapon == instance) OffhandWeapon = null;
+        if (EquippedArmor == instance) EquippedArmor = null;
+        if (EquippedShield == instance) EquippedShield = null;
+        return Items.Remove(instance);
     }
     
     public bool HasItem(string itemName)
     {
-        return Items.Contains(itemName);
+        return Items.Any(i => i.Name == itemName);
     }
     
     public int GetItemCount(string itemName)
     {
-        return Items.Count(i => i == itemName);
+        return Items.Count(i => i.Name == itemName);
     }
     
     public bool EquipItem(string itemName)
     {
-        if (!Items.Contains(itemName)) return false;
+        var itemInstance = Items.FirstOrDefault(i => i.Name == itemName);
+        if (itemInstance == null) return false;
+        return EquipItemInstance(itemInstance);
+    }
+
+    public bool EquipItemInstance(ItemInstance instance)
+    {
+        if (!Items.Contains(instance)) return false;
         
-        var item = ItemDatabase.GetItem(itemName);
-        if (!item.IsEquippable) return false;
+        var itemData = ItemDatabase.GetItem(instance.Name);
+        if (!itemData.IsEquippable) return false;
         
-        switch (item.Type)
+        // Ensure not equipped in the other hand
+        if (OffhandWeapon == instance) OffhandWeapon = null;
+
+        switch (itemData.Type)
         {
             case ItemType.Weapon:
-                EquippedWeapon = itemName;
+                EquippedWeapon = instance;
                 return true;
             case ItemType.Armor:
-                EquippedArmor = itemName;
+                EquippedArmor = instance;
                 return true;
             case ItemType.Shield:
-                EquippedShield = itemName;
+                EquippedShield = instance;
                 return true;
             default:
                 return false;
@@ -63,31 +98,67 @@ public class Inventory
     
     public bool EquipOffhandItem(string itemName)
     {
-        if (!Items.Contains(itemName)) return false;
-        var item = ItemDatabase.GetItem(itemName);
-        if (item.Type != ItemType.Weapon || !item.IsLight) return false;
-        OffhandWeapon = itemName;
+        var itemInstance = Items.FirstOrDefault(i => i.Name == itemName);
+        if (itemInstance == null) return false;
+        return EquipOffhandItemInstance(itemInstance);
+    }
+
+    public bool EquipOffhandItemInstance(ItemInstance instance)
+    {
+        if (!Items.Contains(instance)) return false;
+        var itemData = ItemDatabase.GetItem(instance.Name);
+        if (itemData.Type != ItemType.Weapon || !itemData.IsLight) return false;
+
+        // Ensure not equipped in the other hand
+        if (EquippedWeapon == instance) EquippedWeapon = null;
+
+        OffhandWeapon = instance;
         return true;
     }
 
     public bool UnequipItem(string itemName)
     {
-        if (EquippedWeapon == itemName)
+        if (EquippedWeapon?.Name == itemName)
         {
             EquippedWeapon = null;
             return true;
         }
-        if (OffhandWeapon == itemName)
+        if (OffhandWeapon?.Name == itemName)
         {
             OffhandWeapon = null;
             return true;
         }
-        if (EquippedArmor == itemName)
+        if (EquippedArmor?.Name == itemName)
         {
             EquippedArmor = null;
             return true;
         }
-        if (EquippedShield == itemName)
+        if (EquippedShield?.Name == itemName)
+        {
+            EquippedShield = null;
+            return true;
+        }
+        return false;
+    }
+
+    public bool UnequipItemInstance(ItemInstance instance)
+    {
+        if (EquippedWeapon == instance)
+        {
+            EquippedWeapon = null;
+            return true;
+        }
+        if (OffhandWeapon == instance)
+        {
+            OffhandWeapon = null;
+            return true;
+        }
+        if (EquippedArmor == instance)
+        {
+            EquippedArmor = null;
+            return true;
+        }
+        if (EquippedShield == instance)
         {
             EquippedShield = null;
             return true;
@@ -98,10 +169,10 @@ public class Inventory
     public int GetTotalWeight()
     {
         int total = 0;
-        foreach (var itemName in Items)
+        foreach (var itemInstance in Items)
         {
-            var item = ItemDatabase.GetItem(itemName);
-            total += item.Weight;
+            var itemData = ItemDatabase.GetItem(itemInstance.Name);
+            total += itemData.Weight;
         }
         return total;
     }
@@ -114,9 +185,9 @@ public class Inventory
         // Equipped armor
         if (EquippedArmor != null)
         {
-            var armor = ItemDatabase.GetItem(EquippedArmor);
-            ac = armor.ArmorClass;
-            dexBonus = System.Math.Min(dexBonus, armor.MaxDexBonus);
+            var armorData = ItemDatabase.GetItem(EquippedArmor.Name);
+            ac = armorData.ArmorClass;
+            dexBonus = System.Math.Min(dexBonus, armorData.MaxDexBonus);
         }
         
         ac += dexBonus;
@@ -124,8 +195,8 @@ public class Inventory
         // Equipped shield
         if (EquippedShield != null)
         {
-            var shield = ItemDatabase.GetItem(EquippedShield);
-            ac += shield.ArmorClass;
+            var shieldData = ItemDatabase.GetItem(EquippedShield.Name);
+            ac += shieldData.ArmorClass;
         }
         
         return ac;

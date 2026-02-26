@@ -23,10 +23,10 @@ public class CharacterSheet
     private string? _hoverTooltip;
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
-    private readonly List<(Rectangle Rect, string ItemName, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
+    private readonly List<(Rectangle Rect, ItemInstance Item, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
     private bool _showItemContextMenu;
     private Rectangle _itemContextMenuRect;
-    private string? _contextItemName;
+    private ItemInstance? _contextItem;
     private bool _contextItemIsEquipped;
     private bool _contextItemIsEquippable;
     private bool _contextItemIsLight;
@@ -38,6 +38,7 @@ public class CharacterSheet
     public bool PlayLuteRequested { get; set; }
     public bool GrappleRequested { get; set; }
     public bool ShoveRequested { get; set; }
+    public ItemInstance? DroppedItem { get; set; }
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -77,16 +78,16 @@ public class CharacterSheet
         if (rightClick)
         {
             var clickedItem = _inventoryItemRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
-            if (!string.IsNullOrEmpty(clickedItem.ItemName))
+            if (clickedItem.Item != null)
             {
-                _contextItemName = clickedItem.ItemName;
+                _contextItem = clickedItem.Item;
                 _contextItemIsEquipped = clickedItem.IsEquipped;
                 _contextItemIsEquippable = clickedItem.IsEquippable;
-                var contextItemData = ItemDatabase.GetItem(clickedItem.ItemName);
+                var contextItemData = ItemDatabase.GetItem(clickedItem.Item.Name);
                 _contextItemIsLight = contextItemData != null && contextItemData.IsLight;
                 _showItemContextMenu = true;
                 _inspectWeaponText = null;
-                _itemContextMenuRect = BuildContextMenuRect(_mousePosition);
+                _itemContextMenuRect = BuildContextMenuRect(_mousePosition, character);
             }
             else
             {
@@ -113,13 +114,13 @@ public class CharacterSheet
 
             if (_showItemContextMenu)
             {
-                var option = GetContextMenuOptionAt(_mousePosition);
+                var option = GetContextMenuOptionAt(_mousePosition, character);
                 switch (option)
                 {
                     case "Equip":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
-                            if (character.InventoryData.EquipItem(_contextItemName))
+                            if (character.InventoryData.EquipItemInstance(_contextItem))
                             {
                                 character.CalculateDerivedStats();
                                 hasCharacterChanges = true;
@@ -128,24 +129,60 @@ public class CharacterSheet
                         _showItemContextMenu = false;
                         break;
                     case "Equip (Offhand)":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
-                            character.InventoryData.EquipOffhandItem(_contextItemName);
+                            character.InventoryData.EquipOffhandItemInstance(_contextItem);
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
                     case "Unequip":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
+                            character.InventoryData.UnequipItemInstance(_contextItem);
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
                         _showItemContextMenu = false;
                         break;
+                    case "Light":
+                        if (_contextItem != null && _contextItem.Name == "Torch")
+                        {
+                            // Re-verify conditions
+                            bool hasTinderbox = character.InventoryData.HasItem("Tinderbox");
+                            bool hasOtherLitTorch = character.InventoryData.Items.Any(it => it.Name == "Torch" && it.IsLit && it != _contextItem);
+                            bool hasFireSpell = character.KnownSpells.Any(s => s.DamageType == DamageType.Fire) ||
+                                                character.PreparedSpells.Any(s => s.DamageType == DamageType.Fire);
+
+                            if (hasTinderbox || hasOtherLitTorch || hasFireSpell)
+                            {
+                                _contextItem.IsLit = true;
+                                _contextItem.RemainingMinutes = 60;
+
+                                // Prefer main hand if empty, otherwise off-hand
+                                if (character.InventoryData.EquippedWeapon == null)
+                                {
+                                    character.InventoryData.EquipItemInstance(_contextItem);
+                                }
+                                else if (character.InventoryData.OffhandWeapon == null)
+                                {
+                                    character.InventoryData.EquipOffhandItemInstance(_contextItem);
+                                }
+                                else
+                                {
+                                    // Both hands full, default to main hand
+                                    character.InventoryData.EquipItemInstance(_contextItem);
+                                }
+
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
+                        }
+                        _showItemContextMenu = false;
+                        break;
                     case "Throw":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
@@ -153,8 +190,10 @@ public class CharacterSheet
                         _showItemContextMenu = false;
                         break;
                     case "Drop":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
+                            DroppedItem = _contextItem;
+                            character.InventoryData.RemoveItemInstance(_contextItem);
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
@@ -165,9 +204,9 @@ public class CharacterSheet
                         _showItemContextMenu = false;
                         break;
                     case "Inspect":
-                        if (!string.IsNullOrEmpty(_contextItemName))
+                        if (_contextItem != null)
                         {
-                            _inspectWeaponText = BuildItemTooltip(_contextItemName, _contextItemIsEquipped);
+                            _inspectWeaponText = BuildItemTooltip(_contextItem, _contextItemIsEquipped);
                         }
                         _showItemContextMenu = false;
                         break;
@@ -268,7 +307,7 @@ public class CharacterSheet
 
             DrawCloseButton(spriteBatch, vp);
             DrawTooltip(spriteBatch, vp);
-            DrawWeaponContextMenu(spriteBatch, vp);
+            DrawWeaponContextMenu(spriteBatch, vp, character);
             DrawInspectPopup(spriteBatch, vp);
         }
     }
@@ -747,7 +786,7 @@ public class CharacterSheet
             int entryY = headerY + 20;
             if (c.InventoryData.EquippedWeapon != null)
             {
-                string weapon = c.InventoryData.EquippedWeapon;
+                string weapon = c.InventoryData.EquippedWeapon.Name;
                 var weaponItem = ItemDatabase.GetItem(weapon);
                 int abilityMod = weaponItem != null && weaponItem.IsFinesse
                     ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
@@ -767,7 +806,7 @@ public class CharacterSheet
             // Two-Weapon Fighting offhand bonus attack
             if (c.InventoryData.OffhandWeapon != null)
             {
-                string offhand = c.InventoryData.OffhandWeapon;
+                string offhand = c.InventoryData.OffhandWeapon.Name;
                 var offhandItem = ItemDatabase.GetItem(offhand);
                 int offhandAbilityMod = offhandItem != null && offhandItem.IsFinesse
                     ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
@@ -842,10 +881,16 @@ public class CharacterSheet
             {
                 int curX = left ? col1 : col2;
                 var itemRect = new Rectangle(curX, currentItemY, width / 2 - 15, lineHeight);
-                spriteBatch.DrawString(_font, SafeString($"• {item}"), new Vector2(curX, currentItemY), Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+                string display = $"• {item.Name}";
+                if (item.IsLit && item.Name == "Torch") {
+                    display += $" ({item.RemainingMinutes}m)";
+                }
+
+                spriteBatch.DrawString(_font, SafeString(display), new Vector2(curX, currentItemY), item.IsLit ? Color.OrangeRed : Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
                 RegisterTooltip(itemRect, BuildItemTooltip(item, item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield || item == c.InventoryData.EquippedWeapon));
 
-                var itemData = ItemDatabase.GetItem(item);
+                var itemData = ItemDatabase.GetItem(item.Name);
                 if (itemData.Type == ItemType.Weapon)
                 {
                     bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon;
@@ -1050,31 +1095,36 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, safeTooltip, new Vector2(x + padding, y + padding), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
     }
 
-    private Rectangle BuildContextMenuRect(Point mousePosition)
+    private Rectangle BuildContextMenuRect(Point mousePosition, Character character)
     {
         const int width = 180;
         const int optionHeight = 30;
-        int optionCount = GetContextMenuOptions().Length;
+        int optionCount = GetContextMenuOptions(character).Length;
         return new Rectangle(mousePosition.X, mousePosition.Y, width, optionHeight * optionCount);
     }
 
-    private string? GetContextMenuOptionAt(Point position)
+    private string? GetContextMenuOptionAt(Point position, Character character)
     {
         if (!_itemContextMenuRect.Contains(position)) return null;
 
         int relativeY = position.Y - _itemContextMenuRect.Y;
         int optionIndex = relativeY / 30;
-        var options = GetContextMenuOptions();
+        var options = GetContextMenuOptions(character);
         return optionIndex >= 0 && optionIndex < options.Length ? options[optionIndex] : null;
     }
 
-    private string[] GetContextMenuOptions()
+    private string[] GetContextMenuOptions(Character character)
     {
         var options = new List<string>();
 
-        if (_contextItemName == "Lute")
+        if (_contextItem?.Name == "Lute")
         {
             options.Add("Play");
+        }
+
+        if (_contextItem != null && _contextItem.Name == "Torch" && !_contextItem.IsLit)
+        {
+            options.Add("Light");
         }
 
         if (_contextItemIsEquipped)
@@ -1097,9 +1147,9 @@ public class CharacterSheet
         return options.ToArray();
     }
 
-    private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport)
+    private void DrawWeaponContextMenu(SpriteBatch spriteBatch, Viewport viewport, Character character)
     {
-        if (!_showItemContextMenu || string.IsNullOrEmpty(_contextItemName)) return;
+        if (!_showItemContextMenu || _contextItem == null) return;
 
         int menuX = Math.Clamp(_itemContextMenuRect.X, 8, viewport.Width - _itemContextMenuRect.Width - 8);
         int menuY = Math.Clamp(_itemContextMenuRect.Y, 8, viewport.Height - _itemContextMenuRect.Height - 8);
@@ -1108,17 +1158,32 @@ public class CharacterSheet
         spriteBatch.Draw(_pixel, _itemContextMenuRect, new Color(35, 35, 35, 245));
         DrawBorder(spriteBatch, _itemContextMenuRect, new Color(220, 220, 220), 1);
 
-        var options = GetContextMenuOptions();
+        var options = GetContextMenuOptions(character);
         for (int i = 0; i < options.Length; i++)
         {
             var optionRect = new Rectangle(_itemContextMenuRect.X, _itemContextMenuRect.Y + i * 30, _itemContextMenuRect.Width, 30);
             bool hovered = optionRect.Contains(_mousePosition);
-            if (hovered)
+            bool enabled = true;
+
+            if (options[i] == "Light")
+            {
+                bool hasTinderbox = character.InventoryData.HasItem("Tinderbox");
+                bool hasOtherLitTorch = character.InventoryData.Items.Any(it => it.Name == "Torch" && it.IsLit && it != _contextItem);
+                bool hasFireSpell = character.KnownSpells.Any(s => s.DamageType == DamageType.Fire) ||
+                                    character.PreparedSpells.Any(s => s.DamageType == DamageType.Fire);
+
+                if (!hasTinderbox && !hasOtherLitTorch && !hasFireSpell)
+                {
+                    enabled = false;
+                }
+            }
+
+            if (hovered && enabled)
             {
                 spriteBatch.Draw(_pixel, optionRect, new Color(90, 90, 90, 230));
             }
 
-            spriteBatch.DrawString(_font, SafeString(Loc.Tr(options[i])), new Vector2(optionRect.X + 10, optionRect.Y + 7), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            spriteBatch.DrawString(_font, SafeString(Loc.Tr(options[i])), new Vector2(optionRect.X + 10, optionRect.Y + 7), enabled ? Color.White : Color.Gray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
     }
 
@@ -1199,12 +1264,16 @@ public class CharacterSheet
         return Loc.Tr("{0} {1}\nBonus: {2}\nDamage: {3}\n{4}", weaponName, Loc.Tr("(equipped)"), FormatModifier(attackBonus), damage, rangeInfo);
     }
 
-    private string BuildItemTooltip(string itemName, bool isEquipped = false) {
-        var item = ItemDatabase.GetItem(itemName);
-        if (item == null) return itemName;
+    private string BuildItemTooltip(ItemInstance itemInstance, bool isEquipped = false) {
+        var itemData = ItemDatabase.GetItem(itemInstance.Name);
+        if (itemData == null) return itemInstance.Name;
         string eq = isEquipped ? $" {Loc.Tr("(equipped)")}" : "";
-        string details = Loc.Tr("{0}{1}\nWeight: {2} lbs | Value: {3} gp", item.Name, eq, item.Weight, item.Value);
-        if (!string.IsNullOrWhiteSpace(item.Description)) details += $"\n{item.Description}";
+        string details = Loc.Tr("{0}{1}\nWeight: {2} lbs | Value: {3} gp", itemData.Name, eq, itemData.Weight, itemData.Value);
+        if (itemInstance.Name == "Torch" && itemInstance.IsLit)
+        {
+            details += $"\n{Loc.Tr("Lit (Remaining: {0}m)", itemInstance.RemainingMinutes)}";
+        }
+        if (!string.IsNullOrWhiteSpace(itemData.Description)) details += $"\n{itemData.Description}";
         return details;
     }
 

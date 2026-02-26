@@ -315,6 +315,11 @@ public static class Loc
         _en["Drop"] = "Drop"; _fr["Drop"] = "Jeter";
         _en["Throw"] = "Throw"; _fr["Throw"] = "Lancer";
         _en["Play"] = "Play"; _fr["Play"] = "Jouer";
+        _en["Light"] = "Light"; _fr["Light"] = "Allumer";
+        _en["You dropped {0}."] = "You dropped {0}."; _fr["You dropped {0}."] = "Vous avez jeté {0}.";
+        _en["{0}'s torch has burned out!"] = "{0}'s torch has burned out!"; _fr["{0}'s torch has burned out!"] = "La torche de {0} s'est éteinte !";
+        _en["A torch on the ground has burned out!"] = "A torch on the ground has burned out!"; _fr["A torch on the ground has burned out!"] = "Une torche au sol s'est éteinte !";
+        _en["Lit (Remaining: {0}m)"] = "Lit (Remaining: {0}m)"; _fr["Lit (Remaining: {0}m)"] = "Allumée (Restant : {0}m)";
         _en["{0}: field to fill in."] = "{0}: field to fill in."; _fr["{0}: field to fill in."] = "{0} : champ à renseigner.";
         _en["Click Delete button to remove campaign | Esc to go back"] = "Click Delete button to remove campaign | Esc to go back"; _fr["Click Delete button to remove campaign | Esc to go back"] = "Cliquez sur Supprimer pour retirer la campagne | Échap pour revenir";
         _en["Click Delete button to remove character | Esc to go back"] = "Click Delete button to remove character | Esc to go back"; _fr["Click Delete button to remove character | Esc to go back"] = "Cliquez sur Supprimer pour retirer le personnage | Échap pour revenir";
