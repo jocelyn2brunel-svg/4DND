@@ -437,6 +437,12 @@ public class Creature
     public bool HasArmorNonProficiencyPenalty { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature is attacking with a weapon it is not proficient with.
+    /// When true, the proficiency bonus is not added to the attack roll (PHB "Weapon Proficiency").
+    /// </summary>
+    public bool HasWeaponNonProficiencyPenalty { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -1365,7 +1371,7 @@ public class Creature
 
         if (weapon == null || weapon.Type != ItemType.Weapon)
         {
-            // Fallback to unarmed strike
+            // Fallback to unarmed strike — always proficient
             AttackName = "Unarmed Strike";
             int strMod = GetAbilityModifier(Strength);
             AttackBonus = strMod + character.ProficiencyBonus;
@@ -1376,6 +1382,7 @@ public class Creature
             NormalRange = 0;
             LongRange = 0;
             IsOffhandAttack = false;
+            HasWeaponNonProficiencyPenalty = false;
             return;
         }
 
@@ -1390,7 +1397,10 @@ public class Creature
                 ? GetAbilityModifier(Dexterity)
                 : GetAbilityModifier(Strength);
 
-        AttackBonus = abilityMod + character.ProficiencyBonus;
+        // Only add proficiency bonus when the character is proficient with this weapon (PHB "Weapon Proficiency").
+        bool isProficient = character.IsProficientWithWeapon(weapon.Name);
+        HasWeaponNonProficiencyPenalty = !isProficient;
+        AttackBonus = abilityMod + (isProficient ? character.ProficiencyBonus : 0);
 
         bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;

@@ -1404,7 +1404,8 @@ public class CombatManager
         result.IsCritical = attackCheck.IsCriticalHit;
         result.IsCriticalMiss = attackCheck.IsCriticalMiss;
         result.IsHit = attackCheck.Success;
-        
+        result.IsNonProficient = attacker.HasWeaponNonProficiencyPenalty;
+
         // Roll damage if hit
         if (result.IsHit)
         {
@@ -1528,6 +1529,7 @@ public class CombatManager
         result.IsCritical       = attackCheck.IsCriticalHit;
         result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
         result.IsHit            = attackCheck.Success;
+        result.IsNonProficient  = attacker.HasWeaponNonProficiencyPenalty;
 
         if (result.IsHit)
         {
@@ -2385,21 +2387,23 @@ public class AttackResult
     public int Damage { get; set; }
     public bool HasAdvantage { get; set; }
     public bool HasDisadvantage { get; set; }
-    
+    public bool IsNonProficient { get; set; }
+
     public string GetMessage()
     {
         string advantageText = "";
         if (HasAdvantage) advantageText = " (ADV)";
         if (HasDisadvantage) advantageText = " (DIS)";
-        
+        string profText = IsNonProficient ? " (no proficiency)" : "";
+
         if (IsCriticalMiss)
-            return Loc.Tr("{0} critically missed {1}!{2}", Attacker.Name, Target.Name, advantageText);
+            return Loc.Tr("{0} critically missed {1}!{2}", Attacker.Name, Target.Name, advantageText + profText);
         if (IsCritical)
-            return Loc.Tr("{0} critically hit {1} for {2} damage!{3}", Attacker.Name, Target.Name, Damage, advantageText);
+            return Loc.Tr("{0} critically hit {1} for {2} damage!{3}", Attacker.Name, Target.Name, Damage, advantageText + profText);
         if (IsHit)
-            return Loc.Tr("{0} hit {1} for {2} damage! (AC {3}, rolled {4}+{5}={6}){7}", Attacker.Name, Target.Name, Damage, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText);
-        
-        return Loc.Tr("{0} missed {1}! (AC {2}, rolled {3}+{4}={5}){6}", Attacker.Name, Target.Name, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText);
+            return Loc.Tr("{0} hit {1} for {2} damage! (AC {3}, rolled {4}+{5}={6}){7}", Attacker.Name, Target.Name, Damage, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText + profText);
+
+        return Loc.Tr("{0} missed {1}! (AC {2}, rolled {3}+{4}={5}){6}", Attacker.Name, Target.Name, Target.ArmorClass, AttackRoll, TotalAttackBonus, TotalToHit, advantageText + profText);
     }
 }
 
