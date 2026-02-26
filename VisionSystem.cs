@@ -383,9 +383,14 @@ public class VisionSystem
                 // In darkness, darkvision allows seeing as if in dim light
                 return creature.DarkvisionRange;
             }
+            else if (lightLevel == LightType.Dim)
+            {
+                // In dim light, darkvision allows seeing as if in bright light
+                return Math.Max(60, creature.DarkvisionRange);
+            }
             else
             {
-                // In dim or bright light with darkvision, cap at a practical tactical range
+                // Bright light
                 return 100;
             }
         }
@@ -536,14 +541,23 @@ public class VisionSystem
 
         if (isCurrentlyVisible)
         {
-            // Darkvision sees in shades of gray in darkness
-            if (lightLevel == LightType.Darkness && observer.DarkvisionRange > 0)
+            // Darkvision upgrades
+            if (observer.DarkvisionRange > 0)
             {
                 int distance = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
                 if (distance <= observer.DarkvisionRange)
                 {
-                    // Gray tint for darkvision - "can't discern color in darkness, only shades of gray"
-                    return new Color(96, 96, 96);
+                    if (lightLevel == LightType.Dim)
+                    {
+                        // Sees dim light as bright light (in color)
+                        return Color.White;
+                    }
+                    else if (lightLevel == LightType.Darkness)
+                    {
+                        // Sees darkness as dim light (grayscale)
+                        // Alpha 254 is used as a flag for the rendering system to apply grayscale
+                        return new Color(128, 128, 128, 254);
+                    }
                 }
             }
             
@@ -727,12 +741,18 @@ public class VisionSystem
     public bool IsLightlyObscured(int x, int y, int z, Creature observer)
     {
         var lightLevel = GetLightLevel(x, y, z);
-        if (lightLevel == LightType.Dim) return true;
+        int dist = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
+
+        if (lightLevel == LightType.Dim)
+        {
+            // Darkvision sees dim light as bright light (not lightly obscured)
+            if (observer.DarkvisionRange > 0 && dist <= observer.DarkvisionRange) return false;
+            return true;
+        }
 
         if (lightLevel == LightType.Darkness)
         {
-            int dist = Math.Max(Math.Max(Math.Abs(x - observer.X), Math.Abs(y - observer.Y)), Math.Abs(z - observer.Z)) * 5;
-            // Darkness is dim light for creatures with Darkvision
+            // Darkness is dim light for creatures with Darkvision (lightly obscured)
             if (observer.DarkvisionRange > 0 && dist <= observer.DarkvisionRange) return true;
         }
 

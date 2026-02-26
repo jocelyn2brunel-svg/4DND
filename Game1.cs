@@ -1002,7 +1002,8 @@ public class Game1 : Game
         {
             bool isVisible = _visionSystem.IsVisible(x, y, z);
             Color tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
-            trunkColor = new Color((byte)(trunkColor.R * tint.R / 255), (byte)(trunkColor.G * tint.G / 255), (byte)(trunkColor.B * tint.B / 255));
+            trunkColor = ApplyVisionTint(trunkColor, tint);
+            if (trunkColor == Color.Transparent) return;
         }
 
         // Trunk (using a cube scaled thin and tall)
@@ -1060,8 +1061,7 @@ public class Game1 : Game
         {
             bool isVisible = _visionSystem.IsVisible(x, y, z);
             Color tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
-            if (tint == Color.Black) return Color.Transparent;
-            baseColor = new Color((byte)(baseColor.R * tint.R / 255), (byte)(baseColor.G * tint.G / 255), (byte)(baseColor.B * tint.B / 255), (byte)(baseColor.A * tint.A / 255));
+            baseColor = ApplyVisionTint(baseColor, tint);
         }
         return baseColor;
     }
@@ -1133,6 +1133,25 @@ public class Game1 : Game
             (byte)MathHelper.Clamp(color.G * factor, 0f, 255f),
             (byte)MathHelper.Clamp(color.B * factor, 0f, 255f),
             color.A);
+    }
+
+    private static Color ApplyVisionTint(Color baseColor, Color tint)
+    {
+        if (tint == Color.Black) return Color.Transparent;
+
+        if (tint.A == 254) // Magic flag for grayscale darkvision
+        {
+            float gray = baseColor.R * 0.299f + baseColor.G * 0.587f + baseColor.B * 0.114f;
+            // Apply the tint (e.g. 128, 128, 128 for dim light) to the grayscale value
+            byte finalGray = (byte)MathHelper.Clamp(gray * tint.R / 255f, 0, 255);
+            return new Color(finalGray, finalGray, finalGray, baseColor.A);
+        }
+
+        return new Color(
+            (byte)MathHelper.Clamp(baseColor.R * tint.R / 255f, 0, 255),
+            (byte)MathHelper.Clamp(baseColor.G * tint.G / 255f, 0, 255),
+            (byte)MathHelper.Clamp(baseColor.B * tint.B / 255f, 0, 255),
+            (byte)MathHelper.Clamp(baseColor.A * tint.A / 255f, 0, 255));
     }
 
     private static float Hash01(int x, int y, int z, int seed)
@@ -1263,8 +1282,8 @@ public class Game1 : Game
                     {
                         bool isVisible = _visionSystem.IsVisible(x, y, cz);
                         Color tint = _visionSystem.GetFogOfWarTint(x, y, cz, isVisible, _playerCreature);
-                        if (tint == Color.Black) continue;
-                        color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255), (byte)(color.A * tint.A / 255));
+                        color = ApplyVisionTint(color, tint);
+                        if (color == Color.Transparent) continue;
                     }
 
                     AddGridOutlineVertices(_reusableLineVertices, x, y, cz, color);
@@ -1340,10 +1359,8 @@ public class Game1 : Game
             if (_showVisionOverlay && _playerCreature != null)
             {
                 Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature);
-                outlineColor = new Color(
-                    (byte)(outlineColor.R * tint.R / 255),
-                    (byte)(outlineColor.G * tint.G / 255),
-                    (byte)(outlineColor.B * tint.B / 255));
+                outlineColor = ApplyVisionTint(outlineColor, tint);
+                if (outlineColor == Color.Transparent) continue;
             }
 
             var (w, h) = SizeHelper.GetSpaceInSquares(creature.Size);
@@ -1521,13 +1538,13 @@ public class Game1 : Game
     {
         if (creature.Z > _currentViewLevel) return;
         bool isVisible = _visionSystem.IsVisible(creature.X, creature.Y, creature.Z);
-        if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
-        {
-            Color fogTint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
-            if (fogTint == Color.Black) return;
-        }
         Color color = creature.DisplayColor;
-        if (_showVisionOverlay && _playerCreature != null) { Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature); color = new Color((byte)(color.R * tint.R / 255), (byte)(color.G * tint.G / 255), (byte)(color.B * tint.B / 255)); }
+        if (_showVisionOverlay && _playerCreature != null)
+        {
+            Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
+            color = ApplyVisionTint(color, tint);
+            if (color == Color.Transparent) return;
+        }
         var (capsuleRadius, capsuleHeight) = GetCreatureCapsuleDimensions(creature.Size);
         var offset = SizeHelper.GetCenterOffset(creature.Size);
 
