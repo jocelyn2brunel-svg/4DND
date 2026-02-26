@@ -1308,7 +1308,7 @@ public class Creature
         // Set attack based on equipped weapon
         if (character.InventoryData.EquippedWeapon != null)
         {
-            var weapon = ItemDatabase.GetItem(character.InventoryData.EquippedWeapon);
+            var weapon = ItemDatabase.GetItem(character.InventoryData.EquippedWeapon.Name);
             creature.AttackName = weapon.Name;
             
             int abilityMod = weapon.IsFinesse 

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -127,6 +128,15 @@ public class Game1 : Game
     // Auto-save timer
     private double _autoSaveTimer = 0;
     private const double AutoSaveInterval = 5 * 60; // 5 minutes in seconds
+    private double _gameTimeTimer = 0;
+
+    private class GroundItem
+    {
+        public int X, Y, Z;
+        public ItemInstance Item = null!;
+        public LightSource? Light = null;
+    }
+    private List<GroundItem> _groundItems = new();
 
     // Draggable Combat Log
     private Rectangle _combatLogWindowRect = new Rectangle(10, 120, 350, 120);
@@ -420,6 +430,107 @@ public class Game1 : Game
     {
         _visionNeedsUpdate = true;
     }
+
+    private void RefreshLightSources()
+    {
+        _visionSystem.ClearLightSources();
+
+        // Player's equipped torches
+        if (_currentCharacter != null && _playerCreature != null)
+        {
+            var inv = _currentCharacter.InventoryData;
+            if (inv.EquippedWeapon != null && inv.EquippedWeapon.Name == "Torch" && inv.EquippedWeapon.IsLit)
+            {
+                var light = LightSource.Torch(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
+                light.AttachedTo = _playerCreature;
+                _visionSystem.AddLightSource(light);
+            }
+            if (inv.OffhandWeapon != null && inv.OffhandWeapon.Name == "Torch" && inv.OffhandWeapon.IsLit)
+            {
+                var light = LightSource.Torch(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
+                light.AttachedTo = _playerCreature;
+                _visionSystem.AddLightSource(light);
+            }
+        }
+
+        // Ground items (lit torches)
+        foreach (var gi in _groundItems)
+        {
+            if (gi.Item.Name == "Torch" && gi.Item.IsLit)
+            {
+                if (gi.Light == null)
+                {
+                    gi.Light = LightSource.Torch(gi.X, gi.Y, gi.Z);
+                }
+                else
+                {
+                    gi.Light.X = gi.X;
+                    gi.Light.Y = gi.Y;
+                    gi.Light.Z = gi.Z;
+                }
+                _visionSystem.AddLightSource(gi.Light);
+            }
+        }
+    }
+
+    private void Draw3DGroundItems()
+    {
+        foreach (var gi in _groundItems)
+        {
+            if (!_visionSystem.IsVisible(gi.X, gi.Y, gi.Z)) continue;
+
+            Color itemColor = Color.Brown;
+            if (gi.Item.Name == "Torch" && gi.Item.IsLit)
+            {
+                itemColor = Color.Orange;
+            }
+
+            // Draw a small cube for the item
+            Draw3DCube(gi.X + 0.5f, gi.Y + 0.5f, gi.Z + 0.1f, 0.2f, itemColor);
+        }
+    }
+
+    private void UpdateTorchDurations(int minutes)
+    {
+        bool changed = false;
+        foreach (var character in _characters)
+        {
+            for (int i = character.InventoryData.Items.Count - 1; i >= 0; i--)
+            {
+                var item = character.InventoryData.Items[i];
+                if (item.Name == "Torch" && item.IsLit)
+                {
+                    item.RemainingMinutes -= minutes;
+                    if (item.RemainingMinutes <= 0)
+                    {
+                        character.InventoryData.RemoveItemInstance(item);
+                        AddToCombatLog(Loc.Tr("{0}'s torch has burned out!", character.Name));
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        for (int i = _groundItems.Count - 1; i >= 0; i--)
+        {
+            var gi = _groundItems[i];
+            if (gi.Item.Name == "Torch" && gi.Item.IsLit)
+            {
+                gi.Item.RemainingMinutes -= minutes;
+                if (gi.Item.RemainingMinutes <= 0)
+                {
+                    _groundItems.RemoveAt(i);
+                    AddToCombatLog(Loc.Tr("A torch on the ground has burned out!"));
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            UpdateVision();
+        }
+    }
     
     private void RecalculateVision()
     {
@@ -441,16 +552,7 @@ public class Game1 : Game
                 _playerCreature.Z = (int)MathF.Round(_playerCreature.VisualZ);
             }
 
-            // Update positions of attached light sources
-            foreach (var light in _visionSystem._lightSources)
-            {
-                if (light.AttachedTo != null)
-                {
-                    light.X = light.AttachedTo.X;
-                    light.Y = light.AttachedTo.Y;
-                    light.Z = light.AttachedTo.Z;
-                }
-            }
+            RefreshLightSources();
             
             _visionSystem.CalculateLighting();
             _visionSystem.CalculateVisibility(_playerCreature);
@@ -2550,6 +2652,18 @@ public class Game1 : Game
                 System.Console.WriteLine("Auto-save triggered (interval reached).");
             }
 
+            // Advance game time (1 minute game time per 60 seconds real time)
+            _gameTimeTimer += dtPlaying;
+            if (_gameTimeTimer >= 60.0)
+            {
+                _gameTimeTimer -= 60.0;
+                if (_currentCampaign != null)
+                {
+                    _currentCampaign.TotalGameMinutes += 1.0;
+                    UpdateTorchDurations(1);
+                }
+            }
+
             _luteMusic.Update(dtPlaying);
             _luteSynth.Update();
 
@@ -2879,6 +2993,23 @@ public class Game1 : Game
                 if (_characterSheet.Update(mouse, _currentCharacter))
                 {
                     SaveCharacters();
+                }
+
+                if (_characterSheet.DroppedItem != null)
+                {
+                    if (_playerCreature != null)
+                    {
+                        _groundItems.Add(new GroundItem
+                        {
+                            X = _playerCreature.X,
+                            Y = _playerCreature.Y,
+                            Z = _playerCreature.Z,
+                            Item = _characterSheet.DroppedItem
+                        });
+                        AddToCombatLog(Loc.Tr("You dropped {0}.", _characterSheet.DroppedItem.Name));
+                        UpdateVision();
+                    }
+                    _characterSheet.DroppedItem = null;
                 }
 
                 if (_characterSheet.PlayLuteRequested)
@@ -3874,6 +4005,7 @@ public class Game1 : Game
 
             DrawCreatureTileOutlines();
             Draw3DCreatures();
+            Draw3DGroundItems();
             DrawEnemySightLinesToPlayer();
             var hovered = GetHoveredTile();
             DrawHoveredMovementPath(hovered);

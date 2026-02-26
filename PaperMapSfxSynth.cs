@@ -54,7 +54,7 @@ public sealed class PaperMapSfxSynth : IDisposable
             float crinkle = hp * 0.7f + lp * 0.3f;
             float sample = crinkle * envelope * 0.55f;
 
-            sample = MathF.Clamp(sample, -1f, 1f);
+            sample = Math.Clamp(sample, -1f, 1f);
             short pcm = (short)(sample * short.MaxValue);
             pcm16Buffer[i * 2] = (byte)(pcm & 0xFF);
             pcm16Buffer[i * 2 + 1] = (byte)((pcm >> 8) & 0xFF);
