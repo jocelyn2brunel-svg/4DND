@@ -2859,7 +2859,7 @@ public class Game1 : Game
                     _showJournal = false;
                 }
 
-                var closeJournalButtonRect = _journalUI.GetCloseButtonRect(GraphicsDevice.Viewport);
+                var closeJournalButtonRect = JournalUI.GetCloseButtonRect(GraphicsDevice.Viewport);
                 if (mouseClickedThisFrame &&
                     closeJournalButtonRect.Contains(mouse.Position))
                 {

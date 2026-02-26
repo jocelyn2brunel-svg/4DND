@@ -285,6 +285,7 @@ public class Character
     /// </summary>
     public bool CanCastSpellLevel(int spellLevel)
     {
+        if (IsWearingNonProficientArmor) return false;
         if (spellLevel == 0) return true;
         if (spellLevel < 0 || spellLevel > 9) return false;
         if (Level < Spell.MinimumCharacterLevel(spellLevel)) return false;
@@ -298,6 +299,7 @@ public class Character
     /// </summary>
     public bool CanCastSpell(Spell spell)
     {
+        if (IsWearingNonProficientArmor) return false;
         if (spell.IsCantrip) return true;
         if (!CanCastSpellLevel(spell.Level)) return false;
         var classData = ClassData.GetClass(Class);
@@ -338,7 +340,7 @@ public class Character
     public bool IsProficientWithArmor(string armorType)
     {
         if (ArmorProficiencies == null) return false;
-        
+
         foreach (var prof in ArmorProficiencies)
         {
             if (prof.Equals(armorType, StringComparison.OrdinalIgnoreCase) || 
@@ -346,6 +348,37 @@ public class Character
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Returns true if this character is wearing armor or a shield they are not proficient with.
+    /// While true: disadvantage on STR/DEX ability checks, saving throws, and attack rolls; cannot cast spells.
+    /// </summary>
+    public bool IsWearingNonProficientArmor
+    {
+        get
+        {
+            var equippedArmor = InventoryData.EquippedArmor;
+            if (equippedArmor != null)
+            {
+                var item = ItemDatabase.GetItem(equippedArmor.Name);
+                string? armorTypeName = item.ArmorCategory switch
+                {
+                    ArmorType.Light  => "Light armor",
+                    ArmorType.Medium => "Medium armor",
+                    ArmorType.Heavy  => "Heavy armor",
+                    _                => null
+                };
+                if (armorTypeName != null && !IsProficientWithArmor(armorTypeName))
+                    return true;
+            }
+
+            var equippedShield = InventoryData.EquippedShield;
+            if (equippedShield != null && !IsProficientWithArmor("Shields"))
+                return true;
+
+            return false;
+        }
     }
     
     public bool IsProficientWithWeapon(string weaponName)

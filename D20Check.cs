@@ -293,6 +293,9 @@ public static class CharacterD20Extensions
     /// </summary>
     public static D20Check MakeAbilityCheck(this Character character, string abilityName, int dc, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
     {
+        if (character.IsWearingNonProficientArmor)
+            hasDisadvantage = true;
+
         int abilityScore = abilityName switch
         {
             "STR" or "Strength" => character.Strength,
@@ -312,6 +315,9 @@ public static class CharacterD20Extensions
     /// </summary>
     public static D20Check MakeSkillCheck(this Character character, string skillName, int dc, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
     {
+        if (character.IsWearingNonProficientArmor)
+            hasDisadvantage = true;
+
         (string ability, bool proficient, int abilityScore) = skillName switch
         {
             "Acrobatics" => ("DEX", character.AcrobaticsProficiency, character.Dexterity),
@@ -343,6 +349,9 @@ public static class CharacterD20Extensions
     /// </summary>
     public static D20Check MakeSavingThrow(this Character character, string abilityName, int dc, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
     {
+        if (character.IsWearingNonProficientArmor)
+            hasDisadvantage = true;
+
         (int abilityScore, bool proficient) = abilityName switch
         {
             "STR" or "Strength" => (character.Strength, character.StrengthSaveProficiency),

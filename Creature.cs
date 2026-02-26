@@ -416,6 +416,12 @@ public class Creature
     public bool IsDead { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature is wearing armor or a shield it is not proficient with.
+    /// Causes disadvantage on STR/DEX ability checks, saving throws, and attack rolls; cannot cast spells.
+    /// </summary>
+    public bool HasArmorNonProficiencyPenalty { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently squeezing through a smaller space.
     /// While squeezing: movement costs 1 extra foot per foot moved (double cost),
     /// disadvantage on attack rolls and Dexterity saving throws,
@@ -1297,6 +1303,9 @@ public class Creature
         // Apply race-specific vision traits
         creature.HasSuperiorDarkvision = raceData.HasSuperiorDarkvision;
         creature.HasSunlightSensitivity = raceData.HasSunlightSensitivity;
+
+        // Armor non-proficiency penalty
+        creature.HasArmorNonProficiencyPenalty = character.IsWearingNonProficientArmor;
 
         // Apply nourishment state
         creature.ExhaustionLevel = character.ExhaustionLevel;

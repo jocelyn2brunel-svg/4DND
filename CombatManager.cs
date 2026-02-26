@@ -1326,7 +1326,11 @@ public class CombatManager
             if (allyNearTarget)
                 hasAdvantage = true;
         }
-        
+
+        // Armor non-proficiency: disadvantage on attack rolls involving STR or DEX (PHB "Armor Proficiency")
+        if (attacker.HasArmorNonProficiencyPenalty)
+            hasDisadvantage = true;
+
         // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
@@ -1448,6 +1452,10 @@ public class CombatManager
                 CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
             if (allyNearTarget) hasAdvantage = true;
         }
+
+        // Armor non-proficiency: disadvantage on attack rolls involving STR or DEX (PHB "Armor Proficiency")
+        if (attacker.HasArmorNonProficiencyPenalty)
+            hasDisadvantage = true;
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
@@ -1583,6 +1591,10 @@ public class CombatManager
                 CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
             if (allyNearTarget) hasAdvantage = true;
         }
+
+        // Armor non-proficiency: disadvantage on attack rolls involving DEX for ranged (PHB "Armor Proficiency")
+        if (attacker.HasArmorNonProficiencyPenalty)
+            hasDisadvantage = true;
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
