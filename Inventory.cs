@@ -208,7 +208,12 @@ public class Inventory
         {
             var armorData = ItemDatabase.GetItem(EquippedArmor.Name);
             ac = armorData.ArmorClass;
-            dexBonus = System.Math.Min(dexBonus, armorData.MaxDexBonus);
+            // Heavy armor: DEX modifier is never applied (neither positive nor negative)
+            // Light/Medium armor: DEX modifier added, capped at MaxDexBonus
+            if (armorData.ArmorCategory == ArmorType.Heavy)
+                dexBonus = 0;
+            else
+                dexBonus = System.Math.Min(dexBonus, armorData.MaxDexBonus);
         }
         
         ac += dexBonus;

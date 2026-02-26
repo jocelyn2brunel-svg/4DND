@@ -539,7 +539,7 @@ public static class ItemDatabase
         ["Leather Armor"] = new Item
         {
             Name = "Leather Armor",
-            Description = "Soft leather protection",
+            Description = "The breastplate and shoulder protectors of this armor are made of leather that has been stiffened by being boiled in oil. The rest of the armor is made of softer and more flexible materials.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Light,
             ArmorClass = 11,
@@ -550,7 +550,7 @@ public static class ItemDatabase
         ["Studded Leather"] = new Item
         {
             Name = "Studded Leather",
-            Description = "Leather reinforced with studs",
+            Description = "Made from tough but flexible leather, studded leather is reinforced with close-set rivets or spikes.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Light,
             ArmorClass = 12,
