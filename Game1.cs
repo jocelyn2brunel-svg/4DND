@@ -194,6 +194,8 @@ public class Game1 : Game
     private LuteProceduralMusic _luteMusic = null!;
     private PaperMapSfxSynth _mapSfxSynth = null!;
     private TorchIgnitionSfxSynth _torchIgnitionSfx = null!;
+    private FootstepSfxSynth _footstepSfx = null!;
+    private readonly Dictionary<Creature, (int X, int Y, int Z)> _lastStepTiles = new();
 
     private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
@@ -263,6 +265,7 @@ public class Game1 : Game
         _luteMusic = new LuteProceduralMusic(_luteSynth);
         InitializeCampaignMapAudio();
         _torchIgnitionSfx = new TorchIgnitionSfxSynth();
+        _footstepSfx = new FootstepSfxSynth();
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
         _campaignMapViewer.VisionSystem = _visionSystem;
@@ -2136,7 +2139,29 @@ public class Game1 : Game
         _luteSynth?.Dispose();
         _mapSfxSynth?.Dispose();
         _torchIgnitionSfx?.Dispose();
+        _footstepSfx?.Dispose();
         base.OnExiting(sender, args);
+    }
+
+    private void UpdateFootstepAudio(Creature creature)
+    {
+        int tileX = (int)MathF.Round(creature.VisualX);
+        int tileY = (int)MathF.Round(creature.VisualY);
+        int tileZ = (int)MathF.Round(creature.VisualZ);
+        var visualTile = (tileX, tileY, tileZ);
+
+        if (!_lastStepTiles.TryGetValue(creature, out var previousTile))
+        {
+            _lastStepTiles[creature] = visualTile;
+            return;
+        }
+
+        if (previousTile == visualTile)
+            return;
+
+        _lastStepTiles[creature] = visualTile;
+        TileType terrain = _tacticalMap.Get(tileX, tileY, tileZ);
+        _footstepSfx.PlayStep(terrain);
     }
 
     protected override void Update(GameTime gameTime)
@@ -2737,6 +2762,7 @@ public class Game1 : Game
             if (_playerCreature != null)
             {
                 _playerCreature.UpdateMovementAnimation(deltaTime);
+                UpdateFootstepAudio(_playerCreature);
 
                 bool isPlayerMoving = _playerCreature.IsMoving();
                 if (isPlayerMoving)
@@ -2767,6 +2793,8 @@ public class Game1 : Game
                 if (creature.IsAlive())
                 {
                     creature.UpdateMovementAnimation(deltaTime);
+                    if (creature != _playerCreature)
+                        UpdateFootstepAudio(creature);
                 }
             }
             
