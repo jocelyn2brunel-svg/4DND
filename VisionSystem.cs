@@ -69,6 +69,27 @@ public class VisionSystem
         _exploredTiles.Clear();
         _exploredHexes.Clear();
     }
+
+    public List<ExploredTileData> GetExploredTilesSnapshot()
+    {
+        return _exploredTiles.Select(t => new ExploredTileData { X = t.Item1, Y = t.Item2, Z = t.Item3 }).ToList();
+    }
+
+    public List<ExploredHexData> GetExploredHexesSnapshot()
+    {
+        return _exploredHexes.Select(h => new ExploredHexData { Q = h.Item1, R = h.Item2 }).ToList();
+    }
+
+    public void SetExploredState(IEnumerable<ExploredTileData>? tiles, IEnumerable<ExploredHexData>? hexes)
+    {
+        _exploredTiles = tiles != null
+            ? tiles.Select(t => (t.X, t.Y, t.Z)).ToHashSet()
+            : new HashSet<(int, int, int)>();
+
+        _exploredHexes = hexes != null
+            ? hexes.Select(h => (h.Q, h.R)).ToHashSet()
+            : new HashSet<(int, int)>();
+    }
     
     public void CalculateLighting()
     {
@@ -800,4 +821,17 @@ public class VisionSystem
 
         return false;
     }
+}
+
+public class ExploredTileData
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Z { get; set; }
+}
+
+public class ExploredHexData
+{
+    public int Q { get; set; }
+    public int R { get; set; }
 }

@@ -155,6 +155,8 @@ namespace _4DND
         // World exploration
         public List<Region> Regions { get; set; } = new();
         public List<Location> AllLocations { get; set; } = new();
+        public List<ExploredTileData> ExploredTiles { get; set; } = new();
+        public List<ExploredHexData> ExploredHexes { get; set; } = new();
         
         // Campaign progress
         public int SessionCount { get; set; }
