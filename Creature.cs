@@ -1418,7 +1418,7 @@ public class Creature
         return creature;
     }
 
-    public void SetupAttackFromWeapon(string weaponName, Character character, bool isOffhand = false, bool isThrownAttack = false)
+    public void SetupAttackFromWeapon(string weaponName, Character character, bool isOffhand = false, bool isThrownAttack = false, bool isTwoHanded = false)
     {
         var weapon = ItemDatabase.GetItem(weaponName);
         IsOffhandAttack = isOffhand;
@@ -1463,7 +1463,9 @@ public class Creature
         IsLanceAttack = weapon.IsSpecial && weapon.Name == "Lance";
 
         // A thrown weapon is released with one hand, so versatile weapons always use the one-handed die when thrown.
-        bool isVersatileTwoHanded = weapon.IsVersatile && !isThrownAttack && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
+        // When isTwoHanded is explicitly true, use the versatile die regardless of other conditions.
+        bool isVersatileTwoHanded = weapon.IsVersatile && !isThrownAttack &&
+            (isTwoHanded || (character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null));
         DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
 
         // TWF: don't add ability modifier to damage (unless negative)
