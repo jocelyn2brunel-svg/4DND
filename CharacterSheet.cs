@@ -41,6 +41,10 @@ public class CharacterSheet
     private Rectangle _confirmButtonRect;
     private Rectangle _cancelButtonRect;
     private Rectangle _twoHandedConfirmDialogRect;
+    private bool _showDonDoffConfirmation;
+    private ItemInstance? _pendingDonDoffItem;
+    private bool _pendingIsDoffing;
+    private Rectangle _donDoffConfirmDialogRect;
 
     public bool PlayLuteRequested { get; set; }
     public bool TorchIgniteRequested { get; set; }
@@ -60,7 +64,7 @@ public class CharacterSheet
         _supportedChars = font != null ? new HashSet<char>(font.Characters) : new HashSet<char>();
     }
 
-    public bool Update(MouseState mouse, Character? character = null)
+    public bool Update(MouseState mouse, Character? character = null, Campaign? campaign = null)
     {
         bool hasCharacterChanges = false;
         _mousePosition = mouse.Position;
@@ -156,6 +160,51 @@ public class CharacterSheet
                 CloseRequested = true;
             }
 
+            if (_showDonDoffConfirmation)
+            {
+                if (_confirmButtonRect.Contains(_mousePosition))
+                {
+                    if (_pendingDonDoffItem != null && character != null)
+                    {
+                        var itemData = ItemDatabase.GetItem(_pendingDonDoffItem.Name);
+                        bool isShield = itemData.Type == ItemType.Shield;
+                        bool hasHelp = false;
+
+                        if (campaign != null)
+                        {
+                            hasHelp = campaign.PartyMembers.Count > 1;
+                        }
+
+                        double minutes = ArmorRules.GetDonDoffTimeMinutes(itemData.ArmorCategory, _pendingIsDoffing, hasHelp);
+                        int rounds = ArmorRules.GetDonDoffRounds(itemData.ArmorCategory, _pendingIsDoffing, hasHelp);
+                        character.CurrentDonDoffProcess = new DonDoffProcess
+                        {
+                            Item = _pendingDonDoffItem,
+                            IsDoffing = _pendingIsDoffing,
+                            TotalMinutes = minutes,
+                            MinutesRemaining = minutes,
+                            RoundsRemaining = rounds,
+                            IsActive = true,
+                            HasHelp = hasHelp
+                        };
+
+                        if (_pendingIsDoffing && (itemData.Type == ItemType.Armor || itemData.Type == ItemType.Shield))
+                        {
+                            character.InventoryData.UnequipItemInstance(_pendingDonDoffItem);
+                            character.CalculateDerivedStats();
+                            hasCharacterChanges = true;
+                        }
+                    }
+                    _showDonDoffConfirmation = false;
+                    _pendingDonDoffItem = null;
+                }
+                else if (_cancelButtonRect.Contains(_mousePosition) || !_donDoffConfirmDialogRect.Contains(_mousePosition))
+                {
+                    _showDonDoffConfirmation = false;
+                    _pendingDonDoffItem = null;
+                }
+            }
+
             if (_showTwoHandedConfirmation)
             {
                 if (_confirmButtonRect.Contains(_mousePosition))
@@ -227,7 +276,14 @@ public class CharacterSheet
                         if (_contextItem != null)
                         {
                             var itemData = ItemDatabase.GetItem(_contextItem.Name);
-                            if (itemData.IsTwoHanded && (character.InventoryData.OffhandWeapon != null || character.InventoryData.EquippedShield != null))
+
+                            if (itemData.Type == ItemType.Armor || itemData.Type == ItemType.Shield)
+                            {
+                                _showDonDoffConfirmation = true;
+                                _pendingDonDoffItem = _contextItem;
+                                _pendingIsDoffing = false;
+                            }
+                            else if (itemData.IsTwoHanded && (character.InventoryData.OffhandWeapon != null || character.InventoryData.EquippedShield != null))
                             {
                                 _showTwoHandedConfirmation = true;
                                 _pendingEquipItem = _contextItem;
@@ -280,9 +336,19 @@ public class CharacterSheet
                     case "Unequip":
                         if (_contextItem != null)
                         {
-                            character.InventoryData.UnequipItemInstance(_contextItem);
-                            character.CalculateDerivedStats();
-                            hasCharacterChanges = true;
+                            var itemData = ItemDatabase.GetItem(_contextItem.Name);
+                            if (itemData.Type == ItemType.Armor || itemData.Type == ItemType.Shield)
+                            {
+                                _showDonDoffConfirmation = true;
+                                _pendingDonDoffItem = _contextItem;
+                                _pendingIsDoffing = true;
+                            }
+                            else
+                            {
+                                character.InventoryData.UnequipItemInstance(_contextItem);
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
@@ -452,7 +518,62 @@ public class CharacterSheet
             DrawWeaponContextMenu(spriteBatch, vp, character);
             DrawInspectPopup(spriteBatch, vp);
             DrawTwoHandedConfirmation(spriteBatch, vp, character);
+            DrawDonDoffConfirmation(spriteBatch, vp, character, campaign);
         }
+    }
+
+    private void DrawDonDoffConfirmation(SpriteBatch spriteBatch, Viewport viewport, Character character, Campaign? campaign)
+    {
+        if (!_showDonDoffConfirmation || _pendingDonDoffItem == null) return;
+
+        int width = 440;
+        int height = 200;
+        int x = (viewport.Width - width) / 2;
+        int y = (viewport.Height - height) / 2;
+        var rect = new Rectangle(x, y, width, height);
+        _donDoffConfirmDialogRect = rect;
+
+        spriteBatch.Draw(_pixel, new Rectangle(0, 0, viewport.Width, viewport.Height), Color.Black * 0.5f);
+        spriteBatch.Draw(_pixel, rect, new Color(30, 30, 30));
+        DrawBorder(spriteBatch, rect, Color.White, 2);
+
+        var itemData = ItemDatabase.GetItem(_pendingDonDoffItem.Name);
+        bool hasHelp = campaign != null && campaign.PartyMembers.Count > 1;
+        string actionName = _pendingIsDoffing ? Loc.Tr("doff") : Loc.Tr("don");
+        string timeStr;
+
+        if (itemData.Type == ItemType.Shield)
+        {
+            timeStr = Loc.Tr("1 action");
+        }
+        else
+        {
+            double minutes = ArmorRules.GetDonDoffTimeMinutes(itemData.ArmorCategory, _pendingIsDoffing, hasHelp);
+            timeStr = minutes == 1 ? Loc.Tr("1 minute") : Loc.Tr("{0} minutes", minutes);
+            if (hasHelp) timeStr += $" ({Loc.Tr("with help")})";
+        }
+
+        string msg = Loc.Tr("It will take {0} to {1} {2}. Do you want to continue?", timeStr, actionName, _pendingDonDoffItem.Name);
+
+        string wrappedMsg = WrapText(_font, msg, width - 40, 0.7f);
+        spriteBatch.DrawString(_font, wrappedMsg, new Vector2(x + 20, y + 20), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        int btnWidth = 100;
+        int btnHeight = 40;
+        _confirmButtonRect = new Rectangle(x + width / 2 - btnWidth - 10, y + height - 60, btnWidth, btnHeight);
+        _cancelButtonRect = new Rectangle(x + width / 2 + 10, y + height - 60, btnWidth, btnHeight);
+
+        spriteBatch.Draw(_pixel, _confirmButtonRect, _confirmButtonRect.Contains(_mousePosition) ? Color.DarkGreen : Color.Green);
+        DrawBorder(spriteBatch, _confirmButtonRect, Color.White, 1);
+        var yesText = Loc.Tr("Yes");
+        var yesSize = _font.MeasureString(yesText) * 0.7f;
+        spriteBatch.DrawString(_font, yesText, new Vector2(_confirmButtonRect.X + (btnWidth - yesSize.X) / 2, _confirmButtonRect.Y + (btnHeight - yesSize.Y) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        spriteBatch.Draw(_pixel, _cancelButtonRect, _cancelButtonRect.Contains(_mousePosition) ? Color.DarkRed : Color.Red);
+        DrawBorder(spriteBatch, _cancelButtonRect, Color.White, 1);
+        var noText = Loc.Tr("No");
+        var noSize = _font.MeasureString(noText) * 0.7f;
+        spriteBatch.DrawString(_font, noText, new Vector2(_cancelButtonRect.X + (btnWidth - noSize.X) / 2, _cancelButtonRect.Y + (btnHeight - noSize.Y) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
     private void DrawTwoHandedConfirmation(SpriteBatch spriteBatch, Viewport viewport, Character character)

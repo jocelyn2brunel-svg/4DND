@@ -1867,6 +1867,20 @@ public class Game1 : Game
         Vector2 size = _font.MeasureString(name) * 0.6f;
         _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - (int)size.X / 2 - 4, (int)pos.Y - 40, (int)size.X + 8, (int)size.Y + 4), Color.Black * 0.6f);
         _spriteBatch.DrawString(_font, name, new Vector2(pos.X - size.X / 2, pos.Y - 38), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
+        if (creature.CurrentDonDoffProcess != null)
+        {
+            var proc = creature.CurrentDonDoffProcess;
+            string status = proc.IsDoffing ? Loc.Tr("Doffing {0}", proc.Item?.Name ?? "Armor") : Loc.Tr("Donning {0}", proc.Item?.Name ?? "Armor");
+            string time = _combatManager.InCombat
+                ? Loc.Tr("{0} rounds", proc.RoundsRemaining)
+                : Loc.Tr("{0} min", (int)Math.Ceiling(proc.MinutesRemaining));
+            string progressText = $"{status} ({time})";
+
+            Vector2 progSize = _font.MeasureString(progressText) * 0.5f;
+            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - (int)progSize.X / 2 - 4, (int)pos.Y - 60, (int)progSize.X + 8, (int)progSize.Y + 4), Color.Black * 0.7f);
+            _spriteBatch.DrawString(_font, progressText, new Vector2(pos.X - progSize.X / 2, pos.Y - 58), Color.Orange, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        }
     }
 
     private (int x, int y, int z)? GetHoveredTile()
@@ -2742,6 +2756,64 @@ public class Game1 : Game
                 System.Console.WriteLine("Auto-save triggered (interval reached).");
             }
 
+            // Handle armor donning/doffing time passage
+            if (_currentCampaign != null)
+            {
+                var activeProcesses = _characters
+                    .Where(c => _currentCampaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true })
+                    .ToList();
+
+                if (activeProcesses.Count > 0)
+                {
+                    if (_showCampaignMap)
+                    {
+                        // In Campaign Map, advance time faster while "waiting"
+                        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                        double minutesToAdvance = dt * 10.0; // 10 minutes per real second while busy?
+
+                        _currentCampaign.TotalGameMinutes += minutesToAdvance;
+                        UpdateTorchDurations((int)minutesToAdvance);
+
+                        foreach (var c in activeProcesses)
+                        {
+                            c.CurrentDonDoffProcess!.MinutesRemaining -= minutesToAdvance;
+                            if (c.CurrentDonDoffProcess.MinutesRemaining <= 0)
+                            {
+                                CompleteDonDoff(c);
+                            }
+                        }
+                    }
+                    else if (!_combatManager.InCombat)
+                    {
+                        // In Tactical mode but not in combat
+                        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                        // 1 game minute per 60 real seconds
+                        double minutesToAdvance = dt / 60.0;
+
+                        foreach (var c in activeProcesses)
+                        {
+                            c.CurrentDonDoffProcess!.MinutesRemaining -= minutesToAdvance;
+                            if (c.CurrentDonDoffProcess.MinutesRemaining <= 0)
+                            {
+                                CompleteDonDoff(c);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check for completed processes in combat
+            if (_combatManager.InCombat)
+            {
+                foreach (var c in _characters)
+                {
+                    if (c.CurrentDonDoffProcess is { IsActive: false, Item: not null })
+                    {
+                        CompleteDonDoff(c);
+                    }
+                }
+            }
+
             // Advance game time (1 minute game time per 60 seconds real time)
             _gameTimeTimer += dtPlaying;
             if (_gameTimeTimer >= 60.0)
@@ -3108,7 +3180,7 @@ public class Game1 : Game
 
             if (_showCharacterSheet)
             {
-                if (_characterSheet.Update(mouse, _currentCharacter))
+                if (_characterSheet.Update(mouse, _currentCharacter, _currentCampaign))
                 {
                     // Refresh creature stats from character (AC, Speed, etc.)
                     if (_playerCreature != null && _currentCharacter != null)
@@ -3565,13 +3637,16 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && target.IsAlive() && (currentCombatant.HasAction || !_combatManager.InCombat))
+                                if (target != null && target.IsAlive() && (currentCombatant.HasAction || !_combatManager.InCombat))
                                 {
                                     bool wasInCombat = _combatManager.InCombat;
                                     if (_combatManager.Help(currentCombatant, target))
                                     {
                                         AddTooltip(currentCombatant, Loc.Tr("Action: Help"), Color.Cyan);
-                                        AddTooltip(target, Loc.Tr("Distracted!"), Color.Gold);
+                                        if (target.IsPlayer != currentCombatant.IsPlayer)
+                                            AddTooltip(target, Loc.Tr("Distracted!"), Color.Gold);
+                                        else
+                                            AddTooltip(target, Loc.Tr("Helped!"), Color.LimeGreen);
                                         FlushTurnMessages();
                                         _selectedAction = CombatAction.Move;
 
@@ -4041,6 +4116,41 @@ public class Game1 : Game
         foreach (var msg in _combatManager.TurnMessages)
             AddToCombatLog(msg);
         _combatManager.TurnMessages.Clear();
+    }
+
+    private void CompleteDonDoff(Character character)
+    {
+        if (character.CurrentDonDoffProcess == null) return;
+        var process = character.CurrentDonDoffProcess;
+        var item = process.Item;
+        if (item == null) return;
+
+        if (process.IsDoffing)
+        {
+            character.InventoryData.UnequipItemInstance(item);
+            AddToCombatLog(Loc.Tr("{0} finished doffing {1}.", character.Name, item.Name));
+        }
+        else
+        {
+            if (character.InventoryData.EquipItemInstance(item))
+            {
+                AddToCombatLog(Loc.Tr("{0} finished donning {1}.", character.Name, item.Name));
+            }
+        }
+
+        character.CalculateDerivedStats();
+        character.CurrentDonDoffProcess = null;
+
+        // Synchronize to creature if it exists
+        if (_playerCreature != null && _playerCreature.Name == character.Name)
+        {
+            _playerCreature.ArmorClass = character.ArmorClass;
+            _playerCreature.Speed = character.Speed;
+            _playerCreature.DarkvisionRange = character.DarkvisionRange;
+            _playerCreature.HasArmorNonProficiencyPenalty = character.IsWearingNonProficientArmor;
+            _playerCreature.CurrentDonDoffProcess = null;
+            UpdateVision();
+        }
     }
 
     private void EndCurrentPlayerTurn(Creature currentCombatant)
