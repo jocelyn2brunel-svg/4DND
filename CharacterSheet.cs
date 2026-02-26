@@ -24,6 +24,7 @@ public class CharacterSheet
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
     private readonly List<(Rectangle Rect, ItemInstance Item, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
+    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell)> _attackEntryRects = new();
     private bool _showItemContextMenu;
     private Rectangle _itemContextMenuRect;
     private ItemInstance? _contextItem;
@@ -40,6 +41,9 @@ public class CharacterSheet
     public bool GrappleRequested { get; set; }
     public bool ShoveRequested { get; set; }
     public ItemInstance? DroppedItem { get; set; }
+    public ItemInstance? AttackRequestedWithItem { get; set; }
+    public Spell? AttackRequestedWithSpell { get; set; }
+    public bool CloseRequested { get; set; }
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
     {
@@ -52,6 +56,7 @@ public class CharacterSheet
     {
         bool hasCharacterChanges = false;
         _mousePosition = mouse.Position;
+        CloseRequested = false;
 
         if (!_isScrollInitialized)
         {
@@ -79,6 +84,15 @@ public class CharacterSheet
         if (rightClick)
         {
             var clickedItem = _inventoryItemRects.FirstOrDefault(w => w.Rect.Contains(_mousePosition));
+            if (clickedItem.Item == null)
+            {
+                var clickedAttack = _attackEntryRects.FirstOrDefault(a => a.Rect.Contains(_mousePosition));
+                if (clickedAttack.Item != null)
+                {
+                    clickedItem = (clickedAttack.Rect, clickedAttack.Item, true, true);
+                }
+            }
+
             if (clickedItem.Item != null)
             {
                 _contextItem = clickedItem.Item;
@@ -106,11 +120,27 @@ public class CharacterSheet
             if (!_showItemContextMenu && _grappleActionRect.Contains(_mousePosition))
             {
                 GrappleRequested = true;
+                CloseRequested = true;
             }
 
             if (!_showItemContextMenu && _shoveActionRect.Contains(_mousePosition))
             {
                 ShoveRequested = true;
+                CloseRequested = true;
+            }
+
+            var clickedAttack = _attackEntryRects.FirstOrDefault(a => a.Rect.Contains(_mousePosition));
+            if (!_showItemContextMenu && clickedAttack.Rect != Rectangle.Empty)
+            {
+                if (clickedAttack.Item != null)
+                {
+                    AttackRequestedWithItem = clickedAttack.Item;
+                }
+                else if (clickedAttack.Spell != null)
+                {
+                    AttackRequestedWithSpell = clickedAttack.Spell;
+                }
+                CloseRequested = true;
             }
 
             if (_showItemContextMenu)
@@ -233,7 +263,7 @@ public class CharacterSheet
         _isScrollInitialized = false;
     }
 
-    public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character, Campaign? campaign = null)
+    public void Draw(SpriteBatch spriteBatch, GraphicsDevice graphics, Character character, Campaign? campaign = null, Creature? creature = null)
     {
         var vp = graphics.Viewport;
         _hoverTooltip = null;
@@ -243,6 +273,7 @@ public class CharacterSheet
         if (_font != null && character != null)
         {
             _inventoryItemRects.Clear();
+            _attackEntryRects.Clear();
             var c = character;
             int margin = Margin;
             int padding = 10;
@@ -261,7 +292,7 @@ public class CharacterSheet
             // 1. Calculate heights without drawing (spriteBatch = null)
             int headerHeight = DrawHeader(null, c, sheetX, 0, sheetWidth);
             int col1Height = DrawLeftColumn(null, c, 0, 0, col1Width);
-            int col2Height = DrawMiddleColumn(null, c, 0, 0, col2Width);
+            int col2Height = DrawMiddleColumn(null, c, 0, 0, col2Width, creature);
             int col3Height = DrawRightColumn(null, c, 0, 0, col3Width);
 
             int maxColHeight = Math.Max(col1Height, Math.Max(col2Height, col3Height));
@@ -291,7 +322,7 @@ public class CharacterSheet
             int col3X = col2X + col2Width + padding;
             
             DrawLeftColumn(spriteBatch, c, col1X, contentY, col1Width);
-            DrawMiddleColumn(spriteBatch, c, col2X, contentY, col2Width);
+            DrawMiddleColumn(spriteBatch, c, col2X, contentY, col2Width, creature);
             DrawRightColumn(spriteBatch, c, col3X, contentY, col3Width);
             
             spriteBatch.End();
@@ -700,7 +731,7 @@ public class CharacterSheet
         spriteBatch.DrawString(_font, Loc.Tr("SAVING THROWS"), new Vector2(x + 2, y + height - 10), Color.Black * 0.4f, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
     }
 
-    private int DrawMiddleColumn(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
+    private int DrawMiddleColumn(SpriteBatch? spriteBatch, Character c, int x, int y, int width, Creature? creature = null)
     {
         int currentY = y;
         int smallBoxSize = 60;
@@ -730,7 +761,7 @@ public class CharacterSheet
         }
         currentY += 90;
         
-        currentY += DrawAttacksBox(spriteBatch, c, x, currentY, width);
+        currentY += DrawAttacksBox(spriteBatch, c, x, currentY, width, creature);
         currentY += 10;
 
         currentY += DrawEquipmentBox(spriteBatch, c, x, currentY, width);
@@ -759,12 +790,16 @@ public class CharacterSheet
         return currentY - y;
     }
     
-    private int DrawAttacksBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width)
+    private int DrawAttacksBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width, Creature? creature = null)
     {
-        int entryHeight = 20;
+        int entryHeight = 22;
         int headerHeight = 45;
         int offhandCount = c.InventoryData.OffhandWeapon != null ? 1 : 0;
-        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 4);
+
+        var relevantSpells = c.UsesSpellPreparation ? c.PreparedSpells : c.KnownSpells;
+        int spellCount = relevantSpells.Count;
+
+        int entryCount = Math.Max(5, (c.InventoryData.EquippedWeapon != null ? 1 : 0) + offhandCount + 1 + spellCount + 2);
         int height = headerHeight + (entryCount * entryHeight) + 10;
 
         if (spriteBatch != null)
@@ -786,9 +821,32 @@ public class CharacterSheet
             spriteBatch.Draw(_pixel, new Rectangle(x + 5, headerY + 15, width - 10, 1), Color.Black * 0.3f);
 
             int entryY = headerY + 20;
+
+            void DrawEntry(string name, string bonus, string damage, Rectangle clickRect, Color color, bool isActive)
+            {
+                if (clickRect.Contains(_mousePosition) && !_showItemContextMenu)
+                {
+                    spriteBatch.Draw(_pixel, clickRect, Color.Gold * 0.2f);
+                }
+
+                if (isActive)
+                {
+                    DrawMemeText(spriteBatch, SafeString(name), new Vector2(nameCol, entryY), color);
+                    DrawMemeText(spriteBatch, SafeString(bonus), new Vector2(atkBonusCol, entryY), color);
+                    DrawMemeText(spriteBatch, SafeString(damage), new Vector2(damageCol, entryY), color);
+                }
+                else
+                {
+                    spriteBatch.DrawString(_font, SafeString(name), new Vector2(nameCol, entryY), color, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, FormatModifier(bonus), new Vector2(atkBonusCol, entryY), color, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    spriteBatch.DrawString(_font, SafeString(damage), new Vector2(damageCol, entryY), color, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                }
+            }
+
             if (c.InventoryData.EquippedWeapon != null)
             {
-                string weapon = c.InventoryData.EquippedWeapon.Name;
+                var item = c.InventoryData.EquippedWeapon;
+                string weapon = item.Name;
                 var weaponItem = ItemDatabase.GetItem(weapon);
                 int abilityMod = weaponItem != null && weaponItem.IsFinesse
                     ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
@@ -798,17 +856,21 @@ public class CharacterSheet
                 int profBonus = c.IsProficientWithWeapon(weapon) ? c.ProficiencyBonus : 0;
                 int atkBonus = abilityMod + profBonus;
                 string damage = GetWeaponDamage(weapon);
-                spriteBatch.DrawString(_font, SafeString(weapon), new Vector2(nameCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, FormatModifier(atkBonus), new Vector2(atkBonusCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, SafeString(damage), new Vector2(damageCol, entryY), Color.Black, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), BuildWeaponTooltip(weapon, atkBonus, damage));
+
+                var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                bool isActive = creature != null && creature.AttackName == weapon && creature.IsMeleeAttack == !weaponItem.IsRanged;
+
+                DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, Color.Black, isActive);
+                RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
+                _attackEntryRects.Add((clickRect, item, null));
                 entryY += entryHeight;
             }
 
             // Two-Weapon Fighting offhand bonus attack
             if (c.InventoryData.OffhandWeapon != null)
             {
-                string offhand = c.InventoryData.OffhandWeapon.Name;
+                var item = c.InventoryData.OffhandWeapon;
+                string offhand = item.Name;
                 var offhandItem = ItemDatabase.GetItem(offhand);
                 int offhandAbilityMod = offhandItem != null && offhandItem.IsFinesse
                     ? Math.Max(c.GetAbilityModifier(c.Strength), c.GetAbilityModifier(c.Dexterity))
@@ -819,22 +881,45 @@ public class CharacterSheet
                 // TWF: don't add ability modifier to damage (unless negative)
                 int offhandDmgMod = Math.Min(0, offhandAbilityMod);
                 string offhandDamage = offhandDmgMod < 0 ? $"{offhandDice} {FormatModifier(offhandDmgMod)}" : offhandDice;
-                spriteBatch.DrawString(_font, SafeString($"(BA) {offhand}"), new Vector2(nameCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, FormatModifier(offhandAtkBonus), new Vector2(atkBonusCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, SafeString(offhandDamage), new Vector2(damageCol, entryY), new Color(80, 80, 180), 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-                RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
+
+                var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                bool isActive = creature != null && creature.AttackName == offhand; // simplified check
+
+                DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, new Color(80, 80, 180), isActive);
+                RegisterTooltip(clickRect, Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
+                _attackEntryRects.Add((clickRect, item, null));
                 entryY += entryHeight;
             }
 
-            // Unarmed strike is always available (D&D 5E PHB, Melee Attacks)
-            int strMod = c.GetAbilityModifier(c.Strength);
-            int unarmedBonus = strMod + c.ProficiencyBonus;
-            string unarmedDamage = $"1{FormatModifier(strMod)} Bludgeoning";
-            spriteBatch.DrawString(_font, "Unarmed Strike", new Vector2(nameCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, FormatModifier(unarmedBonus), new Vector2(atkBonusCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, SafeString(unarmedDamage), new Vector2(damageCol, entryY), Color.Black * 0.7f, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-            RegisterTooltip(new Rectangle(nameCol, entryY, width - 20, entryHeight), Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
-            entryY += entryHeight;
+            // Unarmed strike is always available
+            {
+                int strMod = c.GetAbilityModifier(c.Strength);
+                int unarmedBonus = strMod + c.ProficiencyBonus;
+                string unarmedDamage = $"1{FormatModifier(strMod)} Bludgeoning";
+                var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                bool isActive = creature != null && creature.AttackName == "Unarmed Strike";
+
+                DrawEntry("Unarmed Strike", FormatModifier(unarmedBonus), unarmedDamage, clickRect, Color.Black * 0.7f, isActive);
+                RegisterTooltip(clickRect, Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
+                _attackEntryRects.Add((clickRect, null, null));
+                entryY += entryHeight;
+            }
+
+            // Spells
+            foreach (var spell in relevantSpells)
+            {
+                int mod = c.GetPrimaryAbilityModifier();
+                int spellAtk = mod + c.ProficiencyBonus;
+                string damage = !string.IsNullOrEmpty(spell.DamageDice) ? $"{spell.DamageDice} {spell.DamageType.ToDisplayString()}" : "Effect";
+
+                var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
+                bool isActive = creature != null && creature.AttackName == spell.Name;
+
+                DrawEntry(spell.Name, FormatModifier(spellAtk), damage, clickRect, new Color(100, 50, 150), isActive);
+                RegisterTooltip(clickRect, Loc.Tr("{0} (Level {1} {2})\nRange: {3} ft\n{4}", spell.Name, spell.Level, spell.School, spell.Range, spell.Description));
+                _attackEntryRects.Add((clickRect, null, spell));
+                entryY += entryHeight;
+            }
 
             int grappleBonus = c.GetSkillBonus("Athletics", out _);
             _grappleActionRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
@@ -884,25 +969,33 @@ public class CharacterSheet
                 int curX = left ? col1 : col2;
                 var itemRect = new Rectangle(curX, currentItemY, width / 2 - 15, lineHeight);
 
-                string display = $"• {item.Name}";
+                var itemData = ItemDatabase.GetItem(item.Name);
+                bool isEquipped;
+                if (itemData.Type == ItemType.Weapon)
+                {
+                    isEquipped = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon;
+                }
+                else
+                {
+                    isEquipped = item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield;
+                }
+
+                int checkboxSize = 12;
+                int checkboxX = curX;
+                int checkboxY = currentItemY + (lineHeight - checkboxSize) / 2;
+                DrawCheckbox(spriteBatch, checkboxX, checkboxY, checkboxSize, isEquipped);
+
+                string display = item.Name;
+                if (isEquipped) display += $" {Loc.Tr("(equipped)")}";
                 if (item.IsLit && item.Name == "Torch") {
                     display += $" ({item.RemainingMinutes}m)";
                 }
 
-                spriteBatch.DrawString(_font, SafeString(display), new Vector2(curX, currentItemY), item.IsLit ? Color.OrangeRed : Color.Black * 0.8f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                RegisterTooltip(itemRect, BuildItemTooltip(item, item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield || item == c.InventoryData.EquippedWeapon));
+                Color textColor = isEquipped ? Color.DodgerBlue : (item.IsLit ? Color.OrangeRed : Color.Black * 0.8f);
+                spriteBatch.DrawString(_font, SafeString(display), new Vector2(curX + checkboxSize + 5, currentItemY), textColor, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                RegisterTooltip(itemRect, BuildItemTooltip(item, isEquipped));
 
-                var itemData = ItemDatabase.GetItem(item.Name);
-                if (itemData.Type == ItemType.Weapon)
-                {
-                    bool isEquippedWeapon = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon;
-                    _inventoryItemRects.Add((itemRect, item, isEquippedWeapon, itemData.IsEquippable));
-                }
-                else
-                {
-                    bool isEquippedItem = item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield;
-                    _inventoryItemRects.Add((itemRect, item, isEquippedItem, itemData.IsEquippable));
-                }
+                _inventoryItemRects.Add((itemRect, item, isEquipped, itemData.IsEquippable));
 
                 if (!left) currentItemY += lineHeight;
                 left = !left;
@@ -1246,6 +1339,22 @@ public class CharacterSheet
     }
 
     private string FormatModifier(int value) => value >= 0 ? $"+{value}" : $"{value}";
+
+    private string FormatModifier(string value) => value.StartsWith("+") || value.StartsWith("-") ? value : "+" + value;
+
+    private void DrawMemeText(SpriteBatch spriteBatch, string text, Vector2 position, Color color, float scale = 0.6f)
+    {
+        Vector2[] offsets = {
+            new(-1, -1), new(0, -1), new(1, -1),
+            new(-1, 0),             new(1, 0),
+            new(-1, 1),  new(0, 1),  new(1, 1)
+        };
+        foreach (var offset in offsets)
+        {
+            spriteBatch.DrawString(_font, text, position + offset, Color.Black, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+        spriteBatch.DrawString(_font, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+    }
 
     private string SafeString(string? text) {
         if (_font == null || text == null) return text ?? "";

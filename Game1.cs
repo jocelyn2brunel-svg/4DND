@@ -148,6 +148,7 @@ public class Game1 : Game
     private Creature _contextTargetEnemy = null;
     private string _enemyExamineText = "";
     private Rectangle _enemyExaminePopupRect;
+    private Spell? _activeSpell = null;
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
 
@@ -2968,7 +2969,13 @@ public class Game1 : Game
                         }
                         else if (combatAttackButtonRect.Contains(mouse.Position))
                         {
+                            if (_selectedAction == CombatAction.Attack)
+                            {
+                                // Reset stats from current equipped if they were changed
+                                _playerCreature.SetupAttackFromWeapon(_currentCharacter.InventoryData.EquippedWeapon?.Name ?? "Unarmed Strike", _currentCharacter);
+                            }
                             _selectedAction = CombatAction.Attack;
+                            _activeSpell = null;
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
@@ -2980,6 +2987,25 @@ public class Game1 : Game
                         }
                         else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter?.Class))
                         {
+                            if (_selectedAction == CombatAction.CastSpell)
+                            {
+                                // Just reset to first known/prepared if not set
+                                var relevantSpells = _currentCharacter.UsesSpellPreparation ? _currentCharacter.PreparedSpells : _currentCharacter.KnownSpells;
+                                if (relevantSpells.Count > 0)
+                                {
+                                    _activeSpell = relevantSpells[0];
+                                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                                }
+                            }
+                            else if (_activeSpell == null)
+                            {
+                                var relevantSpells = _currentCharacter.UsesSpellPreparation ? _currentCharacter.PreparedSpells : _currentCharacter.KnownSpells;
+                                if (relevantSpells.Count > 0)
+                                {
+                                    _activeSpell = relevantSpells[0];
+                                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                                }
+                            }
                             _selectedAction = CombatAction.CastSpell;
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
@@ -3073,6 +3099,27 @@ public class Game1 : Game
                 {
                     SaveCharacters();
                     UpdateVision();
+                }
+
+                if (_characterSheet.CloseRequested)
+                {
+                    _showCharacterSheet = false;
+                }
+
+                if (_characterSheet.AttackRequestedWithItem != null)
+                {
+                    _playerCreature.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter);
+                    _selectedAction = CombatAction.Attack;
+                    _activeSpell = null;
+                    _characterSheet.AttackRequestedWithItem = null;
+                }
+
+                if (_characterSheet.AttackRequestedWithSpell != null)
+                {
+                    _activeSpell = _characterSheet.AttackRequestedWithSpell;
+                    _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                    _selectedAction = CombatAction.CastSpell;
+                    _characterSheet.AttackRequestedWithSpell = null;
                 }
 
                 if (_characterSheet.DroppedItem != null)
@@ -3393,29 +3440,18 @@ public class Game1 : Game
                                 int tx = hovered.Value.x;
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
-                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat) && _currentCharacter != null)
+
+                                if (_activeSpell != null && _activeSpell.AreaRadiusFeet > 0)
                                 {
                                     bool wasInCombat = _combatManager.InCombat;
-                                    int spellAttackBonus = GetSpellcastingAbilityModifier(_currentCharacter) + _currentCharacter.ProficiencyBonus;
-                                    string damageDice = GetCantripDamageDice(_currentCharacter.Level);
-                                    var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, DamageType.Force, _visionSystem);
-                                    AddToCombatLog(result.GetMessage());
-                                    AddTooltip(currentCombatant, Loc.Tr("Spell: Eldritch Blast"), Color.DeepSkyBlue);
-                                    if (result.IsHit)
-                                    {
-                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
-                                        AddTooltip(target, dmgText, Color.Red);
-                                    }
-                                    else
-                                        AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
-                                    _diceRollAnimation.Start(result.AttackRoll);
+                                    var result = _combatManager.CastAreaSpell(currentCombatant, _activeSpell, tx, ty, tz);
+                                    // CastAreaSpell adds its own messages to TurnMessages, which we flush later
+                                    AddTooltip(currentCombatant, Loc.Tr("Spell: {0}", _activeSpell.Name), Color.DeepSkyBlue);
                                     _selectedAction = CombatAction.Move;
+                                    FlushTurnMessages();
 
-                                    if (!wasInCombat && target.IsAlive())
-                                    {
+                                    if (!wasInCombat)
                                         StartCombatWithNearbyEnemies();
-                                    }
                                     else if (wasInCombat && !_combatManager.InCombat)
                                     {
                                         AddToCombatLog(Loc.Tr("Combat ended!"));
@@ -3426,9 +3462,44 @@ public class Game1 : Game
                                         }
                                     }
                                 }
-                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
+                                else
                                 {
-                                    AddToCombatLog(Loc.Tr("No action available!"));
+                                    var target = _combatManager.GetCreatureAt(tx, ty, tz);
+                                    if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat) && _currentCharacter != null)
+                                    {
+                                        bool wasInCombat = _combatManager.InCombat;
+                                        int spellAttackBonus = currentCombatant.AttackBonus;
+                                        string damageDice = currentCombatant.DamageDice;
+                                        DamageType damageType = currentCombatant.CurrentDamageType;
+                                        var result = _combatManager.MakeSpellAttack(currentCombatant, target, spellAttackBonus, damageDice, damageType, _visionSystem);
+                                        AddToCombatLog(result.GetMessage());
+                                        AddTooltip(currentCombatant, Loc.Tr("Spell: {0}", _activeSpell?.Name ?? "Spell"), Color.DeepSkyBlue);
+                                        if (result.IsHit)
+                                        {
+                                            string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
+                                            AddTooltip(target, dmgText, Color.Red);
+                                        }
+                                        else
+                                            AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
+                                        _diceRollAnimation.Start(result.AttackRoll);
+                                        _selectedAction = CombatAction.Move;
+
+                                        if (!wasInCombat && target.IsAlive())
+                                            StartCombatWithNearbyEnemies();
+                                        else if (wasInCombat && !_combatManager.InCombat)
+                                        {
+                                            AddToCombatLog(Loc.Tr("Combat ended!"));
+                                            if (_playerCreature != null && _currentCharacter != null)
+                                            {
+                                                _playerCreature.UpdateCharacter(_currentCharacter);
+                                                SaveCharacters();
+                                            }
+                                        }
+                                    }
+                                    else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
+                                    {
+                                        AddToCombatLog(Loc.Tr("No action available!"));
+                                    }
                                 }
                             }
                         }
@@ -4140,7 +4211,7 @@ public class Game1 : Game
         // CHARACTER SHEET
         if (_showCharacterSheet && _state == AppState.Playing && _currentCharacter != null)
         {
-            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign);
+            _characterSheet.Draw(_spriteBatch, GraphicsDevice, _currentCharacter, _currentCampaign, _playerCreature);
             _spriteBatch.End();
             base.Draw(gameTime);
             return;
