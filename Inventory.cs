@@ -57,6 +57,27 @@ public class Inventory
     {
         return Items.Any(i => i.Name == itemName);
     }
+
+    public bool HasActiveLightSource()
+    {
+        return HasActiveLantern() || HasActiveTorch();
+    }
+
+    public bool HasActiveLantern()
+    {
+        return Items.Any(i => IsLantern(i.Name) && i.IsLit);
+    }
+
+    public bool HasActiveTorch()
+    {
+        return (EquippedWeapon?.Name == "Torch" && EquippedWeapon.IsLit)
+            || (OffhandWeapon?.Name == "Torch" && OffhandWeapon.IsLit);
+    }
+
+    private static bool IsLantern(string itemName)
+    {
+        return itemName == "Lantern, hooded" || itemName == "Lantern, bullseye";
+    }
     
     public int GetItemCount(string itemName)
     {
