@@ -23,6 +23,7 @@ public enum CreatureType
     Goblin,
     Orc,
     Skeleton,
+    Zombie,
     Wolf,
     Kobold,
     Umber_Hulk,  // Tremorsense
@@ -526,6 +527,14 @@ public class Creature
     public bool HasNimbleEscape { get; set; } = false;
 
     /// <summary>
+    /// Whether this creature has the Undead Fortitude trait (MM "Zombie").
+    /// If damage reduces this creature to 0 HP, it makes a Constitution saving throw (DC = 5 + damage taken).
+    /// On a success, the creature drops to 1 HP instead.
+    /// Does not apply to radiant damage or critical hits.
+    /// </summary>
+    public bool HasUndeadFortitude { get; set; } = false;
+
+    /// <summary>
     /// Whether this creature is currently in a Barbarian Rage.
     /// Grants damage bonus to melee attacks and resistance to bludgeoning, piercing, and slashing damage.
     /// </summary>
@@ -660,6 +669,21 @@ public class Creature
         {
             int remaining = amount - CurrentHP;
             CurrentHP = 0;
+
+            // Undead Fortitude: If damage reduces the creature to 0 HP, make a Constitution saving throw
+            // (DC = 5 + damage taken). On a success, the creature drops to 1 HP instead.
+            // Does not apply to radiant damage or critical hits (MM "Undead Fortitude").
+            if (HasUndeadFortitude && !isCriticalHit && damageType != DamageType.Radiant)
+            {
+                int dc = 5 + amount;
+                var save = this.MakeSavingThrow("CON", dc);
+                if (save.Success)
+                {
+                    CurrentHP = 1;
+                    HasTakenDamageThisRound = true;
+                    return;
+                }
+            }
 
             // Instant Death: remaining damage equals or exceeds the creature's hit point maximum (PHB "Instant Death")
             if (remaining >= MaxHP)
@@ -1164,6 +1188,47 @@ public class Creature
             ConditionImmunities = Condition.Poisoned | Condition.Exhaustion,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
+            IsPlayer = false,
+        };
+    }
+
+    public static Creature CreateZombie(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Zombie",
+            Type = CreatureType.Zombie,
+            Size = CreatureSize.Medium,
+            Alignment = Alignment.NeutralEvil,
+            X = x,
+            Y = y,
+            Z = z,
+            VisualX = x,
+            VisualY = y,
+            VisualZ = z,
+            MaxHP = 22,
+            CurrentHP = 22,
+            ArmorClass = 8,
+            Speed = 20,
+            Strength = 13,
+            Dexterity = 6,
+            Constitution = 16,
+            Intelligence = 3,
+            Wisdom = 6,
+            Charisma = 5,
+            AttackName = "Slam",
+            AttackBonus = 3,
+            DamageDice = "1d6",
+            DamageBonus = 1,
+            CurrentDamageType = DamageType.Bludgeoning,
+            IsMeleeAttack = true,
+            DarkvisionRange = 60,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Poison },
+            ConditionImmunities = Condition.Poisoned,
+            WisdomSaveProficiency = true,
+            HasUndeadFortitude = true,
+            XPReward = 50,  // CR 1/4
+            DisplayColor = Color.DarkOliveGreen,
             IsPlayer = false,
         };
     }
