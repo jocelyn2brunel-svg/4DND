@@ -642,6 +642,19 @@ public class Game1 : Game
     {
         foreach (var character in characters)
         {
+            // Re-link equipped items to the instances in the character's inventory list.
+            // This is necessary because JSON deserialization creates separate objects for
+            // EquippedWeapon/OffhandWeapon and the same items in the Items list.
+            var inv = character.InventoryData;
+            if (inv.EquippedWeapon != null)
+                inv.EquippedWeapon = inv.Items.FirstOrDefault(i => i.Name == inv.EquippedWeapon.Name && i.IsLit == inv.EquippedWeapon.IsLit && i.RemainingMinutes == inv.EquippedWeapon.RemainingMinutes) ?? inv.EquippedWeapon;
+            if (inv.OffhandWeapon != null)
+                inv.OffhandWeapon = inv.Items.FirstOrDefault(i => i.Name == inv.OffhandWeapon.Name && i.IsLit == inv.OffhandWeapon.IsLit && i.RemainingMinutes == inv.OffhandWeapon.RemainingMinutes) ?? inv.OffhandWeapon;
+            if (inv.EquippedArmor != null)
+                inv.EquippedArmor = inv.Items.FirstOrDefault(i => i.Name == inv.EquippedArmor.Name) ?? inv.EquippedArmor;
+            if (inv.EquippedShield != null)
+                inv.EquippedShield = inv.Items.FirstOrDefault(i => i.Name == inv.EquippedShield.Name) ?? inv.EquippedShield;
+
             // Migration for older saves created before barbarian rages were persisted/initialized correctly.
             // Restrict to fresh level-1-style saves to avoid refilling legitimately spent resources.
             if (character.Class == "Barbarian" && character.XP == 0 && character.RagesRemaining == 0)
@@ -3097,6 +3110,32 @@ public class Game1 : Game
             {
                 if (_characterSheet.Update(mouse, _currentCharacter))
                 {
+                    // Refresh creature stats from character (AC, Speed, etc.)
+                    if (_playerCreature != null && _currentCharacter != null)
+                    {
+                        _playerCreature.ArmorClass = _currentCharacter.ArmorClass;
+                        _playerCreature.Speed = _currentCharacter.Speed;
+                        _playerCreature.DarkvisionRange = _currentCharacter.DarkvisionRange;
+
+                        // If current attack is no longer valid (e.g. weapon unequipped), refresh it
+                        var eq = _currentCharacter.InventoryData.EquippedWeapon;
+                        var oh = _currentCharacter.InventoryData.OffhandWeapon;
+                        bool isMainEquipped = eq != null && eq.Name == _playerCreature.AttackName;
+                        bool isOffhandEquipped = oh != null && oh.Name == _playerCreature.AttackName;
+                        bool isSpell = _activeSpell != null && _activeSpell.Name == _playerCreature.AttackName;
+                        bool isUnarmed = _playerCreature.AttackName == "Unarmed Strike";
+
+                        if (!isMainEquipped && !isOffhandEquipped && !isSpell && !isUnarmed)
+                        {
+                            if (eq != null)
+                                _playerCreature.SetupAttackFromWeapon(eq.Name, _currentCharacter, false);
+                            else if (oh != null)
+                                _playerCreature.SetupAttackFromWeapon(oh.Name, _currentCharacter, true);
+                            else
+                                _playerCreature.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter, false);
+                        }
+                    }
+
                     SaveCharacters();
                     UpdateVision();
                 }
@@ -3108,10 +3147,11 @@ public class Game1 : Game
 
                 if (_characterSheet.AttackRequestedWithItem != null)
                 {
-                    _playerCreature.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter);
+                    _playerCreature.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter, _characterSheet.AttackRequestedIsOffhand);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithItem = null;
+                    _characterSheet.AttackRequestedIsOffhand = false;
                 }
 
                 if (_characterSheet.AttackRequestedWithSpell != null)
@@ -3120,6 +3160,14 @@ public class Game1 : Game
                     _playerCreature.SetupAttackFromSpell(_activeSpell, _currentCharacter);
                     _selectedAction = CombatAction.CastSpell;
                     _characterSheet.AttackRequestedWithSpell = null;
+                }
+
+                if (_characterSheet.AttackRequestedWithUnarmed)
+                {
+                    _playerCreature.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter);
+                    _selectedAction = CombatAction.Attack;
+                    _activeSpell = null;
+                    _characterSheet.AttackRequestedWithUnarmed = false;
                 }
 
                 if (_characterSheet.DroppedItem != null)

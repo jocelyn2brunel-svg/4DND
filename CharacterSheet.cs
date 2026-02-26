@@ -24,7 +24,7 @@ public class CharacterSheet
     private HashSet<char> _supportedChars;
     private MouseState _prevMouseState;
     private readonly List<(Rectangle Rect, ItemInstance Item, bool IsEquipped, bool IsEquippable)> _inventoryItemRects = new();
-    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell)> _attackEntryRects = new();
+    private readonly List<(Rectangle Rect, ItemInstance? Item, Spell? Spell, bool IsOffhand)> _attackEntryRects = new();
     private bool _showItemContextMenu;
     private Rectangle _itemContextMenuRect;
     private ItemInstance? _contextItem;
@@ -42,7 +42,9 @@ public class CharacterSheet
     public bool ShoveRequested { get; set; }
     public ItemInstance? DroppedItem { get; set; }
     public ItemInstance? AttackRequestedWithItem { get; set; }
+    public bool AttackRequestedIsOffhand { get; set; }
     public Spell? AttackRequestedWithSpell { get; set; }
+    public bool AttackRequestedWithUnarmed { get; set; }
     public bool CloseRequested { get; set; }
 
     public CharacterSheet(SpriteFont font, Texture2D pixel)
@@ -135,10 +137,15 @@ public class CharacterSheet
                 if (clickedAttack.Item != null)
                 {
                     AttackRequestedWithItem = clickedAttack.Item;
+                    AttackRequestedIsOffhand = clickedAttack.IsOffhand;
                 }
                 else if (clickedAttack.Spell != null)
                 {
                     AttackRequestedWithSpell = clickedAttack.Spell;
+                }
+                else
+                {
+                    AttackRequestedWithUnarmed = true;
                 }
                 CloseRequested = true;
             }
@@ -155,6 +162,12 @@ public class CharacterSheet
                             {
                                 character.CalculateDerivedStats();
                                 hasCharacterChanges = true;
+
+                                var itemData = ItemDatabase.GetItem(_contextItem.Name);
+                                if (itemData.Type == ItemType.Weapon)
+                                {
+                                    AttackRequestedWithItem = _contextItem;
+                                }
                             }
                         }
                         _showItemContextMenu = false;
@@ -162,9 +175,13 @@ public class CharacterSheet
                     case "Equip (Offhand)":
                         if (_contextItem != null)
                         {
-                            character.InventoryData.EquipOffhandItemInstance(_contextItem);
-                            character.CalculateDerivedStats();
-                            hasCharacterChanges = true;
+                            if (character.InventoryData.EquipOffhandItemInstance(_contextItem))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                                AttackRequestedWithItem = _contextItem;
+                                AttackRequestedIsOffhand = true;
+                            }
                         }
                         _showItemContextMenu = false;
                         break;
@@ -858,11 +875,11 @@ public class CharacterSheet
                 string damage = GetWeaponDamage(weapon);
 
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
-                bool isActive = creature != null && creature.AttackName == weapon && creature.IsMeleeAttack == !weaponItem.IsRanged;
+                bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && creature.IsMeleeAttack == !weaponItem.IsRanged;
 
                 DrawEntry(weapon, FormatModifier(atkBonus), damage, clickRect, Color.Black, isActive);
                 RegisterTooltip(clickRect, BuildWeaponTooltip(weapon, atkBonus, damage));
-                _attackEntryRects.Add((clickRect, item, null));
+                _attackEntryRects.Add((clickRect, item, null, false));
                 entryY += entryHeight;
             }
 
@@ -883,11 +900,11 @@ public class CharacterSheet
                 string offhandDamage = offhandDmgMod < 0 ? $"{offhandDice} {FormatModifier(offhandDmgMod)}" : offhandDice;
 
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
-                bool isActive = creature != null && creature.AttackName == offhand; // simplified check
+                bool isActive = creature != null && creature.AttackName == offhand && creature.IsOffhandAttack;
 
                 DrawEntry($"(BA) {offhand}", FormatModifier(offhandAtkBonus), offhandDamage, clickRect, new Color(80, 80, 180), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Two-weapon fighting (bonus action): {0}\nBonus: {1}\nDamage: {2} (positive modifier not added)\n{3}", offhand, FormatModifier(offhandAtkBonus), offhandDamage, BuildWeaponTooltip(offhand, offhandAtkBonus, offhandDamage)));
-                _attackEntryRects.Add((clickRect, item, null));
+                _attackEntryRects.Add((clickRect, item, null, true));
                 entryY += entryHeight;
             }
 
@@ -901,7 +918,7 @@ public class CharacterSheet
 
                 DrawEntry("Unarmed Strike", FormatModifier(unarmedBonus), unarmedDamage, clickRect, Color.Black * 0.7f, isActive);
                 RegisterTooltip(clickRect, Loc.Tr("Unarmed strike: bonus {0}, damage 1{1} bludgeoning, range 5 ft.", FormatModifier(unarmedBonus), FormatModifier(strMod)));
-                _attackEntryRects.Add((clickRect, null, null));
+                _attackEntryRects.Add((clickRect, null, null, false));
                 entryY += entryHeight;
             }
 
@@ -917,7 +934,7 @@ public class CharacterSheet
 
                 DrawEntry(spell.Name, FormatModifier(spellAtk), damage, clickRect, new Color(100, 50, 150), isActive);
                 RegisterTooltip(clickRect, Loc.Tr("{0} (Level {1} {2})\nRange: {3} ft\n{4}", spell.Name, spell.Level, spell.School, spell.Range, spell.Description));
-                _attackEntryRects.Add((clickRect, null, spell));
+                _attackEntryRects.Add((clickRect, null, spell, false));
                 entryY += entryHeight;
             }
 
@@ -992,7 +1009,25 @@ public class CharacterSheet
                 }
 
                 Color textColor = isEquipped ? Color.DodgerBlue : (item.IsLit ? Color.OrangeRed : Color.Black * 0.8f);
-                spriteBatch.DrawString(_font, SafeString(display), new Vector2(curX + checkboxSize + 5, currentItemY), textColor, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+                bool isActive = false;
+                if (creature != null && itemData.Type == ItemType.Weapon)
+                {
+                    if (item == c.InventoryData.EquippedWeapon)
+                        isActive = creature.AttackName == item.Name && !creature.IsOffhandAttack;
+                    else if (item == c.InventoryData.OffhandWeapon)
+                        isActive = creature.AttackName == item.Name && creature.IsOffhandAttack;
+                }
+
+                if (isActive)
+                {
+                    DrawMemeText(spriteBatch, SafeString(display), new Vector2(curX + checkboxSize + 5, currentItemY), Color.White, 0.5f);
+                }
+                else
+                {
+                    spriteBatch.DrawString(_font, SafeString(display), new Vector2(curX + checkboxSize + 5, currentItemY), textColor, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                }
+
                 RegisterTooltip(itemRect, BuildItemTooltip(item, isEquipped));
 
                 _inventoryItemRects.Add((itemRect, item, isEquipped, itemData.IsEquippable));
