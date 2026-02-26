@@ -25,7 +25,8 @@ namespace _4DND
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
-        public bool TravelOccurred { get; set; } = false;
+        public bool TravelOccurred { get; private set; } = false;
+        public bool PartyPositionChanged { get; private set; } = false;
 
         private bool _isTraveling = false;
         private float _targetPartyX;
@@ -87,6 +88,7 @@ namespace _4DND
                     {
                         campaign.PartyX = _targetPartyX;
                         campaign.PartyY = _targetPartyY;
+                        PartyPositionChanged = true;
                         _isTraveling = false;
                         TravelOccurred = true;
                     }
@@ -96,6 +98,7 @@ namespace _4DND
                         Vector2 newPos = startPos + direction * moveAmount;
                         campaign.PartyX = newPos.X;
                         campaign.PartyY = newPos.Y;
+                        PartyPositionChanged = true;
                     }
 
                     Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
@@ -242,6 +245,12 @@ namespace _4DND
             }
             
             _prevMouse = mouse;
+        }
+
+        public void ResetTravelFlags()
+        {
+            TravelOccurred = false;
+            PartyPositionChanged = false;
         }
         
         public void Draw(SpriteBatch sb, GraphicsDevice device, Campaign campaign)
