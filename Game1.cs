@@ -117,7 +117,7 @@ public class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple }
+    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple, ThrowAcid }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
     private bool _showCombatUI = true;
@@ -3072,6 +3072,12 @@ public class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
+                        else if (_selectedAction == CombatAction.Attack && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatThrowAcidButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position) && _currentCharacter?.InventoryData.HasItem("Acid (vial)") == true)
+                        {
+                            _selectedAction = CombatAction.ThrowAcid;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
                         else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter.Class))
                         {
                             if (_selectedAction == CombatAction.CastSpell)
@@ -3636,6 +3642,55 @@ public class Game1 : Game
                         }
                     }
 
+                    // Handle throw acid action
+                    if (_selectedAction == CombatAction.ThrowAcid)
+                    {
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
+                        {
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue)
+                            {
+                                int tx = hovered.Value.x;
+                                int ty = hovered.Value.y;
+                                int tz = hovered.Value.z;
+                                var target = _combatManager.GetCreatureAt(tx, ty, tz);
+                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat) && _currentCharacter != null)
+                                {
+                                    bool wasInCombat = _combatManager.InCombat;
+                                    var result = _combatManager.ThrowAcid(currentCombatant, target, _currentCharacter, _visionSystem);
+                                    AddToCombatLog(result.GetMessage());
+                                    AddTooltip(currentCombatant, Loc.Tr("Throw Acid"), new Color(60, 120, 80));
+                                    if (result.IsHit)
+                                    {
+                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
+                                        AddTooltip(target, dmgText, Color.Lime);
+                                    }
+                                    else
+                                        AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
+                                    _diceRollAnimation.Start(result.AttackRoll);
+                                    FlushTurnMessages();
+                                    _selectedAction = CombatAction.Move;
+
+                                    if (!wasInCombat && target.IsAlive())
+                                        StartCombatWithNearbyEnemies();
+                                    else if (wasInCombat && !_combatManager.InCombat)
+                                    {
+                                        AddToCombatLog(Loc.Tr("Combat ended!"));
+                                        if (_playerCreature != null && _currentCharacter != null)
+                                        {
+                                            _playerCreature.UpdateCharacter(_currentCharacter);
+                                            SaveCharacters();
+                                        }
+                                    }
+                                }
+                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
+                                {
+                                    AddToCombatLog(Loc.Tr("No action available!"));
+                                }
+                            }
+                        }
+                    }
+
                     // Handle Help action target selection
                     if (_selectedAction == CombatAction.Help)
                     {
@@ -4057,6 +4112,12 @@ public class Game1 : Game
         return new Rectangle(attackRect.X, attackRect.Y - attackRect.Height - 5, attackRect.Width, attackRect.Height);
     }
 
+    private Rectangle GetCombatThrowAcidButtonRect(Viewport viewport)
+    {
+        var grappleRect = GetCombatGrappleButtonRect(viewport);
+        return new Rectangle(grappleRect.Right + 10, grappleRect.Y, grappleRect.Width, grappleRect.Height);
+    }
+
     private Rectangle GetCombatDisengageButtonRect(Viewport viewport)
     {
         var dashRect = GetCombatDashButtonRect(viewport);
@@ -4313,6 +4374,14 @@ public class Game1 : Game
 
         if (_showBonusActionMenu && GetCombatBonusHideButtonRect(viewport).Contains(mousePosition))
             return true;
+
+        if (_selectedAction == CombatAction.Attack && currentCombatant.HasAction)
+        {
+            if (GetCombatGrappleButtonRect(viewport).Contains(mousePosition))
+                return true;
+            if (GetCombatThrowAcidButtonRect(viewport).Contains(mousePosition))
+                return true;
+        }
 
         return false;
     }
@@ -4831,6 +4900,13 @@ public class Game1 : Game
                                 "Grapple",
                                 new Color(100, 60, 130),
                                 _selectedAction == CombatAction.Grapple);
+
+                            bool hasAcid = _currentCharacter?.InventoryData.HasItem("Acid (vial)") == true;
+                            DrawCombatActionButton(
+                                GetCombatThrowAcidButtonRect(vp),
+                                "Throw Acid",
+                                hasAcid ? new Color(60, 120, 80) : Color.DarkGray,
+                                _selectedAction == CombatAction.ThrowAcid);
                         }
 
                         bool canCastSpell = IsSpellcasterClass(_currentCharacter!.Class);
@@ -4885,6 +4961,7 @@ public class Game1 : Game
                                 CombatAction.Grapple => "Click on an adjacent enemy to grapple",
                                 CombatAction.CastSpell => "Click on an enemy to cast a spell",
                                 CombatAction.Help => "Click on an adjacent enemy to distract (Help action)",
+                                CombatAction.ThrowAcid => "Click on an enemy to throw acid (20 ft, 2d6 acid)",
                                 _ => ""
                             };
                             var actionTextSize = _font.MeasureString(actionText) * 0.8f;

@@ -780,7 +780,7 @@ public static class ItemDatabase
         ["Acid (vial)"] = new Item
         {
             Name = "Acid (vial)",
-            Description = "Can be thrown as an improvised weapon",
+            Description = "As an action, throw this vial at a creature within 20 ft. Make a ranged attack (improvised weapon). On a hit, the target takes 2d6 acid damage.",
             Type = ItemType.Consumable,
             Weight = 1,
             Value = 25,

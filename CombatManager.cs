@@ -2434,6 +2434,116 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Throws an acid vial at the target as an action (PHB "Adventuring Gear: Acid").
+    /// Range: 20 ft. Treated as an improvised ranged weapon: DEX modifier, no proficiency bonus.
+    /// On a hit, the target takes 2d6 acid damage. The vial is consumed regardless of the outcome.
+    /// </summary>
+    /// <param name="thrower">The creature throwing the vial.</param>
+    /// <param name="target">The target creature.</param>
+    /// <param name="character">The character whose inventory will lose the vial.</param>
+    /// <param name="visionSystem">Optional vision system for line-of-sight checks.</param>
+    /// <returns>An <see cref="AttackResult"/> describing the outcome.</returns>
+    public AttackResult ThrowAcid(Creature thrower, Creature target, Character character, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult { Attacker = thrower, Target = target };
+
+        if (_inCombat && !thrower.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        // Range check: 20 ft = 4 squares
+        int distanceSquares = CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
+        if (distanceSquares > 4)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} cannot throw the acid that far — maximum range is 20 ft.", thrower.Name));
+            return result;
+        }
+
+        // Total cover: cannot be targeted
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} has total cover and cannot be targeted.", target.Name));
+            return result;
+        }
+
+        if (_inCombat)
+            thrower.HasAction = false;
+
+        // Consume the vial regardless of hit or miss
+        character.InventoryData.RemoveItem("Acid (vial)");
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(thrower, target)
+            : !thrower.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
+                            target.Conditions.HasCondition(Condition.Paralyzed) ||
+                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.Conditions.HasCondition(Condition.Restrained) ||
+                            target.IsSqueezingThrough ||
+                            thrower.IsHidden ||
+                            thrower.Conditions.HasCondition(Condition.Invisible);
+        bool hasDisadvantage = !attackerCanSee ||
+                               thrower.IsSqueezingThrough ||
+                               thrower.Conditions.HasCondition(Condition.Restrained) ||
+                               thrower.HasArmorNonProficiencyPenalty;
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+                ? visionSystem.CanSee(target, thrower)
+                : !target.IsBlinded() && !thrower.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        if (visionSystem != null && thrower.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(thrower.X, thrower.Y, thrower.Z);
+            if (lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        thrower.IsHidden = false;
+
+        // Improvised ranged attack: DEX modifier, no proficiency bonus
+        int dexMod = thrower.GetAbilityModifier(thrower.Dexterity);
+        int attackBonus = dexMod;
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            "Acid (vial)",
+            attackBonus,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0);
+
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
+        result.IsNonProficient = true;
+        result.DamageType = DamageType.Acid;
+
+        if (result.IsHit)
+        {
+            result.Damage = RollDamage("2d6", 0, result.IsCritical);
+            target.TakeDamage(result.Damage, DamageType.Acid, result.IsCritical);
+            thrower.HasAttackedThisRound = true;
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Uses an action to attempt to escape a net (PHB "Special Weapons: Net").
     /// The creature makes a DC 10 Strength check; on a success the Restrained condition is removed.
     /// Another creature within reach can also free the restrained target using this method.
