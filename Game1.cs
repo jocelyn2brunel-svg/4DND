@@ -2374,31 +2374,13 @@ public class Game1 : Game
                 _prevMouse.LeftButton == ButtonState.Released &&
                 closeMapButtonRect.Contains(mouse.Position))
             {
-                _showCampaignMap = false;
-                if (_campaignMapViewer.TravelOccurred)
-                {
-                    _tacticalMap.Clear();
-                    PlacePlayerAtNearestValidTile();
-                    _playerCreature.InterruptMovement();
-                    _cameraTarget = Vector3.Zero;
-                    UpdateVision();
-                    _campaignMapViewer.TravelOccurred = false;
-                }
+                CloseCampaignMap();
             }
             
             // Close map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
             {
-                _showCampaignMap = false;
-                if (_campaignMapViewer.TravelOccurred)
-                {
-                    _tacticalMap.Clear();
-                    PlacePlayerAtNearestValidTile();
-                    _playerCreature.InterruptMovement();
-                    _cameraTarget = Vector3.Zero;
-                    UpdateVision();
-                    _campaignMapViewer.TravelOccurred = false;
-                }
+                CloseCampaignMap();
             }
             
             _prevKb = kb;
@@ -3388,6 +3370,21 @@ public class Game1 : Game
         _prevKb = kb;
         _prevMouse = mouse;
         base.Update(gameTime);
+    }
+
+    private void CloseCampaignMap()
+    {
+        _showCampaignMap = false;
+
+        if (_campaignMapViewer.TravelOccurred || _campaignMapViewer.PartyPositionChanged)
+        {
+            _tacticalMap.Clear();
+            PlacePlayerAtNearestValidTile();
+            _playerCreature.InterruptMovement();
+            _cameraTarget = Vector3.Zero;
+            UpdateVision();
+            _campaignMapViewer.ResetTravelFlags();
+        }
     }
 
     private void DrawLine(SpriteBatch sb, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
