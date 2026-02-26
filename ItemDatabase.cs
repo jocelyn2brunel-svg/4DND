@@ -758,17 +758,6 @@ public static class ItemDatabase
             IsEquippable = true
         },
         
-        // Consumables
-        ["Healing Potion"] = new Item
-        {
-            Name = "Potion of Healing",
-            Description = "Restores 2d4+2 hit points",
-            Type = ItemType.Consumable,
-            Weight = 0,
-            Value = 50,
-            IsEquippable = false
-        },
-        
         // Adventuring Gear
         ["Abacus"] = new Item
         {
@@ -812,7 +801,7 @@ public static class ItemDatabase
             Name = "Blowgun needles (50)",
             Description = "Needles for blowguns",
             Type = ItemType.Misc,
-            Weight = 1,
+            Weight = 0,
             Value = 1,
             IsEquippable = false,
             DefaultQuantity = 50
