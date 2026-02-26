@@ -193,6 +193,7 @@ public class Game1 : Game
     private LuteSynthesizer _luteSynth = null!;
     private LuteProceduralMusic _luteMusic = null!;
     private PaperMapSfxSynth _mapSfxSynth = null!;
+    private TorchIgnitionSfxSynth _torchIgnitionSfx = null!;
 
     private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
@@ -261,6 +262,7 @@ public class Game1 : Game
         _luteSynth = new LuteSynthesizer();
         _luteMusic = new LuteProceduralMusic(_luteSynth);
         InitializeCampaignMapAudio();
+        _torchIgnitionSfx = new TorchIgnitionSfxSynth();
         _campaignCreation = new CampaignCreation(_font, _pixel);
         _campaignMapViewer = new CampaignMapViewer(_font, _pixel);
         _campaignMapViewer.VisionSystem = _visionSystem;
@@ -2133,6 +2135,7 @@ public class Game1 : Game
         SaveCurrentProgress();
         _luteSynth?.Dispose();
         _mapSfxSynth?.Dispose();
+        _torchIgnitionSfx?.Dispose();
         base.OnExiting(sender, args);
     }
 
@@ -3061,6 +3064,12 @@ public class Game1 : Game
                 {
                     _luteMusic.PlayRandomTune();
                     _characterSheet.PlayLuteRequested = false;
+                }
+
+                if (_characterSheet.TorchIgniteRequested)
+                {
+                    _torchIgnitionSfx.Play();
+                    _characterSheet.TorchIgniteRequested = false;
                 }
 
                 if (_characterSheet.GrappleRequested && _currentCharacter != null)

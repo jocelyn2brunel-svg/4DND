@@ -36,6 +36,7 @@ public class CharacterSheet
     private Rectangle _shoveActionRect;
 
     public bool PlayLuteRequested { get; set; }
+    public bool TorchIgniteRequested { get; set; }
     public bool GrappleRequested { get; set; }
     public bool ShoveRequested { get; set; }
     public ItemInstance? DroppedItem { get; set; }
@@ -159,6 +160,7 @@ public class CharacterSheet
                             {
                                 _contextItem.IsLit = true;
                                 _contextItem.RemainingMinutes = 60;
+                                TorchIgniteRequested = true;
 
                                 // Prefer main hand if empty, otherwise off-hand
                                 if (character.InventoryData.EquippedWeapon == null)
