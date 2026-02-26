@@ -104,6 +104,9 @@ public class Inventory
         switch (itemData.Type)
         {
             case ItemType.Weapon:
+                // TWF: if the new main-hand weapon is not light, unequip the offhand (PHB "Two-Weapon Fighting")
+                if (!itemData.IsLight && OffhandWeapon != null)
+                    OffhandWeapon = null;
                 EquippedWeapon = instance;
                 return true;
             case ItemType.Armor:
@@ -129,6 +132,13 @@ public class Inventory
         if (!Items.Contains(instance)) return false;
         var itemData = ItemDatabase.GetItem(instance.Name);
         if (itemData.Type != ItemType.Weapon || !itemData.IsLight) return false;
+
+        // TWF: the main-hand weapon must also be light (PHB "Two-Weapon Fighting")
+        if (EquippedWeapon != null)
+        {
+            var mainHandData = ItemDatabase.GetItem(EquippedWeapon.Name);
+            if (!mainHandData.IsLight) return false;
+        }
 
         // Ensure not equipped in the other hand
         if (EquippedWeapon == instance) EquippedWeapon = null;

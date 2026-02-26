@@ -1146,8 +1146,9 @@ public class CharacterSheet
                 entryY += entryHeight;
             }
 
-            // Two-Weapon Fighting offhand bonus attack
-            if (c.InventoryData.OffhandWeapon != null)
+            // Two-Weapon Fighting offhand bonus attack (PHB "Two-Weapon Fighting": both weapons must be Light)
+            var _mainHandItemForTwf = c.InventoryData.EquippedWeapon != null ? ItemDatabase.GetItem(c.InventoryData.EquippedWeapon.Name) : null;
+            if (c.InventoryData.OffhandWeapon != null && (_mainHandItemForTwf?.IsLight ?? false))
             {
                 var item = c.InventoryData.OffhandWeapon;
                 string offhand = item.Name;

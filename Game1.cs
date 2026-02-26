@@ -3444,10 +3444,16 @@ public class Game1 : Game
                                 int ty = hovered.Value.y;
                                 int tz = hovered.Value.z;
                                 var target = _combatManager.GetCreatureAt(tx, ty, tz);
-                                if (target != null && !target.IsPlayer && (currentCombatant.HasAction || !_combatManager.InCombat))
+                                bool isOffhandAttack = currentCombatant.IsOffhandAttack;
+                                bool canAttack = isOffhandAttack
+                                    ? (currentCombatant.HasBonusAction || !_combatManager.InCombat)
+                                    : (currentCombatant.HasAction || !_combatManager.InCombat);
+                                if (target != null && !target.IsPlayer && canAttack)
                                 {
                                     bool wasInCombat = _combatManager.InCombat;
-                                    var result = _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
+                                    AttackResult result = isOffhandAttack
+                                        ? _combatManager.MakeBonusActionAttack(currentCombatant, target, _visionSystem)
+                                        : _combatManager.MakeAttack(currentCombatant, target, _visionSystem);
                                     AddToCombatLog(result.GetMessage());
                                     AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
                                     if (result.IsHit)
@@ -3474,9 +3480,9 @@ public class Game1 : Game
                                         }
                                     }
                                 }
-                                else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
+                                else if (target != null && !canAttack && _combatManager.InCombat)
                                 {
-                                    AddToCombatLog(Loc.Tr("No action available!"));
+                                    AddToCombatLog(isOffhandAttack ? Loc.Tr("No bonus action available!") : Loc.Tr("No action available!"));
                                 }
                             }
                         }

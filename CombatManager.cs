@@ -1461,6 +1461,14 @@ public class CombatManager
             return result;
         }
 
+        // TWF is a melee attack — validate range before consuming the bonus action
+        if (!IsInMeleeRange(attacker, target))
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} cannot reach the target — must be within 5 ft. for a two-weapon fighting attack.", attacker.Name));
+            return result;
+        }
+
         if (_inCombat)
             attacker.HasBonusAction = false;
 
