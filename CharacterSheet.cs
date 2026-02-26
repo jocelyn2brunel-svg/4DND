@@ -831,9 +831,9 @@ public class CharacterSheet
 
                 if (isActive)
                 {
-                    DrawMemeText(spriteBatch, SafeString(name), new Vector2(nameCol, entryY), color);
-                    DrawMemeText(spriteBatch, SafeString(bonus), new Vector2(atkBonusCol, entryY), color);
-                    DrawMemeText(spriteBatch, SafeString(damage), new Vector2(damageCol, entryY), color);
+                    DrawMemeText(spriteBatch, SafeString(name), new Vector2(nameCol, entryY), Color.White);
+                    DrawMemeText(spriteBatch, SafeString(bonus), new Vector2(atkBonusCol, entryY), Color.White);
+                    DrawMemeText(spriteBatch, SafeString(damage), new Vector2(damageCol, entryY), Color.White);
                 }
                 else
                 {
