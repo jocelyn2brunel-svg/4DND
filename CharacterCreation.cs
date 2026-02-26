@@ -19,6 +19,10 @@ public class CharacterCreation
     private readonly string[] _abilityNames = new[] { "STR", "DEX", "CON", "INT", "WIS", "CHA" };
     private int _selectedToolIndex = 0; // index of the chosen tool in the race's ToolProficiencyChoices
 
+    // Starting wealth toggle (step 6)
+    private bool _useStartingWealth = false;
+    private int _rolledStartingWealth = 0;
+
     private SpriteFont _font;
     private Texture2D _pixel;
     
@@ -94,6 +98,8 @@ public class CharacterCreation
         _isRolling = false;
         _rollTimer = 0;
         _selectedClassSkills.Clear();
+        _useStartingWealth = false;
+        _rolledStartingWealth = 0;
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character? createdCharacter)
@@ -311,6 +317,7 @@ public class CharacterCreation
                 {
                     _classIndex = classIdx;
                     _skillIndex = 0;
+                    _rolledStartingWealth = 0;
                 }
             }
             
@@ -1044,29 +1051,85 @@ public class CharacterCreation
             yOffset += 45;
         }
         
-        // Starting equipment preview
-        var startingEquipment = StartingEquipment.GetStartingEquipment(selectedClass.Name);
-        spriteBatch.DrawString(_font, "Starting Equipment:", new Vector2(rightX, yOffset), Color.Yellow, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
-        yOffset += 22;
-        
-        int equipCount = 0;
-        foreach (var itemName in startingEquipment.EquippedItems)
+        // Toggle: Starting Equipment vs Roll for Gold
+        var equipToggleRect = new Rectangle(rightX, yOffset, 195, 28);
+        var wealthToggleRect = new Rectangle(rightX + 200, yOffset, 195, 28);
+
+        var equipToggleColor = !_useStartingWealth ? Color.DarkGoldenrod : Color.DarkGray;
+        var wealthToggleColor = _useStartingWealth ? Color.DarkGoldenrod : Color.DarkGray;
+
+        spriteBatch.Draw(_pixel, equipToggleRect, equipToggleColor);
+        DrawBorder(spriteBatch, equipToggleRect, 2, !_useStartingWealth ? Color.Gold : Color.Gray * 0.5f);
+        spriteBatch.DrawString(_font, "Starting Equipment", new Vector2(equipToggleRect.X + 6, equipToggleRect.Y + 7), !_useStartingWealth ? Color.White : Color.LightGray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+        spriteBatch.Draw(_pixel, wealthToggleRect, wealthToggleColor);
+        DrawBorder(spriteBatch, wealthToggleRect, 2, _useStartingWealth ? Color.Gold : Color.Gray * 0.5f);
+        spriteBatch.DrawString(_font, "Roll for Gold", new Vector2(wealthToggleRect.X + 6, wealthToggleRect.Y + 7), _useStartingWealth ? Color.White : Color.LightGray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+        if (equipToggleRect.Contains(mouse.Position))
+            _tooltipText = "Take your class starting equipment";
+        if (wealthToggleRect.Contains(mouse.Position))
+            _tooltipText = "Roll for starting gold instead of equipment";
+
+        if (IsMouseClicked(mouse, _prevMouse, equipToggleRect))
+            _useStartingWealth = false;
+        if (IsMouseClicked(mouse, _prevMouse, wealthToggleRect))
+            _useStartingWealth = true;
+
+        yOffset += 36;
+
+        if (!_useStartingWealth)
         {
-            if (equipCount >= 3) break;
-            spriteBatch.DrawString(_font, $"  - {itemName} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            yOffset += 18;
-            equipCount++;
+            var startingEquipment = StartingEquipment.GetStartingEquipment(selectedClass.Name);
+            spriteBatch.DrawString(_font, "Starting Equipment:", new Vector2(rightX, yOffset), Color.Yellow, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            yOffset += 22;
+
+            int equipCount = 0;
+            foreach (var itemName in startingEquipment.EquippedItems)
+            {
+                if (equipCount >= 3) break;
+                spriteBatch.DrawString(_font, $"  - {itemName} (equipped)", new Vector2(rightX, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                yOffset += 18;
+                equipCount++;
+            }
+            foreach (var itemName in startingEquipment.Items)
+            {
+                if (equipCount >= 6) break;
+                spriteBatch.DrawString(_font, $"  - {itemName}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+                yOffset += 18;
+                equipCount++;
+            }
+            if (startingEquipment.Items.Count + startingEquipment.EquippedItems.Count > 6)
+                spriteBatch.DrawString(_font, "  ...and more", new Vector2(rightX, yOffset), Color.Gray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         }
-        foreach (var itemName in startingEquipment.Items)
+        else
         {
-            if (equipCount >= 6) break;
-            spriteBatch.DrawString(_font, $"  - {itemName}", new Vector2(rightX, yOffset), Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            yOffset += 18;
-            equipCount++;
-        }
-        if (startingEquipment.Items.Count + startingEquipment.EquippedItems.Count > 6)
-        {
-            spriteBatch.DrawString(_font, "  ...and more", new Vector2(rightX, yOffset), Color.Gray, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            string formula = StartingEquipment.GetWealthFormula(selectedClass.Name);
+            spriteBatch.DrawString(_font, $"Starting Wealth: {formula}", new Vector2(rightX, yOffset), Color.Yellow, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            yOffset += 30;
+
+            var rollBtnRect = new Rectangle(rightX, yOffset, 120, 32);
+            var rollBtnColor = rollBtnRect.Contains(mouse.Position) ? Color.DarkGoldenrod * 1.3f : Color.DarkGoldenrod;
+            spriteBatch.Draw(_pixel, rollBtnRect, rollBtnColor);
+            DrawBorder(spriteBatch, rollBtnRect, 2, Color.Gold);
+            spriteBatch.DrawString(_font, "Roll!", new Vector2(rollBtnRect.X + 36, rollBtnRect.Y + 8), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+            if (rollBtnRect.Contains(mouse.Position))
+                _tooltipText = $"Roll {formula} for starting gold";
+            if (IsMouseClicked(mouse, _prevMouse, rollBtnRect))
+                _rolledStartingWealth = StartingEquipment.RollStartingWealth(selectedClass.Name);
+
+            yOffset += 40;
+            if (_rolledStartingWealth > 0)
+            {
+                spriteBatch.DrawString(_font, $"Result: {_rolledStartingWealth} gold pieces", new Vector2(rightX, yOffset), Color.Gold, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                yOffset += 24;
+                spriteBatch.DrawString(_font, "(No starting equipment)", new Vector2(rightX, yOffset), Color.LightGray, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            }
+            else
+            {
+                spriteBatch.DrawString(_font, "Click Roll! to determine starting gold", new Vector2(rightX, yOffset), Color.LightGray, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            }
         }
     }
 
@@ -1222,7 +1285,7 @@ public class CharacterCreation
             3 => true,
             4 => false,
             5 => !_isRolling,
-            6 => true,
+            6 => !_useStartingWealth || _rolledStartingWealth > 0,
             _ => false
         };
     }
@@ -1484,13 +1547,20 @@ public class CharacterCreation
         foreach (var skill in selectedSkills)
             ApplySkillProficiency(c, skill);
 
-        // Add starting equipment based on class
-        var startingEquipment = StartingEquipment.GetStartingEquipment(c.Class);
-        foreach (var itemName in startingEquipment.Items)
-            c.InventoryData.AddItem(itemName);
-        foreach (var itemName in startingEquipment.EquippedItems)
-            c.InventoryData.EquipItem(itemName);
-        c.GoldPieces = startingEquipment.GoldPieces;
+        // Add starting equipment or rolled wealth based on player choice
+        if (_useStartingWealth)
+        {
+            c.GoldPieces = _rolledStartingWealth > 0 ? _rolledStartingWealth : StartingEquipment.RollStartingWealth(c.Class);
+        }
+        else
+        {
+            var startingEquipment = StartingEquipment.GetStartingEquipment(c.Class);
+            foreach (var itemName in startingEquipment.Items)
+                c.InventoryData.AddItem(itemName);
+            foreach (var itemName in startingEquipment.EquippedItems)
+                c.InventoryData.EquipItem(itemName);
+            c.GoldPieces = startingEquipment.GoldPieces;
+        }
 
         c.CurrentHP = c.MaxHP;
 

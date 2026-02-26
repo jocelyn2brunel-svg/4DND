@@ -36,14 +36,22 @@ public static class StartingEquipment
         {
             return 0;
         }
-        
+
         // Parse formula like "2d4*10" or "5d4"
         var parts = formula.Split('*');
         var diceNotation = parts[0];
         int multiplier = parts.Length > 1 ? int.Parse(parts[1]) : 1;
-        
+
         var result = Dice.RollNotation(diceNotation);
         return result.Total * multiplier;
+    }
+
+    /// <summary>Returns a human-readable wealth formula for the given class (e.g. "5d4 x 10 gp").</summary>
+    public static string GetWealthFormula(string className)
+    {
+        if (!_startingWealthByClass.TryGetValue(className, out var formula))
+            return "Unknown";
+        return formula.Replace("*", " x ") + " gp";
     }
     
     public static EquipmentPackage GetStartingEquipment(string className)
