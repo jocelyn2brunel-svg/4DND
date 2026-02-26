@@ -259,6 +259,17 @@ namespace _4DND
             TravelOccurred = false;
             PartyPositionChanged = false;
         }
+
+        public void SyncScrollBaseline(int scrollWheelValue)
+        {
+            _prevScrollValue = scrollWheelValue;
+        }
+
+        public void ResetInputBaseline(MouseState mouse)
+        {
+            _prevMouse = mouse;
+            _prevScrollValue = mouse.ScrollWheelValue;
+        }
         
         public void Draw(SpriteBatch sb, GraphicsDevice device, Campaign campaign)
         {

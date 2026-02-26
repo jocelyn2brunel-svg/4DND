@@ -3645,6 +3645,7 @@ public class Game1 : Game
         if (!_showCampaignMap)
             return;
 
+        SyncZoomInputStateHandoff(Mouse.GetState());
         _showCampaignMap = false;
         PlayCampaignMapCloseSfx();
 
@@ -3665,7 +3666,14 @@ public class Game1 : Game
             return;
 
         _showCampaignMap = true;
+        SyncZoomInputStateHandoff(Mouse.GetState());
         PlayCampaignMapOpenSfx();
+    }
+
+    private void SyncZoomInputStateHandoff(MouseState mouse)
+    {
+        _prevScrollValue = mouse.ScrollWheelValue;
+        _campaignMapViewer.ResetInputBaseline(mouse);
     }
 
     private void InitializeCampaignMapAudio()
