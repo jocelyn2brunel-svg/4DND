@@ -9,7 +9,7 @@ public class LuteProceduralMusic
     private readonly Random _random = new();
     private float _noteTimer = 0;
     private bool _isPlaying = false;
-    private LuteSong _currentSong;
+    private LuteSong? _currentSong;
     private int _noteIndex = 0;
 
     // D Dorian scale for procedural generation

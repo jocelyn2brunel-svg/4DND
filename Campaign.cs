@@ -347,7 +347,7 @@ namespace _4DND
             }
         }
 
-        public void DiscoverLocations(float revealRadiusFeet, Action<string> onDiscovered = null)
+        public void DiscoverLocations(float revealRadiusFeet, Action<string>? onDiscovered = null)
         {
             float revealRadiusMiles = revealRadiusFeet / 5280f;
             Vector2 partyPos = new Vector2(PartyX, PartyY);

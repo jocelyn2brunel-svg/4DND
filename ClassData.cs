@@ -53,21 +53,21 @@ public class ClassData
     /// <summary>The ability score used for spellcasting ("Intelligence", "Wisdom", or "Charisma"). Empty for non-casters.</summary>
     public string SpellcastingAbility { get; set; } = "";
 
-    public ClassLevelData GetLevelData(int level)
+    public ClassLevelData? GetLevelData(int level)
     {
         foreach (var entry in LevelProgression)
             if (entry.Level == level) return entry;
         return null;
     }
-    
-    public BardLevelData GetBardLevelData(int level)
+
+    public BardLevelData? GetBardLevelData(int level)
     {
         foreach (var entry in BardLevelProgression)
             if (entry.Level == level) return entry;
         return null;
     }
 
-    public ClericLevelData GetClericLevelData(int level)
+    public ClericLevelData? GetClericLevelData(int level)
     {
         foreach (var entry in ClericLevelProgression)
             if (entry.Level == level) return entry;

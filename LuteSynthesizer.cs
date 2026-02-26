@@ -45,7 +45,7 @@ public class LuteSynthesizer : IDisposable
         }
     }
 
-    private void OnBufferNeeded(object sender, EventArgs e)
+    private void OnBufferNeeded(object? sender, EventArgs e)
     {
         FillAndSubmitBuffer();
     }

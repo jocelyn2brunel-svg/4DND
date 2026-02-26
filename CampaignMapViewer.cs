@@ -20,7 +20,7 @@ namespace _4DND
         private float _zoom = 1.0f;
         private int _tileSize = 30;
         
-        private Location _selectedLocation = null;
+        private Location? _selectedLocation = null;
         private (int q, int r)? _selectedHex = null;
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
@@ -188,7 +188,7 @@ namespace _4DND
                         else
                         {
                             int hexSizeInMiles = Campaign.GetHexSize(campaign.CurrentScale);
-                            var miles = Campaign.AxialToMiles(_selectedHex.Value.q * hexSizeInMiles, _selectedHex.Value.r * hexSizeInMiles);
+                            var miles = Campaign.AxialToMiles(_selectedHex!.Value.q * hexSizeInMiles, _selectedHex.Value.r * hexSizeInMiles);
                             tx = miles.x;
                             ty = miles.y;
                         }
@@ -813,7 +813,7 @@ namespace _4DND
             if (_selectedLocation != null || _selectedHex != null)
             {
                 y += 18;
-                string selectedName = _selectedLocation != null ? _selectedLocation.Name : $"Hex ({_selectedHex.Value.q}, {_selectedHex.Value.r})";
+                string selectedName = _selectedLocation != null ? _selectedLocation.Name : $"Hex ({_selectedHex!.Value.q}, {_selectedHex.Value.r})";
                 sb.DrawString(_font, Loc.Tr("Selected: {0}", selectedName), new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
 
                 if (_selectedLocation == null && _selectedHex.HasValue)

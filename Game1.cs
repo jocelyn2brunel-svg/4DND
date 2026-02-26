@@ -2406,7 +2406,7 @@ public class Game1 : Game
         // CHARACTER CREATION
         if (_state == AppState.CharacterCreate)
         {
-            bool continueCreation = _characterCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Character newCharacter);
+            bool continueCreation = _characterCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Character? newCharacter);
             
             if (!continueCreation)
             {
@@ -3147,7 +3147,7 @@ public class Game1 : Game
 
                 if (_characterSheet.AttackRequestedWithItem != null)
                 {
-                    _playerCreature!.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter, _characterSheet.AttackRequestedIsOffhand);
+                    _playerCreature!.SetupAttackFromWeapon(_characterSheet.AttackRequestedWithItem.Name, _currentCharacter!, _characterSheet.AttackRequestedIsOffhand);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithItem = null;
@@ -3157,14 +3157,14 @@ public class Game1 : Game
                 if (_characterSheet.AttackRequestedWithSpell != null)
                 {
                     _activeSpell = _characterSheet.AttackRequestedWithSpell;
-                    _playerCreature!.SetupAttackFromSpell(_activeSpell, _currentCharacter);
+                    _playerCreature!.SetupAttackFromSpell(_activeSpell, _currentCharacter!);
                     _selectedAction = CombatAction.CastSpell;
                     _characterSheet.AttackRequestedWithSpell = null;
                 }
 
                 if (_characterSheet.AttackRequestedWithUnarmed)
                 {
-                    _playerCreature!.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter);
+                    _playerCreature!.SetupAttackFromWeapon("Unarmed Strike", _currentCharacter!);
                     _selectedAction = CombatAction.Attack;
                     _activeSpell = null;
                     _characterSheet.AttackRequestedWithUnarmed = false;

@@ -96,7 +96,7 @@ public class CharacterCreation
         _selectedClassSkills.Clear();
     }
 
-    public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character createdCharacter)
+    public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character? createdCharacter)
     {
         createdCharacter = null;
         var mouse = Mouse.GetState();
