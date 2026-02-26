@@ -41,6 +41,7 @@ public class Item
     public DamageType DamageType { get; set; } = DamageType.None;
     public bool IsLight { get; set; }
     public bool IsFinesse { get; set; }
+    public bool IsTwoHanded { get; set; }
     public bool IsVersatile { get; set; }
     public string VersatileDamageDice { get; set; } = "";
     public bool IsRanged { get; set; }

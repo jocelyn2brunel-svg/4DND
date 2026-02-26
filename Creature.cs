@@ -1317,7 +1317,10 @@ public class Creature
                 : creature.GetAbilityModifier(creature.Strength);
             
             creature.AttackBonus = abilityMod + character.ProficiencyBonus;
-            creature.DamageDice = weapon.DamageDice;
+
+            bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
+            creature.DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
+
             creature.DamageBonus = abilityMod;
             creature.CurrentDamageType = weapon.DamageType;
             creature.IsMeleeAttack = !weapon.IsRanged;
@@ -1391,7 +1394,9 @@ public class Creature
                 : GetAbilityModifier(Strength);
 
         AttackBonus = abilityMod + character.ProficiencyBonus;
-        DamageDice = weapon.DamageDice;
+
+        bool isVersatileTwoHanded = weapon.IsVersatile && character.InventoryData.OffhandWeapon == null && character.InventoryData.EquippedShield == null;
+        DamageDice = isVersatileTwoHanded ? weapon.VersatileDamageDice : weapon.DamageDice;
 
         // TWF: don't add ability modifier to damage (unless negative)
         DamageBonus = isOffhand ? Math.Min(0, abilityMod) : abilityMod;

@@ -35,6 +35,11 @@ public class CharacterSheet
     private Rectangle _inspectPopupRect;
     private Rectangle _grappleActionRect;
     private Rectangle _shoveActionRect;
+    private bool _showTwoHandedConfirmation;
+    private ItemInstance? _pendingEquipItem;
+    private bool _isPendingOffhand;
+    private Rectangle _confirmButtonRect;
+    private Rectangle _cancelButtonRect;
 
     public bool PlayLuteRequested { get; set; }
     public bool TorchIgniteRequested { get; set; }
@@ -150,6 +155,68 @@ public class CharacterSheet
                 CloseRequested = true;
             }
 
+            if (_showTwoHandedConfirmation)
+            {
+                if (_confirmButtonRect.Contains(_mousePosition))
+                {
+                    if (_pendingEquipItem != null)
+                    {
+                        var pendingData = ItemDatabase.GetItem(_pendingEquipItem.Name);
+                        if (pendingData.IsTwoHanded)
+                        {
+                            if (character.InventoryData.OffhandWeapon != null)
+                                character.InventoryData.UnequipItemInstance(character.InventoryData.OffhandWeapon);
+                            if (character.InventoryData.EquippedShield != null)
+                                character.InventoryData.UnequipItemInstance(character.InventoryData.EquippedShield);
+
+                            if (character.InventoryData.EquipItemInstance(_pendingEquipItem))
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                                AttackRequestedWithItem = _pendingEquipItem;
+                            }
+                        }
+                        else // Equipping offhand or shield while 2H is equipped
+                        {
+                            if (character.InventoryData.EquippedWeapon != null)
+                                character.InventoryData.UnequipItemInstance(character.InventoryData.EquippedWeapon);
+
+                            bool success = false;
+                            if (_isPendingOffhand)
+                            {
+                                if (character.InventoryData.EquipOffhandItemInstance(_pendingEquipItem))
+                                {
+                                    AttackRequestedWithItem = _pendingEquipItem;
+                                    AttackRequestedIsOffhand = true;
+                                    success = true;
+                                }
+                            }
+                            else
+                            {
+                                if (character.InventoryData.EquipItemInstance(_pendingEquipItem))
+                                {
+                                    success = true;
+                                }
+                            }
+
+                            if (success)
+                            {
+                                character.CalculateDerivedStats();
+                                hasCharacterChanges = true;
+                            }
+                        }
+                    }
+                    _showTwoHandedConfirmation = false;
+                    _pendingEquipItem = null;
+                    _isPendingOffhand = false;
+                }
+                else if (_cancelButtonRect.Contains(_mousePosition) || !new Rectangle((graphics.Viewport.Width - 440) / 2, (graphics.Viewport.Height - 180) / 2, 440, 180).Contains(_mousePosition))
+                {
+                    _showTwoHandedConfirmation = false;
+                    _pendingEquipItem = null;
+                }
+            }
+
             if (_showItemContextMenu)
             {
                 var option = GetContextMenuOptionAt(_mousePosition, character);
@@ -158,15 +225,30 @@ public class CharacterSheet
                     case "Equip":
                         if (_contextItem != null)
                         {
-                            if (character.InventoryData.EquipItemInstance(_contextItem))
+                            var itemData = ItemDatabase.GetItem(_contextItem.Name);
+                            if (itemData.IsTwoHanded && (character.InventoryData.OffhandWeapon != null || character.InventoryData.EquippedShield != null))
                             {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-
-                                var itemData = ItemDatabase.GetItem(_contextItem.Name);
-                                if (itemData.Type == ItemType.Weapon)
+                                _showTwoHandedConfirmation = true;
+                                _pendingEquipItem = _contextItem;
+                                _isPendingOffhand = false;
+                            }
+                            else if (itemData.Type == ItemType.Shield && character.InventoryData.EquippedWeapon != null && ItemDatabase.GetItem(character.InventoryData.EquippedWeapon.Name).IsTwoHanded)
+                            {
+                                _showTwoHandedConfirmation = true;
+                                _pendingEquipItem = _contextItem;
+                                _isPendingOffhand = false;
+                            }
+                            else
+                            {
+                                if (character.InventoryData.EquipItemInstance(_contextItem))
                                 {
-                                    AttackRequestedWithItem = _contextItem;
+                                    character.CalculateDerivedStats();
+                                    hasCharacterChanges = true;
+
+                                    if (itemData.Type == ItemType.Weapon)
+                                    {
+                                        AttackRequestedWithItem = _contextItem;
+                                    }
                                 }
                             }
                         }
@@ -175,12 +257,21 @@ public class CharacterSheet
                     case "Equip (Offhand)":
                         if (_contextItem != null)
                         {
-                            if (character.InventoryData.EquipOffhandItemInstance(_contextItem))
+                            if (character.InventoryData.EquippedWeapon != null && ItemDatabase.GetItem(character.InventoryData.EquippedWeapon.Name).IsTwoHanded)
                             {
-                                character.CalculateDerivedStats();
-                                hasCharacterChanges = true;
-                                AttackRequestedWithItem = _contextItem;
-                                AttackRequestedIsOffhand = true;
+                                _showTwoHandedConfirmation = true;
+                                _pendingEquipItem = _contextItem;
+                                _isPendingOffhand = true;
+                            }
+                            else
+                            {
+                                if (character.InventoryData.EquipOffhandItemInstance(_contextItem))
+                                {
+                                    character.CalculateDerivedStats();
+                                    hasCharacterChanges = true;
+                                    AttackRequestedWithItem = _contextItem;
+                                    AttackRequestedIsOffhand = true;
+                                }
                             }
                         }
                         _showItemContextMenu = false;
@@ -359,7 +450,56 @@ public class CharacterSheet
             DrawTooltip(spriteBatch, vp);
             DrawWeaponContextMenu(spriteBatch, vp, character);
             DrawInspectPopup(spriteBatch, vp);
+            DrawTwoHandedConfirmation(spriteBatch, vp, character);
         }
+    }
+
+    private void DrawTwoHandedConfirmation(SpriteBatch spriteBatch, Viewport viewport, Character character)
+    {
+        if (!_showTwoHandedConfirmation || _pendingEquipItem == null) return;
+
+        int width = 440;
+        int height = 180;
+        int x = (viewport.Width - width) / 2;
+        int y = (viewport.Height - height) / 2;
+        var rect = new Rectangle(x, y, width, height);
+
+        spriteBatch.Draw(_pixel, new Rectangle(0, 0, viewport.Width, viewport.Height), Color.Black * 0.5f);
+        spriteBatch.Draw(_pixel, rect, new Color(30, 30, 30));
+        DrawBorder(spriteBatch, rect, Color.White, 2);
+
+        var pendingData = ItemDatabase.GetItem(_pendingEquipItem.Name);
+        string msg;
+        if (pendingData.IsTwoHanded)
+        {
+            string offhandName = character.InventoryData.OffhandWeapon?.Name ?? character.InventoryData.EquippedShield?.Name ?? "offhand item";
+            msg = Loc.Tr("You're about to equip a 2 handed weapon which will unequip your currently equipped offhand item ({0}). Do you want to continue?", offhandName);
+        }
+        else
+        {
+            string mainHandName = character.InventoryData.EquippedWeapon?.Name ?? "main hand item";
+            msg = Loc.Tr("You're about to equip {0} which will unequip your currently equipped 2 handed weapon ({1}). Do you want to continue?", _pendingEquipItem.Name, mainHandName);
+        }
+
+        string wrappedMsg = WrapText(_font, msg, width - 40, 0.7f);
+        spriteBatch.DrawString(_font, wrappedMsg, new Vector2(x + 20, y + 20), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        int btnWidth = 100;
+        int btnHeight = 40;
+        _confirmButtonRect = new Rectangle(x + width / 2 - btnWidth - 10, y + height - 60, btnWidth, btnHeight);
+        _cancelButtonRect = new Rectangle(x + width / 2 + 10, y + height - 60, btnWidth, btnHeight);
+
+        spriteBatch.Draw(_pixel, _confirmButtonRect, _confirmButtonRect.Contains(_mousePosition) ? Color.DarkGreen : Color.Green);
+        DrawBorder(spriteBatch, _confirmButtonRect, Color.White, 1);
+        var yesText = Loc.Tr("Yes");
+        var yesSize = _font.MeasureString(yesText) * 0.7f;
+        spriteBatch.DrawString(_font, yesText, new Vector2(_confirmButtonRect.X + (btnWidth - yesSize.X) / 2, _confirmButtonRect.Y + (btnHeight - yesSize.Y) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        spriteBatch.Draw(_pixel, _cancelButtonRect, _cancelButtonRect.Contains(_mousePosition) ? Color.DarkRed : Color.Red);
+        DrawBorder(spriteBatch, _cancelButtonRect, Color.White, 1);
+        var noText = Loc.Tr("No");
+        var noSize = _font.MeasureString(noText) * 0.7f;
+        spriteBatch.DrawString(_font, noText, new Vector2(_cancelButtonRect.X + (btnWidth - noSize.X) / 2, _cancelButtonRect.Y + (btnHeight - noSize.Y) / 2), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
     }
 
     public Rectangle GetCloseButtonRect(Viewport viewport)
@@ -870,7 +1010,9 @@ public class CharacterSheet
                         : c.GetAbilityModifier(c.Strength);
                 int profBonus = c.IsProficientWithWeapon(weapon) ? c.ProficiencyBonus : 0;
                 int atkBonus = abilityMod + profBonus;
-                string damage = GetWeaponDamage(weapon);
+
+                bool isVersatileTwoHanded = weaponItem != null && weaponItem.IsVersatile && c.InventoryData.OffhandWeapon == null && c.InventoryData.EquippedShield == null;
+                string damage = isVersatileTwoHanded && weaponItem != null ? $"{weaponItem.VersatileDamageDice} {weaponItem.DamageType.ToDisplayString()}" : GetWeaponDamage(weapon);
 
                 var clickRect = new Rectangle(nameCol, entryY, width - 20, entryHeight);
                 bool isActive = creature != null && creature.AttackName == weapon && !creature.IsOffhandAttack && creature.IsMeleeAttack == !(weaponItem?.IsRanged ?? false);
@@ -962,8 +1104,61 @@ public class CharacterSheet
     private int DrawEquipmentBox(SpriteBatch? spriteBatch, Character c, int x, int y, int width, Creature? creature = null)
     {
         int lineHeight = 18;
-        int inventoryCount = c.InventoryData.Items.Count;
-        int height = 60 + (inventoryCount / 2 * lineHeight) + 40;
+
+        var displayedItems = new List<(ItemInstance Item, int Count, bool IsEquipped)>();
+        var itemsProcessed = new HashSet<ItemInstance>();
+
+        foreach (var item in c.InventoryData.Items)
+        {
+            if (itemsProcessed.Contains(item)) continue;
+
+            bool isEquipped = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon ||
+                              item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield;
+
+            if (isEquipped)
+            {
+                displayedItems.Add((item, 1, true));
+                itemsProcessed.Add(item);
+            }
+            else
+            {
+                int count = 1;
+                itemsProcessed.Add(item);
+                for (int i = c.InventoryData.Items.IndexOf(item) + 1; i < c.InventoryData.Items.Count; i++)
+                {
+                    var other = c.InventoryData.Items[i];
+                    if (itemsProcessed.Contains(other)) continue;
+
+                    bool canGroup = false;
+                    if (other.Name == item.Name)
+                    {
+                        bool otherIsEquipped = other == c.InventoryData.EquippedWeapon || other == c.InventoryData.OffhandWeapon ||
+                                               other == c.InventoryData.EquippedArmor || other == c.InventoryData.EquippedShield;
+                        if (!otherIsEquipped)
+                        {
+                            if (item.Name == "Torch")
+                            {
+                                if (other.IsLit == item.IsLit && other.RemainingMinutes == item.RemainingMinutes)
+                                    canGroup = true;
+                            }
+                            else
+                            {
+                                canGroup = true;
+                            }
+                        }
+                    }
+                    if (canGroup)
+                    {
+                        count++;
+                        itemsProcessed.Add(other);
+                    }
+                }
+                displayedItems.Add((item, count, false));
+            }
+        }
+
+        int inventoryDisplayCount = displayedItems.Count;
+        int height = 60 + ((inventoryDisplayCount + 1) / 2 * lineHeight) + 40;
         height = Math.Max(150, height);
 
         if (spriteBatch != null)
@@ -979,21 +1174,12 @@ public class CharacterSheet
             int currentItemY = itemY;
             bool left = true;
 
-            foreach (var item in c.InventoryData.Items)
+            foreach (var (item, count, isEquipped) in displayedItems)
             {
                 int curX = left ? col1 : col2;
                 var itemRect = new Rectangle(curX, currentItemY, width / 2 - 15, lineHeight);
 
                 var itemData = ItemDatabase.GetItem(item.Name);
-                bool isEquipped;
-                if (itemData.Type == ItemType.Weapon)
-                {
-                    isEquipped = item == c.InventoryData.EquippedWeapon || item == c.InventoryData.OffhandWeapon;
-                }
-                else
-                {
-                    isEquipped = item == c.InventoryData.EquippedArmor || item == c.InventoryData.EquippedShield;
-                }
 
                 int checkboxSize = 12;
                 int checkboxX = curX;
@@ -1005,19 +1191,11 @@ public class CharacterSheet
                 if (item.IsLit && item.Name == "Torch") {
                     display += $" ({item.RemainingMinutes}m)";
                 }
+                if (count > 1) display += $" x{count}";
 
                 Color textColor = isEquipped ? Color.DodgerBlue : (item.IsLit ? Color.OrangeRed : Color.Black * 0.8f);
 
-                bool isActive = false;
-                if (creature != null && itemData.Type == ItemType.Weapon)
-                {
-                    if (item == c.InventoryData.EquippedWeapon)
-                        isActive = creature.AttackName == item.Name && !creature.IsOffhandAttack;
-                    else if (item == c.InventoryData.OffhandWeapon)
-                        isActive = creature.AttackName == item.Name && creature.IsOffhandAttack;
-                }
-
-                if (isActive)
+                if (isEquipped)
                 {
                     DrawMemeText(spriteBatch, SafeString(display), new Vector2(curX + checkboxSize + 5, currentItemY), Color.White, 0.5f);
                 }

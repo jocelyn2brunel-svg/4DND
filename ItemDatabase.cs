@@ -45,6 +45,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Simple,
             DamageDice = "1d8",
             DamageType = DamageType.Bludgeoning,
+            IsTwoHanded = true,
             Weight = 10,
             Value = 2,
             IsEquippable = true
@@ -170,6 +171,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Simple,
             DamageDice = "1d8",
             DamageType = DamageType.Piercing,
+            IsTwoHanded = true,
             IsRanged = true,
             Range = 80,
             Weight = 5,
@@ -199,6 +201,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Simple,
             DamageDice = "1d6",
             DamageType = DamageType.Piercing,
+            IsTwoHanded = true,
             IsRanged = true,
             Range = 80,
             Weight = 2,
@@ -255,6 +258,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d10",
             DamageType = DamageType.Slashing,
+            IsTwoHanded = true,
             Weight = 6,
             Value = 20,
             IsEquippable = true
@@ -267,6 +271,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d12",
             DamageType = DamageType.Slashing,
+            IsTwoHanded = true,
             Weight = 7,
             Value = 30,
             IsEquippable = true
@@ -279,6 +284,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "2d6",
             DamageType = DamageType.Slashing,
+            IsTwoHanded = true,
             Weight = 6,
             Value = 50,
             IsEquippable = true
@@ -291,6 +297,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d10",
             DamageType = DamageType.Slashing,
+            IsTwoHanded = true,
             Weight = 6,
             Value = 20,
             IsEquippable = true
@@ -329,6 +336,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "2d6",
             DamageType = DamageType.Bludgeoning,
+            IsTwoHanded = true,
             Weight = 10,
             Value = 10,
             IsEquippable = true
@@ -353,6 +361,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d10",
             DamageType = DamageType.Piercing,
+            IsTwoHanded = true,
             Weight = 18,
             Value = 5,
             IsEquippable = true
@@ -491,6 +500,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d10",
             DamageType = DamageType.Piercing,
+            IsTwoHanded = true,
             IsRanged = true,
             Range = 100,
             Weight = 18,
@@ -505,6 +515,7 @@ public static class ItemDatabase
             WeaponCategory = WeaponType.Martial,
             DamageDice = "1d8",
             DamageType = DamageType.Piercing,
+            IsTwoHanded = true,
             IsRanged = true,
             Range = 150,
             Weight = 2,
