@@ -563,7 +563,7 @@ public static class ItemDatabase
         ["Hide Armor"] = new Item
         {
             Name = "Hide Armor",
-            Description = "Thick furs and pelts",
+            Description = "This crude armor consists of thick furs and pelts. It is commonly worn by barbarian tribes, evil humanoids, and other folk who lack access to the tools and materials needed to create better armor.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Medium,
             ArmorClass = 12,
@@ -575,7 +575,7 @@ public static class ItemDatabase
         ["Chain Shirt"] = new Item
         {
             Name = "Chain Shirt",
-            Description = "A shirt of interlocking rings",
+            Description = "Made of interlocking metal rings, a chain shirt is worn between layers of clothing or leather. This armor offers modest protection to the wearer's upper body and allows the sound of the rings rubbing against one another to be muffled by outer layers.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Medium,
             ArmorClass = 13,
@@ -587,7 +587,7 @@ public static class ItemDatabase
         ["Scale Mail"] = new Item
         {
             Name = "Scale Mail",
-            Description = "Consists of a coat and leggings of leather covered with overlapping pieces of metal",
+            Description = "This armor consists of a coat and leggings (and perhaps a separate skirt) of leather covered with overlapping pieces of metal, much like the scales of a fish. The suit includes gauntlets.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Medium,
             ArmorClass = 14,
@@ -600,7 +600,7 @@ public static class ItemDatabase
         ["Breastplate"] = new Item
         {
             Name = "Breastplate",
-            Description = "A fitted metal chest piece worn with supple leather",
+            Description = "This armor consists of a fitted metal chest piece worn with supple leather. Although it leaves the legs and arms relatively unprotected, this armor provides good protection for the wearer's vital organs while leaving the wearer relatively unencumbered.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Medium,
             ArmorClass = 14,
@@ -612,7 +612,7 @@ public static class ItemDatabase
         ["Half Plate"] = new Item
         {
             Name = "Half Plate",
-            Description = "Consists of shaped metal plates that cover most of the wearer's body",
+            Description = "Half plate consists of shaped metal plates that cover most of the wearer's body. It does not include leg protection beyond simple greaves that are attached with leather straps.",
             Type = ItemType.Armor,
             ArmorCategory = ArmorType.Medium,
             ArmorClass = 15,
