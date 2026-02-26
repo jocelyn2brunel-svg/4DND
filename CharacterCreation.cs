@@ -1550,7 +1550,7 @@ public class CharacterCreation
         // Add starting equipment or rolled wealth based on player choice
         if (_useStartingWealth)
         {
-            c.GoldPieces = _rolledStartingWealth > 0 ? _rolledStartingWealth : StartingEquipment.RollStartingWealth(c.Class);
+            c.Purse.GoldPieces = _rolledStartingWealth > 0 ? _rolledStartingWealth : StartingEquipment.RollStartingWealth(c.Class);
         }
         else
         {
@@ -1559,7 +1559,7 @@ public class CharacterCreation
                 c.InventoryData.AddItem(itemName);
             foreach (var itemName in startingEquipment.EquippedItems)
                 c.InventoryData.EquipItem(itemName);
-            c.GoldPieces = startingEquipment.GoldPieces;
+            c.Purse.GoldPieces = startingEquipment.GoldPieces;
         }
 
         c.CurrentHP = c.MaxHP;

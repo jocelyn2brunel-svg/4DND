@@ -90,7 +90,7 @@ public class Character
     public DonDoffProcess? CurrentDonDoffProcess { get; set; }
     
     // Wealth
-    public int GoldPieces { get; set; } = 0;
+    public Purse Purse { get; set; } = new();
 
     // Barbarian-specific
     public int RagesRemaining { get; set; } = 0;

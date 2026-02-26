@@ -1424,7 +1424,9 @@ public class CharacterSheet
 
             int totalWeight = c.InventoryData.GetTotalWeight();
             spriteBatch.DrawString(_font, Loc.Tr("Total Weight: {0} lbs", totalWeight), new Vector2(x + 10, y + height - 35), Color.Black * 0.6f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-            spriteBatch.DrawString(_font, Loc.Tr("Gold: {0} gp", c.GoldPieces), new Vector2(x + 10, y + height - 20), Color.DarkGoldenrod, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            var purse = c.Purse;
+            string purseText = $"{purse.CopperPieces}cp  {purse.SilverPieces}sp  {purse.ElectrumPieces}ep  {purse.GoldPieces}gp  {purse.PlatinumPieces}pp";
+            spriteBatch.DrawString(_font, purseText, new Vector2(x + 10, y + height - 20), Color.DarkGoldenrod, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
         }
         
         return height;
