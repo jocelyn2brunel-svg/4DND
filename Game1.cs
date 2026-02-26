@@ -182,8 +182,7 @@ public class Game1 : Game
 
     private LuteSynthesizer _luteSynth = null!;
     private LuteProceduralMusic _luteMusic = null!;
-    private SoundEffect? _mapOpenSfx;
-    private SoundEffect? _mapCloseSfx;
+    private PaperMapSfxSynth _mapSfxSynth = null!;
 
     private bool HasPendingDeleteConfirmation => _pendingDeleteType != PendingDeleteType.None;
 
@@ -1987,6 +1986,7 @@ public class Game1 : Game
     {
         SaveCurrentProgress();
         _luteSynth?.Dispose();
+        _mapSfxSynth?.Dispose();
         base.OnExiting(sender, args);
     }
 
@@ -3494,46 +3494,17 @@ public class Game1 : Game
 
     private void InitializeCampaignMapAudio()
     {
-        try
-        {
-            _mapOpenSfx = Content.Load<SoundEffect>("map_open");
-        }
-        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
-        {
-            _mapOpenSfx = null;
-            System.Console.WriteLine("Warning: map_open not found. Falling back to lute synthesizer for map opening sound.");
-        }
-
-        try
-        {
-            _mapCloseSfx = Content.Load<SoundEffect>("map_close");
-        }
-        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
-        {
-            _mapCloseSfx = null;
-        }
+        _mapSfxSynth = new PaperMapSfxSynth();
     }
 
     private void PlayCampaignMapOpenSfx()
     {
-        if (_mapOpenSfx != null)
-        {
-            _mapOpenSfx.Play(0.45f, 0.0f, 0.0f);
-            return;
-        }
-
-        _luteSynth.PlayNote(659.25f, 0.55f);
+        _mapSfxSynth.PlayOpen();
     }
 
     private void PlayCampaignMapCloseSfx()
     {
-        if (_mapCloseSfx != null)
-        {
-            _mapCloseSfx.Play(0.4f, -0.1f, 0.0f);
-            return;
-        }
-
-        _luteSynth.PlayNote(493.88f, 0.45f);
+        _mapSfxSynth.PlayClose();
     }
 
     private void DrawLine(SpriteBatch sb, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
