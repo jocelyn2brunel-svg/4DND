@@ -801,7 +801,7 @@ public static class ItemDatabase
             Name = "Blowgun needles (50)",
             Description = "Needles for blowguns",
             Type = ItemType.Misc,
-            Weight = 0,
+            Weight = 1,
             Value = 100,
             IsEquippable = false,
             DefaultQuantity = 50
@@ -1218,7 +1218,7 @@ public static class ItemDatabase
             Name = "Reliquary",
             Description = "Holy symbol for divine spellcasting",
             Type = ItemType.Misc,
-            Weight = 2,
+            Weight = 0,
             Value = 500,
             IsEquippable = false
         },
