@@ -83,7 +83,7 @@ public class CharacterSheet
                 _contextItemIsEquipped = clickedItem.IsEquipped;
                 _contextItemIsEquippable = clickedItem.IsEquippable;
                 var contextItemData = ItemDatabase.GetItem(clickedItem.ItemName);
-                _contextItemIsLight = contextItemData != null && contextItemData.IsLight && contextItemData.Type == ItemType.Weapon;
+                _contextItemIsLight = contextItemData != null && contextItemData.IsLight;
                 _showItemContextMenu = true;
                 _inspectWeaponText = null;
                 _itemContextMenuRect = BuildContextMenuRect(_mousePosition);
@@ -130,6 +130,7 @@ public class CharacterSheet
                     case "Equip (Offhand)":
                         if (!string.IsNullOrEmpty(_contextItemName))
                         {
+                            character.InventoryData.EquipOffhandItem(_contextItemName);
                             character.CalculateDerivedStats();
                             hasCharacterChanges = true;
                         }
