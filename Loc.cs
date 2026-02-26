@@ -338,6 +338,8 @@ public static class Loc
         _en["+{0} HP"] = "+{0} HP"; _fr["+{0} HP"] = "+{0} PV";
         _en["Max HP"] = "Max HP"; _fr["Max HP"] = "PV Max";
         _en["TEMPORARY HP"] = "TEMPORARY HP"; _fr["TEMPORARY HP"] = "PV TEMPORAIRES";
+        _en["Spell: {0}"] = "Spell: {0}"; _fr["Spell: {0}"] = "Sort : {0}";
+        _en["View Level: Z{0}"] = "View Level: Z{0}"; _fr["View Level: Z{0}"] = "Niveau de vue : Z{0}";
         _en["Distracted!"] = "Distracted!"; _fr["Distracted!"] = "Distrait !";
         // Buttons (canonical English keys)
         _en["Inventory [C]"] = "Inventory [C]"; _fr["Inventory [C]"] = "Inventaire [C]";
