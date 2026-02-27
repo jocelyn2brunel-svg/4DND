@@ -354,6 +354,7 @@ public partial class Game1 : Game
     
     private void StartCombatWithNearbyEnemies()
     {
+        CloseCampaignMap();
         _ammoFiredThisCombat.Clear();
         _luteMusic.Stop();
         if (_currentCharacter == null || _playerCreature == null) return;
@@ -388,7 +389,8 @@ public partial class Game1 : Game
             _currentCampaign.CurrentEncounterDifficulty = CombatManager.GetEncounterDifficulty(players, enemies).Difficulty;
         }
 
-        _showCombatUI = _hudAlwaysVisible;
+        _hudAlwaysVisible = true;
+        _showCombatUI = true;
         _selectedAction = CombatAction.Move;
         _currentAiPhase = AiPhase.Start;
         _aiDelayTimer = 1.0f;
