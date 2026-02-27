@@ -78,6 +78,12 @@ public class Game1 : Game
     private Character _currentCharacter = null!;
     private Campaign _currentCampaign = null!;
     private bool _isMultiplayerMode = false;
+    private int _lastIntPartyX;
+    private int _lastIntPartyY;
+    private Vector3 _scrollOffset = Vector3.Zero;
+    private float _lastTotalTacticalX;
+    private float _lastTotalTacticalY;
+    private Dictionary<(int x, int y, int z), DungeonDoorState> _urbanDoorStates = new();
     
     private List<Campaign> _campaigns = new();
     private int _campaignIndex = 0;
@@ -249,11 +255,14 @@ public class Game1 : Game
                 if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
                 {
                     // Convert world coordinates to relative dungeon coordinates.
-                    // Tactical grid coords are relative to PartyX/PartyY (in miles), so we subtract
-                    // the party position before multiplying by TacticalUnitsPerMile.
                     var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
-                    int dungeonOriginX = (int)((worldX_miles - _currentCampaign.PartyX) * Campaign.TacticalUnitsPerMile);
-                    int dungeonOriginY = (int)((worldY_miles - _currentCampaign.PartyY) * Campaign.TacticalUnitsPerMile);
+
+                    // For smooth scrolling, we use the integer part of the party position as origin for the tactical grid
+                    float originX_miles = (float)Math.Floor(_currentCampaign.PartyX * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile;
+                    float originY_miles = (float)Math.Floor(_currentCampaign.PartyY * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile;
+
+                    int dungeonOriginX = (int)Math.Round((worldX_miles - originX_miles) * Campaign.TacticalUnitsPerMile);
+                    int dungeonOriginY = (int)Math.Round((worldY_miles - originY_miles) * Campaign.TacticalUnitsPerMile);
 
                     int rx = x - dungeonOriginX;
                     int ry = y - dungeonOriginY;
@@ -268,8 +277,9 @@ public class Game1 : Game
 
         // 2. Standard procedural world tiles
         int seed = _currentCampaign?.Seed ?? 0;
-        float offsetX = _currentCampaign?.PartyX ?? 0;
-        float offsetY = _currentCampaign?.PartyY ?? 0;
+        // Use integer party position to keep tactical grid stable during smooth scroll
+        float offsetX = _currentCampaign != null ? (float)Math.Floor(_currentCampaign.PartyX * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile : 0;
+        float offsetY = _currentCampaign != null ? (float)Math.Floor(_currentCampaign.PartyY * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile : 0;
         int floor = _currentCampaign?.CurrentFloor ?? 0;
         return WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY, floor, _currentCampaign);
     }
@@ -904,7 +914,8 @@ public class Game1 : Game
         _basicEffect.Projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45f), aspectRatio, 0.1f, 1000f);
         Vector3 direction = new Vector3(0, _cameraDistance, 0);
         Matrix rotation = Matrix.CreateRotationX(_cameraPitch) * Matrix.CreateRotationZ(_cameraYaw);
-        _basicEffect.View = Matrix.CreateLookAt(_cameraTarget + Vector3.Transform(direction, rotation), _cameraTarget, Vector3.UnitZ);
+        Vector3 target = _cameraTarget - _scrollOffset;
+        _basicEffect.View = Matrix.CreateLookAt(target + Vector3.Transform(direction, rotation), target, Vector3.UnitZ);
     }
 
     private void Initialize3DRendering()
@@ -2762,9 +2773,9 @@ public class Game1 : Game
         {
             _campaignMapViewer.Update(_currentCampaign, _characters, mouse, kb, _prevKb, gameTime, GraphicsDevice.Viewport);
 
-            if (_campaignMapViewer.EncounterRequested)
+            if (_currentCampaign.EncounterRequested)
             {
-                _campaignMapViewer.EncounterRequested = false;
+                _currentCampaign.EncounterRequested = false;
                 CloseCampaignMap();
                 TriggerEncounterSpawn();
                 StartCombatWithNearbyEnemies();
@@ -2879,6 +2890,70 @@ public class Game1 : Game
         if (_state == AppState.Playing)
         {
             float dtPlaying = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Handle travel even when map is closed
+            if (!_showCampaignMap && !_combatManager.InCombat)
+            {
+                _currentCampaign.UpdateTravel(dtPlaying, CampaignMapViewer.TimeScale, _characters, _visionSystem);
+
+                float totalTacticalX = _currentCampaign.PartyX * Campaign.TacticalUnitsPerMile;
+                float totalTacticalY = _currentCampaign.PartyY * Campaign.TacticalUnitsPerMile;
+                int intX = (int)Math.Floor(totalTacticalX);
+                int intY = (int)Math.Floor(totalTacticalY);
+
+                if (_currentCampaign.IsTraveling)
+                {
+                    _scrollOffset = new Vector3(totalTacticalX - intX, totalTacticalY - intY, 0);
+
+                    // Simulate walking bobbing for player
+                    float walkSpeed = 10f;
+                    float bob = MathF.Abs(MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds * walkSpeed)) * 0.2f;
+                    _playerCreature.VisualZ = _playerCreature.Z + bob;
+
+                    // Trigger footsteps based on distance
+                    if (Math.Abs(totalTacticalX - _lastTotalTacticalX) > 0.5f || Math.Abs(totalTacticalY - _lastTotalTacticalY) > 0.5f)
+                    {
+                         _footstepSfx.PlayStep(_tacticalMap.Get(_playerCreature.X, _playerCreature.Y, _playerCreature.Z));
+                         _lastTotalTacticalX = totalTacticalX;
+                         _lastTotalTacticalY = totalTacticalY;
+                    }
+                }
+                else
+                {
+                    _scrollOffset = Vector3.Zero;
+                    _playerCreature.VisualZ = _playerCreature.Z;
+                }
+
+                if (intX != _lastIntPartyX || intY != _lastIntPartyY)
+                {
+                    _tacticalMap.Clear();
+                    _urbanDoorStates.Clear(); // Clear transient urban door states when moving far
+                    _lastIntPartyX = intX;
+                    _lastIntPartyY = intY;
+                    PlacePlayerAtNearestValidTile();
+                    _playerCreature.InterruptMovement();
+                    _cameraTarget = Vector3.Zero;
+                    UpdateVision();
+                    _currentCampaign.PartyPositionChanged = false;
+                }
+
+                if (_currentCampaign.EncounterRequested)
+                {
+                    _currentCampaign.EncounterRequested = false;
+                    TriggerEncounterSpawn();
+                    StartCombatWithNearbyEnemies();
+                }
+
+                if (_currentCampaign.TravelMessageTimer > 0)
+                {
+                    _currentCampaign.TravelMessageTimer -= dtPlaying;
+                    if (_currentCampaign.TravelMessageTimer <= 0) _currentCampaign.LastTravelMessage = "";
+                }
+            }
+            else
+            {
+                _scrollOffset = Vector3.Zero;
+            }
 
             // Increment and check auto-save timer
             _autoSaveTimer += dtPlaying;
@@ -3511,6 +3586,14 @@ public class Game1 : Game
             {
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
+                    // Cancel travel if player clicks on tactical map
+                    if (_currentCampaign.IsTraveling)
+                    {
+                        _currentCampaign.IsTraveling = false;
+                        _currentCampaign.SetTravelMessage(Loc.Tr("Travel cancelled."));
+                        clickedOnGameplayUiButton = true;
+                    }
+
                     var hovered = GetHoveredTile();
                     if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
                     {
@@ -4112,14 +4195,15 @@ public class Game1 : Game
         _showCampaignMap = false;
         PlayCampaignMapCloseSfx();
 
-        if (_campaignMapViewer.TravelOccurred || _campaignMapViewer.PartyPositionChanged || _campaignMapViewer.FloorChanged)
+        if (_currentCampaign.TravelOccurred || _currentCampaign.PartyPositionChanged || _campaignMapViewer.FloorChanged)
         {
             _tacticalMap.Clear();
+            _urbanDoorStates.Clear();
             PlacePlayerAtNearestValidTile();
             _playerCreature.InterruptMovement();
             _cameraTarget = Vector3.Zero;
             UpdateVision();
-            _campaignMapViewer.ResetTravelFlags();
+            _campaignMapViewer.ResetTravelFlags(_currentCampaign);
         }
     }
 
@@ -4605,6 +4689,15 @@ public class Game1 : Game
             DrawEnemyContextMenu(vp);
             DrawEnemyExaminePopup(vp);
             DrawDoorContextMenu(vp);
+
+            if (_currentCampaign.IsTraveling)
+            {
+                DrawTravelProgress(_spriteBatch, vp, _currentCampaign);
+            }
+            if (!string.IsNullOrEmpty(_currentCampaign.LastTravelMessage))
+            {
+                DrawTravelMessage(_spriteBatch, vp, _currentCampaign);
+            }
 
             // Vision/status debug markers intentionally hidden to keep the tactical UI clean.
         }
@@ -5503,6 +5596,23 @@ public class Game1 : Game
                 return dungeon.Doors.FirstOrDefault(d => d.X == rx && d.Y == ry && d.Z == z);
             }
         }
+
+        // Check for urban doors
+        float milesX = ((float)x / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyX;
+        float milesY = ((float)y / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyY;
+        if (WorldGenerator.GetUrbanLocation(milesX, milesY, _currentCampaign) != null)
+        {
+            if (_tacticalMap.Get(x, y, z) == TileType.DungeonDoorWooden)
+            {
+                if (!_urbanDoorStates.TryGetValue((x, y, z), out var door))
+                {
+                    door = new DungeonDoorState { X = x, Y = y, Z = z, Type = DungeonDoorType.Wooden, IsOpen = false, MaxHP = 20, CurrentHP = 20 };
+                    _urbanDoorStates[(x, y, z)] = door;
+                }
+                return door;
+            }
+        }
+
         return null;
     }
 
@@ -5630,6 +5740,19 @@ public class Game1 : Game
                 return dungeon.Stairs.FirstOrDefault(s => s.X == rx && s.Y == ry && s.Z == z);
             }
         }
+
+        // Check for urban stairs
+        float milesX = ((float)x / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyX;
+        float milesY = ((float)y / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyY;
+        if (WorldGenerator.GetUrbanLocation(milesX, milesY, _currentCampaign) != null)
+        {
+            var type = _tacticalMap.Get(x, y, z);
+            if (type == TileType.DungeonStairsUp)
+                return new DungeonStairs { X = x, Y = y, Z = z, TargetZ = z + 1, IsUp = true };
+            if (type == TileType.DungeonStairsDown)
+                return new DungeonStairs { X = x, Y = y, Z = z, TargetZ = z - 1, IsUp = false };
+        }
+
         return null;
     }
 

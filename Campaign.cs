@@ -235,6 +235,21 @@ namespace _4DND
         // Current map viewing scale
         public MapScale CurrentScale { get; set; } = MapScale.Province;
 
+        // Travel state
+        public bool IsTraveling { get; set; }
+        public float TargetPartyX { get; set; }
+        public float TargetPartyY { get; set; }
+        public Vector2 StartPartyPos { get; set; }
+        public TravelPace TravelPace { get; set; } = TravelPace.Normal;
+        public bool TravelOccurred { get; set; }
+        public bool PartyPositionChanged { get; set; }
+        public bool EncounterRequested { get; set; }
+        public string LastTravelMessage { get; set; } = "";
+        public float TravelMessageTimer { get; set; }
+
+        private double _minutesSinceLastEncounterCheck = 0;
+        private Random _random = new Random();
+
         /// <summary>
         /// Chosen difficulty for this campaign.
         /// </summary>
@@ -528,7 +543,159 @@ namespace _4DND
             // We want one hex to be TacticalUnitsPerMile wide (center-to-center).
             return CartesianToAxial((float)x / TacticalUnitsPerMile, (float)y / TacticalUnitsPerMile);
         }
-        
+
+        public void UpdateTravel(float dt, float timeScale, List<Character> characters, VisionSystem visionSystem, bool updatePosition = true)
+        {
+            if (!IsTraveling) return;
+
+            // Block travel if anyone is donning/doffing
+            bool isAnyMemberBusy = characters.Exists(c => PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+            if (isAnyMemberBusy) return;
+
+            float gameMinutesPassed = dt * timeScale;
+            TotalGameMinutes += gameMinutesPassed;
+
+            ProcessSurvival(characters, gameMinutesPassed);
+            CheckRandomEncounters(gameMinutesPassed);
+
+            if (IsTraveling)
+            {
+                Vector2 startPos = new Vector2(PartyX, PartyY);
+                Vector2 targetPos = new Vector2(TargetPartyX, TargetPartyY);
+                float dist = Vector2.Distance(startPos, targetPos);
+
+                if (updatePosition)
+                {
+                    float mph = TravelPace switch
+                    {
+                        TravelPace.Fast => 4f,
+                        TravelPace.Normal => 3f,
+                        TravelPace.Slow => 2f,
+                        _ => 3f
+                    };
+                    float milesPerMinute = mph / 60f;
+                    float moveAmount = milesPerMinute * gameMinutesPassed;
+
+                    if (dist <= moveAmount)
+                    {
+                        PartyX = TargetPartyX;
+                        PartyY = TargetPartyY;
+                        PartyPositionChanged = true;
+                        IsTraveling = false;
+                        TravelOccurred = true;
+                    }
+                    else if (dist > 0f)
+                    {
+                        Vector2 direction = Vector2.Normalize(targetPos - startPos);
+                        Vector2 newPos = startPos + direction * moveAmount;
+                        PartyX = newPos.X;
+                        PartyY = newPos.Y;
+                        PartyPositionChanged = true;
+                    }
+                }
+                else
+                {
+                    // If not updating position directly, check if we've reached the target via other means
+                    if (dist <= 0.001f)
+                    {
+                        IsTraveling = false;
+                        TravelOccurred = true;
+                    }
+                }
+
+                Vector2 endPos = new Vector2(PartyX, PartyY);
+                float revealRadiusFeet = VisionSystem.GetRevealRadius(this, characters);
+                visionSystem?.RevealPath(startPos, endPos, revealRadiusFeet);
+                DiscoverLocations(revealRadiusFeet, msg => SetTravelMessage(msg));
+            }
+        }
+
+        public void SetTravelMessage(string msg)
+        {
+            LastTravelMessage = msg;
+            TravelMessageTimer = 5f;
+            System.Console.WriteLine(msg);
+        }
+
+        private void ProcessSurvival(List<Character> characters, float gameMinutesPassed)
+        {
+            if (characters == null || characters.Count == 0) return;
+
+            float prevHours = HoursTraveledToday;
+            HoursTraveledToday += gameMinutesPassed / 60f;
+
+            if (HoursTraveledToday > 8.0f)
+            {
+                int currentHourInt = (int)Math.Floor(HoursTraveledToday);
+                int prevHourInt = (int)Math.Floor(prevHours);
+
+                if (currentHourInt > prevHourInt && currentHourInt > 8)
+                {
+                    int extraHours = currentHourInt - 8;
+                    int dc = 10 + extraHours;
+
+                    foreach (var c in characters)
+                    {
+                        var save = c.MakeSavingThrow("CON", dc, false, false);
+                        if (!save.Success)
+                        {
+                            if (c.ExhaustionLevel < 6)
+                            {
+                                c.ExhaustionLevel++;
+                                SetTravelMessage(Loc.Tr("{0} is exhausted from forced march (CON save DC {1} failed)!", c.Name, dc));
+                            }
+                        }
+                    }
+                }
+            }
+
+            int currentDay = GameDay;
+            int prevDay = (int)((TotalGameMinutes - gameMinutesPassed) / (24 * 60)) + 1;
+
+            if (currentDay > prevDay)
+            {
+                foreach (var character in characters)
+                {
+                    if (character.FoodConsumedToday < 1f)
+                    {
+                        if (character.InventoryData.RemoveItem("Rations (1 day)"))
+                        {
+                            character.FoodConsumedToday = 1f;
+                        }
+                        else
+                        {
+                            character.DaysWithoutFood += 1f;
+                            if (character.DaysWithoutFood > 3 + DndMath.GetAbilityModifier(character.Constitution))
+                            {
+                                character.ExhaustionLevel++;
+                                SetTravelMessage(Loc.Tr("{0} suffers from hunger!", character.Name));
+                            }
+                        }
+                    }
+                    character.FoodConsumedToday = 0;
+                    character.WaterConsumedToday = 0;
+                    HoursTraveledToday = 0;
+                    RestManager.ResetLongRestTracker(character);
+                }
+                SetTravelMessage(Loc.Tr("A new day begins. Day {0}.", currentDay));
+            }
+        }
+
+        private void CheckRandomEncounters(float gameMinutesPassed)
+        {
+            _minutesSinceLastEncounterCheck += gameMinutesPassed;
+            if (_minutesSinceLastEncounterCheck >= 4 * 60)
+            {
+                _minutesSinceLastEncounterCheck = 0;
+                if (_random.Next(1, 21) >= 19)
+                {
+                    SetTravelMessage(Loc.Tr("Random encounter! Travel stops."));
+                    IsTraveling = false;
+                    EncounterRequested = true;
+                }
+            }
+        }
+
         /// <summary>
         /// Gets a default description for a settlement type.
         /// </summary>
