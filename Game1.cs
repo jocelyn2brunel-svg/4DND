@@ -2139,6 +2139,11 @@ public partial class Game1 : Game
                 return;
             }
 
+            if (!_combatManager.InCombat && _playerCreature != null)
+            {
+                _combatManager.PurgeDistantEnemies(_playerCreature.X, _playerCreature.Y, _playerCreature.Z);
+            }
+
             if (TryStartCombatFromEnemyDetection())
             {
                 _prevKb = kb;

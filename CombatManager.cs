@@ -391,6 +391,24 @@ public class CombatManager
     }
 
     /// <summary>
+    /// Removes non-player creatures that are too far from the given position.
+    /// Called periodically during exploration to prevent spawned-but-never-engaged
+    /// enemies from accumulating in <see cref="Combatants"/> and blocking pathfinding.
+    /// </summary>
+    /// <param name="centerX">Reference X position (typically the player).</param>
+    /// <param name="centerY">Reference Y position.</param>
+    /// <param name="centerZ">Reference Z position.</param>
+    /// <param name="maxDistance">Chebyshev distance (in tiles) beyond which enemies are removed.</param>
+    public void PurgeDistantEnemies(int centerX, int centerY, int centerZ, int maxDistance = 40)
+    {
+        if (_inCombat) return;
+
+        _combatants.RemoveAll(c =>
+            !c.IsPlayer &&
+            CalculateDistance(c.X, c.Y, c.Z, centerX, centerY, centerZ) > maxDistance);
+    }
+
+    /// <summary>
     /// Returns the total XP earned since the last call and resets the counter.
     /// XP is split equally among the players who participated in the battle.
     /// </summary>
