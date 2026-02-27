@@ -253,6 +253,9 @@ public class Race
             HasHalflingNimbleness = true,
             HasNaturallyStealthy = true,
             Languages = new List<string> { "Common", "Halfling" },
+            MaleNames = new List<string> { "Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby" },
+            FemaleNames = new List<string> { "Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym", "Vani", "Verna" },
+            ClanNames = new List<string> { "Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough" },
             Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA, Lucky, Brave, Halfling Nimbleness, Naturally Stealthy)")
         },
         ["Stout Halfling"] = new Race
@@ -269,6 +272,9 @@ public class Race
             HasHalflingNimbleness = true,
             HasStoutResilience = true,
             Languages = new List<string> { "Common", "Halfling" },
+            MaleNames = new List<string> { "Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby" },
+            FemaleNames = new List<string> { "Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym", "Vani", "Verna" },
+            ClanNames = new List<string> { "Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough" },
             Description = Loc.Tr("Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)")
         },
         
