@@ -64,6 +64,10 @@ public class Race
     // Gnome-specific traits
     /// <summary>Gnome Cunning: advantage on all Intelligence, Wisdom, and Charisma saving throws against magic.</summary>
     public bool HasGnomeCunning { get; set; } = false;
+    /// <summary>Natural Illusionist: knows the minor illusion cantrip; Intelligence is the spellcasting ability (Forest Gnome).</summary>
+    public bool HasNaturalIllusionist { get; set; } = false;
+    /// <summary>Speak with Small Beasts: through sounds and gestures, can communicate simple ideas with Small or smaller beasts (Forest Gnome).</summary>
+    public bool HasSpeakWithSmallBeasts { get; set; } = false;
 
     // Dragonborn-specific traits
     /// <summary>Draconic Ancestry: you have draconic ancestry of a chosen dragon type, which determines your breath weapon and damage resistance.</summary>
@@ -275,6 +279,21 @@ public class Race
             HasGnomeCunning = true,
             Languages = new List<string> { "Common", "Gnomish" },
             Description = Loc.Tr("Small and clever (+2 INT, Darkvision 60 ft, Gnome Cunning)")
+        },
+        ["Forest Gnome"] = new Race
+        {
+            Name = "Forest Gnome",
+            DisplayName = Loc.Tr("Gnome (Forest)"),
+            Size = CreatureSize.Small,
+            IntelligenceBonus = 2,
+            DexterityBonus = 1,
+            BaseSpeed = 25,
+            DarkvisionRange = 60,
+            HasGnomeCunning = true,
+            HasNaturalIllusionist = true,
+            HasSpeakWithSmallBeasts = true,
+            Languages = new List<string> { "Common", "Gnomish" },
+            Description = Loc.Tr("Stealthy and illusionist (+2 INT, +1 DEX, Darkvision 60 ft, Gnome Cunning, Natural Illusionist, Speak with Small Beasts)")
         },
         
         ["Half-Elf"] = new Race
