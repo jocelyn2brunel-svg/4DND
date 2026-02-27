@@ -106,21 +106,26 @@ namespace _4DND
             return 0;
         }
 
-        private static bool IsUrban(float milesX, float milesY, Campaign? campaign)
+        public static Location? GetUrbanLocation(float milesX, float milesY, Campaign? campaign)
         {
-            if (campaign == null) return false;
+            if (campaign == null) return null;
             var (q, r) = Campaign.CartesianToAxial(milesX, milesY);
             foreach (var loc in campaign.AllLocations)
             {
-                if (loc.Type == SettlementType.City || loc.Type == SettlementType.Metropolis || loc.Type == SettlementType.Town)
+                if (loc.Type == SettlementType.City || loc.Type == SettlementType.Metropolis || loc.Type == SettlementType.Town || loc.Type == SettlementType.Village)
                 {
                     int dist = Campaign.GetHexDistance(q, r, loc.X, loc.Y);
-                    if (dist == 0) return true;
-                    if (loc.Type == SettlementType.Metropolis && dist <= 2) return true;
-                    if (loc.Type == SettlementType.City && dist <= 1) return true;
+                    if (dist == 0) return loc;
+                    if (loc.Type == SettlementType.Metropolis && dist <= 2) return loc;
+                    if (loc.Type == SettlementType.City && dist <= 1) return loc;
                 }
             }
-            return false;
+            return null;
+        }
+
+        private static bool IsUrban(float milesX, float milesY, Campaign? campaign)
+        {
+            return GetUrbanLocation(milesX, milesY, campaign) != null;
         }
 
         public static Color GetBiomeColor(BiomeType biome)
@@ -204,10 +209,117 @@ namespace _4DND
 
                 BiomeType.Underdark => localNoise > 0.8f ? TileType.Rock : (localNoise > 0.6f ? TileType.DifficultTerrain : TileType.Floor),
 
-                BiomeType.Urban => localNoise > 0.9f ? TileType.Wall : (localNoise > 0.7f ? TileType.DifficultTerrain : TileType.Floor),
+                BiomeType.Urban => GetUrbanTile(x, y, z, seed, worldOffsetX, worldOffsetY, campaign),
 
                 _ => TileType.Floor
             };
+        }
+
+        private static TileType GetUrbanTile(int x, int y, int z, int seed, float worldOffsetX, float worldOffsetY, Campaign? campaign)
+        {
+            float absX = (float)x + worldOffsetX * Campaign.TacticalUnitsPerMile;
+            float absY = (float)y + worldOffsetY * Campaign.TacticalUnitsPerMile;
+            float milesX = (absX / Campaign.TacticalUnitsPerMile);
+            float milesY = (absY / Campaign.TacticalUnitsPerMile);
+
+            var loc = GetUrbanLocation(milesX, milesY, campaign);
+            if (loc == null) return TileType.Floor;
+
+            // Lot size: 16x16 tiles
+            const int lotSize = 16;
+            int lotX = (int)Math.Floor(absX / lotSize);
+            int lotY = (int)Math.Floor(absY / lotSize);
+            int localX = (int)Math.Floor(absX) % lotSize;
+            if (localX < 0) localX += lotSize;
+            int localY = (int)Math.Floor(absY) % lotSize;
+            if (localY < 0) localY += lotSize;
+
+            // Deterministic hash for this lot
+            float lotHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode());
+
+            // Population influences density
+            float densityThreshold = loc.Type switch
+            {
+                SettlementType.Metropolis => 0.8f,
+                SettlementType.City => 0.6f,
+                SettlementType.Town => 0.4f,
+                SettlementType.Village => 0.2f,
+                _ => 0.1f
+            };
+
+            if (lotHash > densityThreshold) return TileType.Floor;
+
+            // Distribution of building sizes/heights
+            // 1/4 normal, 1/4 taller, 1/4 larger, 1/4 both
+            float distHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode() ^ 999);
+            int buildingWidth = 6;
+            int buildingHeight = 6;
+            int buildingFloors = 1;
+
+            if (distHash <= 0.25f) // Normal
+            {
+                buildingWidth = 6;
+                buildingHeight = 6;
+                buildingFloors = 1;
+            }
+            else if (distHash <= 0.50f) // Taller
+            {
+                buildingWidth = 6;
+                buildingHeight = 6;
+                buildingFloors = 3;
+            }
+            else if (distHash <= 0.75f) // Larger
+            {
+                buildingWidth = 10;
+                buildingHeight = 10;
+                buildingFloors = 1;
+            }
+            else // Both
+            {
+                buildingWidth = 10;
+                buildingHeight = 10;
+                buildingFloors = 4;
+            }
+
+            // Margin for streets
+            int marginX = (lotSize - buildingWidth) / 2;
+            int marginY = (lotSize - buildingHeight) / 2;
+
+            if (localX >= marginX && localX < marginX + buildingWidth &&
+                localY >= marginY && localY < marginY + buildingHeight)
+            {
+                int bx = localX - marginX;
+                int by = localY - marginY;
+
+                if (z < buildingFloors)
+                {
+                    // Walls
+                    if (bx == 0 || bx == buildingWidth - 1 || by == 0 || by == buildingHeight - 1)
+                    {
+                        // Door on one side
+                        if (by == 0 && bx == buildingWidth / 2 && z == 0)
+                            return TileType.DungeonDoorWooden;
+
+                        return TileType.Wall;
+                    }
+
+                    // Stairs
+                    if (bx == 1 && by == 1)
+                    {
+                        if (z < buildingFloors - 1) return TileType.DungeonStairsUp;
+                    }
+                    if (bx == 1 && by == 2)
+                    {
+                        if (z > 0) return TileType.DungeonStairsDown;
+                    }
+
+                    return TileType.Floor;
+                }
+                // Roof?
+                return TileType.Empty;
+            }
+
+            return TileType.Floor;
         }
 
         private static float GetNoise(float x, float y, int seed, float scale, int octaves)
