@@ -357,6 +357,16 @@ public class Creature
     public bool HasSunlightSensitivity { get; set; } = false;
     public bool HasPackTactics { get; set; } = false;
     public bool HasKeenSenses { get; set; } = false;
+    /// <summary>
+    /// Fey Ancestry: advantage on saving throws against being charmed,
+    /// and magic can't put this creature to sleep (PHB "Elf Traits").
+    /// </summary>
+    public bool HasFeyAncestry { get; set; } = false;
+    /// <summary>
+    /// Trance: this creature does not need to sleep; it meditates for 4 hours a day
+    /// to gain the benefits of 8 hours of sleep (PHB "Elf Traits").
+    /// </summary>
+    public bool HasTrance { get; set; } = false;
     
     // Conditions
     public Condition Conditions { get; set; } = Condition.None;
@@ -1756,6 +1766,9 @@ public class Creature
         // Apply race-specific vision traits
         creature.HasSuperiorDarkvision = raceData.HasSuperiorDarkvision;
         creature.HasSunlightSensitivity = raceData.HasSunlightSensitivity;
+        creature.HasKeenSenses = raceData.HasKeenSenses;
+        creature.HasFeyAncestry = raceData.HasFeyAncestry;
+        creature.HasTrance = raceData.HasTrance;
 
         // Armor non-proficiency penalty
         creature.HasArmorNonProficiencyPenalty = character.IsWearingNonProficientArmor;

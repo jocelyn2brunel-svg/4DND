@@ -80,6 +80,12 @@ public class Character
     public bool HasDwarvenResilience { get; set; } = false;
     /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
     public bool HasStonecunning { get; set; } = false;
+    /// <summary>Keen Senses: proficiency in the Perception skill (PHB "Elf Traits").</summary>
+    public bool HasKeenSenses { get; set; } = false;
+    /// <summary>Fey Ancestry: advantage on saving throws against being charmed, and magic can't put you to sleep (PHB "Elf Traits").</summary>
+    public bool HasFeyAncestry { get; set; } = false;
+    /// <summary>Trance: this character does not need to sleep; they meditate for 4 hours a day to gain the benefits of 8 hours of sleep (PHB "Elf Traits").</summary>
+    public bool HasTrance { get; set; } = false;
     /// <summary>Languages this character can speak, read, and write.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
@@ -267,6 +273,10 @@ public class Character
         HasSunlightSensitivity = raceData.HasSunlightSensitivity;
         HasDwarvenResilience = raceData.HasDwarvenResilience;
         HasStonecunning = raceData.HasStonecunning;
+        HasFeyAncestry = raceData.HasFeyAncestry;
+        HasTrance = raceData.HasTrance;
+        if (raceData.HasKeenSenses)
+            PerceptionProficiency = true;
     }
     
     public int GetPrimaryAbilityModifier()

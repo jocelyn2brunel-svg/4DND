@@ -28,6 +28,15 @@ public class Race
     public bool HasDwarvenCombatTraining { get; set; } = false;
     /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
     public bool HasStonecunning { get; set; } = false;
+
+    // Elf-specific traits
+    /// <summary>Keen Senses: proficiency in the Perception skill (PHB "Elf Traits").</summary>
+    public bool HasKeenSenses { get; set; } = false;
+    /// <summary>Fey Ancestry: advantage on saving throws against being charmed, and magic can't put you to sleep (PHB "Elf Traits").</summary>
+    public bool HasFeyAncestry { get; set; } = false;
+    /// <summary>Trance: elves don't need to sleep; they meditate for 4 hours a day to gain the benefits of 8 hours of sleep (PHB "Elf Traits").</summary>
+    public bool HasTrance { get; set; } = false;
+
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
@@ -62,7 +71,11 @@ public class Race
             IntelligenceBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft)")
+            HasKeenSenses = true,
+            HasFeyAncestry = true,
+            HasTrance = true,
+            Languages = new List<string> { "Common", "Elvish" },
+            Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance)")
         },
         ["Wood Elf"] = new Race
         {
@@ -73,7 +86,11 @@ public class Race
             WisdomBonus = 1,
             BaseSpeed = 35,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft)")
+            HasKeenSenses = true,
+            HasFeyAncestry = true,
+            HasTrance = true,
+            Languages = new List<string> { "Common", "Elvish" },
+            Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance)")
         },
         
         ["Drow"] = new Race
@@ -87,7 +104,11 @@ public class Race
             DarkvisionRange = 120,
             HasSuperiorDarkvision = true,
             HasSunlightSensitivity = true,
-            Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity)")
+            HasKeenSenses = true,
+            HasFeyAncestry = true,
+            HasTrance = true,
+            Languages = new List<string> { "Common", "Elvish" },
+            Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity, Keen Senses, Fey Ancestry, Trance)")
         },
         
         // Dwarves
@@ -203,7 +224,9 @@ public class Race
             CharismaBonus = 2,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft)")
+            HasFeyAncestry = true,
+            Languages = new List<string> { "Common", "Elvish" },
+            Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft, Fey Ancestry)")
         }
     };
     
