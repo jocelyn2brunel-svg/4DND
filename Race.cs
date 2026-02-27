@@ -81,6 +81,12 @@ public class Race
     /// <summary>Savage Attacks: when you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit (Half-Orc).</summary>
     public bool HasSavageAttacks { get; set; } = false;
 
+    // Tiefling-specific traits
+    /// <summary>Hellish Resistance: you have resistance to fire damage (Tiefling).</summary>
+    public bool HasHellishResistance { get; set; } = false;
+    /// <summary>Infernal Legacy: you know the thaumaturgy cantrip; at 3rd level you can cast hellish rebuke once per day as a 2nd-level spell; at 5th level you can cast darkness once per day. Charisma is your spellcasting ability (Tiefling).</summary>
+    public bool HasInfernalLegacy { get; set; } = false;
+
     // Half-Elf-specific traits
     /// <summary>Skill Versatility: you gain proficiency in two skills of your choice (Half-Elf).</summary>
     public bool HasSkillVersatility { get; set; } = false;
@@ -269,7 +275,10 @@ public class Race
             IntelligenceBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Infernal heritage with darkvision (+2 CHA, +1 INT, Darkvision 60 ft)")
+            HasHellishResistance = true,
+            HasInfernalLegacy = true,
+            Languages = new List<string> { "Common", "Infernal" },
+            Description = Loc.Tr("Infernal heritage (+2 CHA, +1 INT, Darkvision 60 ft, Hellish Resistance, Infernal Legacy)")
         },
         
         ["Dragonborn"] = new Race
