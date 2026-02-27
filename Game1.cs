@@ -2201,7 +2201,7 @@ public partial class Game1 : Game
             }
 
             // Exploration movement (outside combat)
-            if (!_combatManager.InCombat)
+            if (!_combatManager.InCombat && !_showCampaignMap)
             {
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
