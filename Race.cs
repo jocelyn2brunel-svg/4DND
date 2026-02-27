@@ -82,6 +82,8 @@ public class Race
             CharismaBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 0,
+            HasExtraLanguage = true,
+            Languages = new List<string> { "Common" },
             Description = Loc.Tr("Versatile and adaptable (+1 to all abilities)")
         },
         
