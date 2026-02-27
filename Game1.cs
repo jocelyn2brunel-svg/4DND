@@ -153,7 +153,7 @@ public partial class Game1 : Game
     private List<GroundItem> _groundItems = new();
 
     // Draggable Combat Log
-    private Rectangle _combatLogWindowRect = new Rectangle(10, 120, 350, 120);
+    private Rectangle _combatLogWindowRect = new Rectangle(10, 120, 520, 260);
     private bool _isDraggingCombatLog = false;
     private Point _dragOffset;
     private bool _showEnemyContextMenu = false;
@@ -2862,6 +2862,10 @@ public partial class Game1 : Game
             }
             _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
         }
+
+        // Ensure every combat manager event is reflected in the combat log,
+        // even if it was emitted outside the usual action flow.
+        FlushTurnMessages();
 
         _prevKb = kb;
         _prevMouse = mouse;

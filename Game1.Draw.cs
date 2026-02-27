@@ -1052,11 +1052,15 @@ public partial class Game1
                 int logY = _combatLogWindowRect.Y + 6;
                 _spriteBatch.DrawString(_font, Loc.Tr("Combat Log"), new Vector2(logX, logY), Color.White * 0.8f, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
                 logY += 20;
-                
-                for (int i = Math.Max(0, _combatLog.Count - 5); i < _combatLog.Count; i++)
+
+                const int logLineHeight = 16;
+                int visibleLogLines = Math.Max(1, (_combatLogWindowRect.Height - 28) / logLineHeight);
+                int firstVisibleLogIndex = Math.Max(0, _combatLog.Count - visibleLogLines);
+
+                for (int i = firstVisibleLogIndex; i < _combatLog.Count; i++)
                 {
                     _spriteBatch.DrawString(_font, _combatLog[i], new Vector2(logX, logY), Color.LightGray, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
-                    logY += 16;
+                    logY += logLineHeight;
                 }
 
                 _diceRollAnimation.Draw(_spriteBatch, _pixel, _font, new Rectangle(0, 0, vp.Width, vp.Height));
