@@ -2232,6 +2232,11 @@ public partial class Game1 : Game
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                             {
+                                // Interrupt any in-progress animation BEFORE computing the path,
+                                // so that X,Y,Z reflects the creature's actual (interrupted) position
+                                // rather than the final destination of a previous move.
+                                _playerCreature.InterruptMovement();
+
                                 var path = _combatManager.GetPath(_playerCreature, tx, ty, tz);
 
                                 // Check if destination is stairs
@@ -2252,7 +2257,6 @@ public partial class Game1 : Game
 
                                 if (path != null)
                                 {
-                                    _playerCreature.InterruptMovement();
                                     for (int i = 1; i < path.Count; i++)
                                     {
                                         var step = path[i];
