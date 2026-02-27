@@ -251,7 +251,7 @@ public class Creature
     public float VisualZ { get; set; }
     
     // Movement animation speed (units per second)
-    public float MovementSpeed { get; set; } = 8.0f;
+    public float MovementSpeed { get; set; } = 4.0f;
     
     // Flight capabilities
     public bool CanFly { get; set; } = false;
