@@ -5498,8 +5498,8 @@ public class Game1 : Game
             if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
             {
                 var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
-                int ox = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
-                int oy = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+                int ox = (int)((worldX_miles - _currentCampaign.PartyX) * Campaign.TacticalUnitsPerMile);
+                int oy = (int)((worldY_miles - _currentCampaign.PartyY) * Campaign.TacticalUnitsPerMile);
                 int rx = x - ox, ry = y - oy;
                 return dungeon.Doors.FirstOrDefault(d => d.X == rx && d.Y == ry && d.Z == z);
             }
@@ -5625,8 +5625,8 @@ public class Game1 : Game
             if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
             {
                 var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
-                int ox = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
-                int oy = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+                int ox = (int)((worldX_miles - _currentCampaign.PartyX) * Campaign.TacticalUnitsPerMile);
+                int oy = (int)((worldY_miles - _currentCampaign.PartyY) * Campaign.TacticalUnitsPerMile);
                 int rx = x - ox, ry = y - oy;
                 return dungeon.Stairs.FirstOrDefault(s => s.X == rx && s.Y == ry && s.Z == z);
             }
