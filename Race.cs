@@ -44,6 +44,10 @@ public class Race
     public bool HasExtraLanguage { get; set; } = false;
     /// <summary>Mask of the Wild: can attempt to hide even when only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena (Wood Elf).</summary>
     public bool HasMaskOfTheWild { get; set; } = false;
+    /// <summary>Drow Magic: knows the dancing lights cantrip; can cast faerie fire once per day at 3rd level, and darkness once per day at 5th level. Charisma is the spellcasting ability (Drow).</summary>
+    public bool HasDrowMagic { get; set; } = false;
+    /// <summary>Drow Weapon Training: proficiency with rapiers, shortswords, and hand crossbows (Drow).</summary>
+    public bool HasDrowWeaponTraining { get; set; } = false;
 
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
@@ -120,8 +124,10 @@ public class Race
             HasKeenSenses = true,
             HasFeyAncestry = true,
             HasTrance = true,
+            HasDrowMagic = true,
+            HasDrowWeaponTraining = true,
             Languages = new List<string> { "Common", "Elvish" },
-            Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity, Keen Senses, Fey Ancestry, Trance)")
+            Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity, Keen Senses, Fey Ancestry, Trance, Drow Magic, Drow Weapon Training)")
         },
         
         // Dwarves
