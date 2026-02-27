@@ -68,7 +68,7 @@ namespace _4DND
         
         private readonly string[] _terrainTypes = new[]
         {
-            "Forest", "Hills", "Mountains", "Plains", "Swamp", "Desert", "Coast"
+            "Arctic", "Coastal", "Desert", "Forest", "Grassland", "Hill", "Mountain", "Swamp"
         };
         
         private readonly string[] _adventureHooks = new[]

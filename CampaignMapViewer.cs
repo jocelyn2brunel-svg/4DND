@@ -31,6 +31,7 @@ namespace _4DND
         private bool _showAdventureDetails = false;
         public bool TravelOccurred { get; private set; } = false;
         public bool PartyPositionChanged { get; private set; } = false;
+        public bool FloorChanged { get; private set; } = false;
 
         private System.Collections.Generic.List<Character> _characters = new();
         private bool _isTraveling = false;
@@ -172,6 +173,24 @@ namespace _4DND
                 System.Console.WriteLine("Travel pace: Slow (2 mi/h, 18 mi/day, stealth available)");
             }
 
+            // Floor switching
+            if (kb.IsKeyDown(Keys.PageDown) && !prevKb.IsKeyDown(Keys.PageDown) && campaign.CurrentFloor == 0)
+            {
+                campaign.CurrentFloor = -1;
+                FloorChanged = true;
+                _selectedHex = null;
+                _selectedLocation = null;
+                _biomeCache.Clear();
+            }
+            if (kb.IsKeyDown(Keys.PageUp) && !prevKb.IsKeyDown(Keys.PageUp) && campaign.CurrentFloor == -1)
+            {
+                campaign.CurrentFloor = 0;
+                FloorChanged = true;
+                _selectedHex = null;
+                _selectedLocation = null;
+                _biomeCache.Clear();
+            }
+
             // Hover detection
             _hoveredLocation = null;
             _hoveredHex = null;
@@ -284,6 +303,7 @@ namespace _4DND
         {
             TravelOccurred = false;
             PartyPositionChanged = false;
+            FloorChanged = false;
         }
 
         public void SyncScrollBaseline(int scrollWheelValue)
@@ -321,18 +341,20 @@ namespace _4DND
                 DrawHexagon(sb, pos, _tileSize * _zoom, Color.Yellow, 4f);
             }
 
-            // Draw regions at current scale
+            // Draw regions at current scale and floor
             var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
             foreach (var region in regionsAtScale)
             {
-                DrawRegion(sb, center, region, campaign.CurrentScale);
+                if (region.Floor == campaign.CurrentFloor)
+                    DrawRegion(sb, center, region, campaign.CurrentScale);
             }
             
-            // Draw locations at current scale
+            // Draw locations at current scale and floor
             var locationsAtScale = campaign.GetLocationsAtScale(campaign.CurrentScale);
             foreach (var location in locationsAtScale)
             {
-                DrawLocation(sb, center, location, campaign.CurrentScale);
+                if (location.Floor == campaign.CurrentFloor)
+                    DrawLocation(sb, center, location, campaign.CurrentScale);
             }
 
             // Draw Party Marker
@@ -543,7 +565,7 @@ namespace _4DND
                     if (!_biomeCache.TryGetValue(cacheKey, out BiomeType biome))
                     {
                         var (x_miles, y_miles) = Campaign.AxialToMiles((float)q * hexSizeInMiles, (float)r * hexSizeInMiles);
-                        biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
+                        biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed, campaign.CurrentFloor, campaign);
                         _biomeCache[cacheKey] = biome;
                     }
 
@@ -587,8 +609,11 @@ namespace _4DND
             {
                 BiomeType.Forest => 5,
                 BiomeType.Swamp => 3,
-                BiomeType.Plains => 1,
+                BiomeType.Grassland => 1,
+                BiomeType.Hill => 2,
                 BiomeType.Mountain => 1,
+                BiomeType.Arctic => 1,
+                BiomeType.Desert => 1,
                 _ => 0
             };
 
@@ -852,6 +877,11 @@ namespace _4DND
             sb.DrawString(_font, campaign.Name, new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
             y += 25;
 
+            string floorName = campaign.CurrentFloor == 0 ? Loc.Tr("Surface") : Loc.Tr("Underworld");
+            string floorText = Loc.Tr("Floor: {0}", floorName);
+            sb.DrawString(_font, floorText, new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            y += 20;
+
             sb.DrawString(_font, campaign.GameTimeDisplay, new Vector2(panelRect.X + 10, y), Color.LimeGreen, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             y += 25;
 
@@ -917,7 +947,7 @@ namespace _4DND
                 {
                     int selectedHexSize = Campaign.GetHexSize(campaign.CurrentScale);
                     var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * selectedHexSize, _selectedHex.Value.r * selectedHexSize);
-                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
+                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed, campaign.CurrentFloor, campaign);
                     sb.DrawString(_font, Loc.Tr("Terrain: {0}", Loc.Tr(biome.ToString())), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     y += 18;
                 }

@@ -77,6 +77,7 @@ namespace _4DND
         public SettlementType Type { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
+        public int Floor { get; set; } = 0;
         public string Description { get; set; } = "";
         public bool IsHomeBase { get; set; }
         public bool IsDiscovered { get; set; }
@@ -150,6 +151,7 @@ namespace _4DND
         public string Description { get; set; } = "";
         public int CenterX { get; set; }
         public int CenterY { get; set; }
+        public int Floor { get; set; } = 0;
         public int Radius { get; set; } = 50; // In grid units (hexes/squares)
         
         // Terrain type
@@ -199,6 +201,7 @@ namespace _4DND
         public int Seed { get; set; }
         public float PartyX { get; set; }
         public float PartyY { get; set; }
+        public int CurrentFloor { get; set; } = 0;
 
         // Time tracking
         public double TotalGameMinutes { get; set; } = 8 * 60; // Start at 8:00 AM on Day 1
@@ -480,7 +483,7 @@ namespace _4DND
         }
 
         /// <summary>
-        /// Finds a starting hex that is on land (not in an Ocean biome).
+        /// Finds a starting hex that is on land (not in an Underwater biome).
         /// Searches in expanding rings around (0,0).
         /// </summary>
         public static (int q, int r) FindStartingLandHex(int seed)
@@ -498,7 +501,7 @@ namespace _4DND
                     foreach (int r in new[] { r1, r2 })
                     {
                         var (x, y) = AxialToMiles(q, r);
-                        if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Ocean)
+                        if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Underwater)
                             return (q, r);
                     }
 
@@ -507,7 +510,7 @@ namespace _4DND
                         for (int r = r1 + 1; r < r2; r++)
                         {
                             var (x, y) = AxialToMiles(q, r);
-                            if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Ocean)
+                            if (WorldGenerator.GetBiome(x, y, seed) != BiomeType.Underwater)
                                 return (q, r);
                         }
                     }

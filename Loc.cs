@@ -416,15 +416,21 @@ public static class Loc
         _en["Monastery"] = "Monastery"; _fr["Monastery"] = "Monastère";
         _en["Dungeon"] = "Dungeon"; _fr["Dungeon"] = "Donjon";
 
-        _en["Ocean"] = "Ocean"; _fr["Ocean"] = "Océan";
-        _en["Coast"] = "Coast"; _fr["Coast"] = "Côte";
+        _en["Arctic"] = "Arctic"; _fr["Arctic"] = "Arctique";
+        _en["Coastal"] = "Coastal"; _fr["Coastal"] = "Littoral";
         _en["Desert"] = "Desert"; _fr["Desert"] = "Désert";
-        _en["Plains"] = "Plains"; _fr["Plains"] = "Plaines";
         _en["Forest"] = "Forest"; _fr["Forest"] = "Forêt";
+        _en["Grassland"] = "Grassland"; _fr["Grassland"] = "Prairies";
+        _en["Hill"] = "Hill"; _fr["Hill"] = "Collines";
+        _en["Mountain"] = "Mountain"; _fr["Mountain"] = "Montagnes";
         _en["Swamp"] = "Swamp"; _fr["Swamp"] = "Marais";
-        _en["Tundra"] = "Tundra"; _fr["Tundra"] = "Toundra";
-        _en["Mountain"] = "Mountain"; _fr["Mountain"] = "Montagne";
-        _en["SnowMountain"] = "Snow Mountain"; _fr["SnowMountain"] = "Montagne enneigée";
+        _en["Underdark"] = "Underdark"; _fr["Underdark"] = "Outreterre";
+        _en["Underwater"] = "Underwater"; _fr["Underwater"] = "Fonds marins";
+        _en["Urban"] = "Urban"; _fr["Urban"] = "Urbain";
+
+        _en["Surface"] = "Surface"; _fr["Surface"] = "Surface";
+        _en["Underworld"] = "Underworld"; _fr["Underworld"] = "Monde souterrain";
+        _en["Floor: {0}"] = "Floor: {0}"; _fr["Floor: {0}"] = "Étage : {0}";
 
         _en["Biome"] = "Biome"; _fr["Biome"] = "Biome";
         _en["Type"] = "Type"; _fr["Type"] = "Type";
