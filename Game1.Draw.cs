@@ -180,13 +180,20 @@ public partial class Game1
         return new Rectangle(rageRect.Right + 10, rageRect.Y, rageRect.Width, rageRect.Height);
     }
 
-    private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected)
+    private void DrawCombatActionButton(Rectangle rect, string label, Color baseColor, bool isSelected, bool isDisabled = false)
     {
         var mouse = Mouse.GetState();
-        bool isHovered = rect.Contains(mouse.Position);
-        Color fillColor = isSelected
-            ? new Color(Math.Min(baseColor.R + 30, 255), Math.Min(baseColor.G + 30, 255), Math.Min(baseColor.B + 30, 255))
-            : baseColor;
+        bool isHovered = rect.Contains(mouse.Position) && !isDisabled;
+
+        Color fillColor = baseColor;
+        if (isDisabled)
+        {
+            fillColor = Color.Lerp(baseColor, Color.Black, 0.4f);
+        }
+        else if (isSelected)
+        {
+            fillColor = new Color(Math.Min(baseColor.R + 30, 255), Math.Min(baseColor.G + 30, 255), Math.Min(baseColor.B + 30, 255));
+        }
 
         if (isHovered)
         {
@@ -203,7 +210,7 @@ public partial class Game1
         var labelPos = new Vector2(
             rect.X + (rect.Width - labelSize.X * 0.65f) / 2,
             rect.Y + (rect.Height - labelSize.Y * 0.65f) / 2);
-        _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        _spriteBatch.DrawString(_font, label, labelPos, isDisabled ? Color.Gray : Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
     }
 
     private void FlushTurnMessages()
@@ -912,6 +919,8 @@ public partial class Game1
                     // Player actions
                     if (currentCombatant.IsPlayer)
                     {
+                        bool isAnyUnitMoving = IsAnyUnitAnimatingMovement();
+
                         var moveLabel = "Move";
                         var moveColor = new Color(45, 95, 145);
                         bool isDashingMove = _combatManager.InCombat && currentCombatant.MovementRemaining == 0 && currentCombatant.HasAction;
@@ -925,7 +934,8 @@ public partial class Game1
                             GetCombatMoveButtonRect(vp),
                             moveLabel,
                             moveColor,
-                            _selectedAction == CombatAction.Move);
+                            _selectedAction == CombatAction.Move,
+                            isAnyUnitMoving);
 
                         if (_selectedAction == CombatAction.Move && currentCombatant.HasAction)
                         {
@@ -933,34 +943,40 @@ public partial class Game1
                                 GetCombatDashButtonRect(vp),
                                 "Dash (Action)",
                                 new Color(160, 100, 40),
-                                false);
+                                false,
+                                isAnyUnitMoving);
                             DrawCombatActionButton(
                                 GetCombatDisengageButtonRect(vp),
                                 currentCombatant.IsDisengaged ? "Disengaged" : "Disengage",
                                 currentCombatant.IsDisengaged ? Color.Gray : new Color(100, 130, 60),
-                                currentCombatant.IsDisengaged);
+                                currentCombatant.IsDisengaged,
+                                isAnyUnitMoving);
                             DrawCombatActionButton(
                                 GetCombatDodgeButtonRect(vp),
                                 currentCombatant.IsDodging ? "Dodging" : "Dodge",
                                 currentCombatant.IsDodging ? Color.Gray : new Color(70, 115, 145),
-                                currentCombatant.IsDodging);
+                                currentCombatant.IsDodging,
+                                isAnyUnitMoving);
                             DrawCombatActionButton(
                                 GetCombatHideButtonRect(vp),
                                 currentCombatant.IsHidden ? "Hidden!" : "Hide",
                                 currentCombatant.IsHidden ? Color.Gray : new Color(60, 90, 60),
-                                currentCombatant.IsHidden);
+                                currentCombatant.IsHidden,
+                                isAnyUnitMoving);
                             DrawCombatActionButton(
                                 GetCombatHelpActionButtonRect(vp),
                                 "Help",
                                 new Color(70, 100, 130),
-                                _selectedAction == CombatAction.Help);
+                                _selectedAction == CombatAction.Help,
+                                isAnyUnitMoving);
                         }
 
                         DrawCombatActionButton(
                             GetCombatAttackButtonRect(vp),
                             "Attack",
                             new Color(130, 70, 50),
-                            _selectedAction == CombatAction.Attack);
+                            _selectedAction == CombatAction.Attack,
+                            isAnyUnitMoving);
 
                         if (_selectedAction == CombatAction.Attack && currentCombatant.HasAction)
                         {
@@ -968,14 +984,16 @@ public partial class Game1
                                 GetCombatGrappleButtonRect(vp),
                                 "Grapple",
                                 new Color(100, 60, 130),
-                                _selectedAction == CombatAction.Grapple);
+                                _selectedAction == CombatAction.Grapple,
+                                isAnyUnitMoving);
 
                             bool hasAcid = _currentCharacter?.InventoryData.HasItem("Acid (vial)") == true;
                             DrawCombatActionButton(
                                 GetCombatThrowAcidButtonRect(vp),
                                 "Throw Acid",
                                 hasAcid ? new Color(60, 120, 80) : Color.DarkGray,
-                                _selectedAction == CombatAction.ThrowAcid);
+                                _selectedAction == CombatAction.ThrowAcid,
+                                isAnyUnitMoving);
                         }
 
                         bool canCastSpell = IsSpellcasterClass(_currentCharacter!.Class);
@@ -983,18 +1001,21 @@ public partial class Game1
                             GetCombatCastSpellButtonRect(vp),
                             "Cast Spell",
                             canCastSpell ? new Color(75, 50, 130) : Color.DarkGray,
-                            _selectedAction == CombatAction.CastSpell);
+                            _selectedAction == CombatAction.CastSpell,
+                            isAnyUnitMoving);
 
                         DrawCombatActionButton(
                             GetCombatBonusActionButtonRect(vp),
                             "Bonus Action",
                             new Color(45, 145, 95),
-                            _showBonusActionMenu);
+                            _showBonusActionMenu,
+                            isAnyUnitMoving);
                         DrawCombatActionButton(
                             GetCombatEndTurnButtonRect(vp),
                             "End Turn",
                             new Color(90, 70, 115),
-                            false);
+                            false,
+                            isAnyUnitMoving);
 
                         if (_showBonusActionMenu)
                         {
@@ -1006,7 +1027,8 @@ public partial class Game1
                                     GetCombatRageButtonRect(vp),
                                     $"Rage ({currentCombatant.RagesRemaining})",
                                     canRage ? Color.DarkRed : Color.Gray,
-                                    false);
+                                    false,
+                                    isAnyUnitMoving);
                             }
 
                             if (currentCombatant.HasNimbleEscape)
@@ -1015,7 +1037,8 @@ public partial class Game1
                                     GetCombatBonusHideButtonRect(vp),
                                     currentCombatant.IsHidden ? "Hidden!" : "Hide (BA)",
                                     currentCombatant.IsHidden ? Color.Gray : new Color(60, 90, 60),
-                                    currentCombatant.IsHidden);
+                                    currentCombatant.IsHidden,
+                                    isAnyUnitMoving);
                             }
                         }
 
