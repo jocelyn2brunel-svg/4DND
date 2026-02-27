@@ -61,6 +61,14 @@ public class Race
     /// <summary>Stout Resilience: advantage on saving throws against poison, and resistance against poison damage (Stout Halfling).</summary>
     public bool HasStoutResilience { get; set; } = false;
 
+    // Dragonborn-specific traits
+    /// <summary>Draconic Ancestry: you have draconic ancestry of a chosen dragon type, which determines your breath weapon and damage resistance.</summary>
+    public bool HasDraconicAncestry { get; set; } = false;
+    /// <summary>Breath Weapon: you can use your action to exhale destructive energy. DC = 8 + CON modifier + proficiency bonus; damage scales with level (2d6 → 3d6 at 6th, 4d6 at 11th, 5d6 at 16th). Usable once per short or long rest.</summary>
+    public bool HasBreathWeapon { get; set; } = false;
+    /// <summary>Damage Resistance: you have resistance to the damage type associated with your draconic ancestry.</summary>
+    public bool HasDamageResistance { get; set; } = false;
+
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
@@ -245,7 +253,11 @@ public class Race
             CharismaBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 0,
-            Description = Loc.Tr("Draconic heritage (+2 STR, +1 CHA)")
+            HasDraconicAncestry = true,
+            HasBreathWeapon = true,
+            HasDamageResistance = true,
+            Languages = new List<string> { "Common", "Draconic" },
+            Description = Loc.Tr("Draconic heritage (+2 STR, +1 CHA, Draconic Ancestry, Breath Weapon, Damage Resistance)")
         },
         
         ["Gnome"] = new Race
