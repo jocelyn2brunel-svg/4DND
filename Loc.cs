@@ -405,6 +405,30 @@ public static class Loc
         _en["Monasteries"] = "Monasteries"; _fr["Monasteries"] = "Monastères";
         _en["Dungeons"] = "Dungeons"; _fr["Dungeons"] = "Donjons";
         _en["Wilderness"] = "Wilderness"; _fr["Wilderness"] = "Nature";
+
+        _en["Hamlet"] = "Hamlet"; _fr["Hamlet"] = "Hameau";
+        _en["Village"] = "Village"; _fr["Village"] = "Village";
+        _en["Town"] = "Town"; _fr["Town"] = "Bourg";
+        _en["City"] = "City"; _fr["City"] = "Ville";
+        _en["Metropolis"] = "Metropolis"; _fr["Metropolis"] = "Métropole";
+        _en["Fort"] = "Fort"; _fr["Fort"] = "Fort";
+        _en["Castle"] = "Castle"; _fr["Castle"] = "Château";
+        _en["Monastery"] = "Monastery"; _fr["Monastery"] = "Monastère";
+        _en["Dungeon"] = "Dungeon"; _fr["Dungeon"] = "Donjon";
+
+        _en["Ocean"] = "Ocean"; _fr["Ocean"] = "Océan";
+        _en["Coast"] = "Coast"; _fr["Coast"] = "Côte";
+        _en["Desert"] = "Desert"; _fr["Desert"] = "Désert";
+        _en["Plains"] = "Plains"; _fr["Plains"] = "Plaines";
+        _en["Forest"] = "Forest"; _fr["Forest"] = "Forêt";
+        _en["Swamp"] = "Swamp"; _fr["Swamp"] = "Marais";
+        _en["Tundra"] = "Tundra"; _fr["Tundra"] = "Toundra";
+        _en["Mountain"] = "Mountain"; _fr["Mountain"] = "Montagne";
+        _en["SnowMountain"] = "Snow Mountain"; _fr["SnowMountain"] = "Montagne enneigée";
+
+        _en["Biome"] = "Biome"; _fr["Biome"] = "Biome";
+        _en["Type"] = "Type"; _fr["Type"] = "Type";
+        _en["Population"] = "Population"; _fr["Population"] = "Population";
         _en["Travel Pace"] = "Travel Pace"; _fr["Travel Pace"] = "Allure de voyage";
         _en["Pace"] = "Pace"; _fr["Pace"] = "Allure";
         _en["Effect"] = "Effect"; _fr["Effect"] = "Effet";

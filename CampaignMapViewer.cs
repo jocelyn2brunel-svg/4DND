@@ -22,6 +22,10 @@ namespace _4DND
         
         private Location? _selectedLocation = null;
         private (int q, int r)? _selectedHex = null;
+        private Location? _hoveredLocation = null;
+        private (int q, int r)? _hoveredHex = null;
+        private Rectangle _travelBtnRect;
+        private Rectangle _restBtnRect;
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
@@ -168,15 +172,47 @@ namespace _4DND
                 System.Console.WriteLine("Travel pace: Slow (2 mi/h, 18 mi/day, stealth available)");
             }
 
-            // Click to select location or hex
+            // Hover detection
+            _hoveredLocation = null;
+            _hoveredHex = null;
+
+            var mousePos = mouse.Position.ToVector2();
+
+            // Skip hover if over UI panels
+            bool overUI = false;
+            if (new Rectangle(10, 10, 350, 420).Contains(mouse.Position)) overUI = true;
+            if (new Rectangle(viewport.Width - 320, 10, 310, 360).Contains(mouse.Position)) overUI = true;
+            if (_showAdventureDetails) overUI = true;
+
+            if (!overUI)
+            {
+                // 1. Try finding a location first
+                foreach (var loc in campaign.AllLocations)
+                {
+                    if (!loc.IsDiscovered) continue;
+
+                    float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
+                    var pos = HexToScreen(loc.X / scaleDivisor, loc.Y / scaleDivisor, center);
+
+                    if (Vector2.Distance(mousePos, pos) < 30 * _zoom)
+                    {
+                        _hoveredLocation = loc;
+                        _hoveredHex = Campaign.RoundToHex(loc.X / scaleDivisor, loc.Y / scaleDivisor);
+                        break;
+                    }
+                }
+
+                // 2. If no location, find hex
+                if (_hoveredLocation == null)
+                {
+                    Vector2 mouseWorld = ScreenToHexWorld(mousePos, center);
+                    _hoveredHex = Campaign.RoundToHex(mouseWorld.X, mouseWorld.Y);
+                }
+            }
+
             if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
             {
-                // Handle UI button clicks first
-                var panelRect = new Rectangle(10, 10, 350, 300); // Match DrawInfoPanel
-                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 180, 30);
-                var restBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 250, 180, 30);
-
-                if (travelBtn.Contains(mouse.Position))
+                if (_travelBtnRect.Contains(mouse.Position))
                 {
                     if (_isTraveling)
                     {
@@ -217,7 +253,7 @@ namespace _4DND
                         System.Console.WriteLine($"Traveling to ({tx:F1}, {ty:F1}) miles");
                     }
                 }
-                else if (restBtn.Contains(mouse.Position) && !_isTraveling)
+                else if (_restBtnRect.Contains(mouse.Position) && !_isTraveling)
                 {
                     // Long Rest
                     campaign.TotalGameMinutes += 8 * 60;
@@ -227,38 +263,11 @@ namespace _4DND
                     }
                     SetTravelMessage(Loc.Tr("The party took a long rest (8h)."));
                 }
-                else
+                else if (!overUI)
                 {
                     // Map Selection logic
-                    _selectedLocation = null;
-                    _selectedHex = null;
-
-                    // 1. Try selecting a location first
-                    foreach (var loc in campaign.AllLocations)
-                    {
-                        if (!loc.IsDiscovered) continue;
-
-                        float scaleDivisor = Campaign.GetHexSize(campaign.CurrentScale);
-                        var pos = HexToScreen(loc.X / scaleDivisor, loc.Y / scaleDivisor, center);
-
-                        if (Vector2.Distance(mouse.Position.ToVector2(), pos) < 30 * _zoom)
-                        {
-                            _selectedLocation = loc;
-                            _selectedHex = Campaign.RoundToHex(loc.X / scaleDivisor, loc.Y / scaleDivisor); // Store hex for highlighting
-                            break;
-                        }
-                    }
-
-                    // 2. If no location selected, select the hex under mouse
-                    if (_selectedLocation == null)
-                    {
-                        Vector2 mouseWorld = ScreenToHexWorld(mouse.Position.ToVector2(), center);
-                        float q_click = mouseWorld.X;
-                        float r_click = mouseWorld.Y;
-
-                        var (qh, rh) = Campaign.RoundToHex(q_click, r_click);
-                        _selectedHex = (qh, rh);
-                    }
+                    _selectedLocation = _hoveredLocation;
+                    _selectedHex = _hoveredHex;
                 }
             }
 
@@ -338,6 +347,8 @@ namespace _4DND
             DrawTravelProgress(sb, vp, campaign);
             DrawTravelMessage(sb, vp);
             
+            DrawTooltip(sb, vp, campaign);
+
             if (_showAdventureDetails)
             {
                 DrawAdventureDetails(sb, vp, campaign);
@@ -778,9 +789,59 @@ namespace _4DND
             }
         }
         
+        private void DrawTooltip(SpriteBatch sb, Viewport vp, Campaign campaign)
+        {
+            if (_font == null) return;
+
+            string tooltipText = "";
+            if (_hoveredLocation != null)
+            {
+                tooltipText = $"{_hoveredLocation.Name}\n{Loc.Tr("Type")}: {Loc.Tr(_hoveredLocation.Type.ToString())}";
+                if (_hoveredLocation.Population > 0)
+                {
+                    tooltipText += $"\n{Loc.Tr("Population")}: {_hoveredLocation.Population}";
+                }
+            }
+            else if (_hoveredHex.HasValue)
+            {
+                int hexSize = Campaign.GetHexSize(campaign.CurrentScale);
+                var (xm, ym) = Campaign.AxialToMiles(_hoveredHex.Value.q * hexSize, _hoveredHex.Value.r * hexSize);
+
+                // Only show biome if explored
+                bool isExplored = VisionSystem?.IsHexExplored(_hoveredHex.Value.q * hexSize, _hoveredHex.Value.r * hexSize) ?? true;
+                if (!isExplored)
+                {
+                    var (pq, pr) = Campaign.MilesToAxial(campaign.PartyX, campaign.PartyY);
+                    if (Campaign.GetHexDistance(_hoveredHex.Value.q * hexSize, _hoveredHex.Value.r * hexSize, (int)Math.Round(pq), (int)Math.Round(pr)) <= 1)
+                        isExplored = true;
+                }
+
+                if (isExplored)
+                {
+                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
+                    tooltipText = $"{Loc.Tr("Biome")}: {Loc.Tr(biome.ToString())}";
+                }
+            }
+
+            if (string.IsNullOrEmpty(tooltipText)) return;
+
+            var mouse = Mouse.GetState();
+            var pos = mouse.Position.ToVector2() + new Vector2(15, 15);
+            var size = _font.MeasureString(tooltipText) * 0.7f;
+
+            // Constrain to screen
+            if (pos.X + size.X + 10 > vp.Width) pos.X = vp.Width - size.X - 10;
+            if (pos.Y + size.Y + 10 > vp.Height) pos.Y = vp.Height - size.Y - 10;
+
+            var rect = new Rectangle((int)pos.X - 5, (int)pos.Y - 5, (int)size.X + 10, (int)size.Y + 10);
+            sb.Draw(_pixel, rect, Color.Black * 0.85f);
+            DrawBorder(sb, rect, Color.White * 0.5f, 1);
+            sb.DrawString(_font, tooltipText, pos, Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+
         private void DrawInfoPanel(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
-            var panelRect = new Rectangle(10, 10, 350, 300);
+            var panelRect = new Rectangle(10, 10, 350, 420);
             sb.Draw(_pixel, panelRect, Color.Black * 0.8f);
             DrawBorder(sb, panelRect, Color.Gold, 2);
 
@@ -841,48 +902,51 @@ namespace _4DND
                 // Wrap objective text
                 string wrapped = WrapText(campaign.CurrentObjective, 330);
                 sb.DrawString(_font, wrapped, new Vector2(panelRect.X + 10, y), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
+                var objSize = _font.MeasureString(wrapped) * 0.6f;
+                y += (int)objSize.Y + 10;
             }
 
             if (_selectedLocation != null || _selectedHex != null)
             {
-                y += 18;
                 string selectedName = _selectedLocation != null ? _selectedLocation.Name : $"Hex ({_selectedHex!.Value.q}, {_selectedHex.Value.r})";
                 sb.DrawString(_font, Loc.Tr("Selected: {0}", selectedName), new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+                y += 18;
 
                 if (_selectedLocation == null && _selectedHex.HasValue)
                 {
-                    y += 18;
                     int selectedHexSize = Campaign.GetHexSize(campaign.CurrentScale);
                     var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * selectedHexSize, _selectedHex.Value.r * selectedHexSize);
                     var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
-                    sb.DrawString(_font, Loc.Tr("Terrain: {0}", biome), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    sb.DrawString(_font, Loc.Tr("Terrain: {0}", Loc.Tr(biome.ToString())), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+                    y += 18;
                 }
 
-                y += 25;
+                y += 10;
 
                 // Travel / Cancel Button
-                var travelBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 200, 180, 30);
+                _travelBtnRect = new Rectangle(panelRect.X + 20, y, 180, 30);
                 var mouse = Mouse.GetState();
-                bool isHovered = travelBtn.Contains(mouse.Position);
+                bool isHovered = _travelBtnRect.Contains(mouse.Position);
 
                 Color btnColor = _isTraveling ? Color.DarkRed : Color.Green;
                 if (isHovered) btnColor = _isTraveling ? Color.Red : Color.DarkGreen;
 
-                sb.Draw(_pixel, travelBtn, btnColor);
+                sb.Draw(_pixel, _travelBtnRect, btnColor);
                 string btnLabel = _isTraveling ? Loc.Tr("Cancel Travel") : Loc.Tr("Travel Here");
-                sb.DrawString(_font, btnLabel, new Vector2(travelBtn.X + 10, travelBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                sb.DrawString(_font, btnLabel, new Vector2(_travelBtnRect.X + 10, _travelBtnRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                y += 40;
             }
 
             // Long Rest Button
             if (!_isTraveling)
             {
-                var restBtn = new Rectangle(panelRect.X + 20, panelRect.Y + 250, 180, 30);
+                _restBtnRect = new Rectangle(panelRect.X + 20, y, 180, 30);
                 var mouse = Mouse.GetState();
-                bool isHovered = restBtn.Contains(mouse.Position);
-                sb.Draw(_pixel, restBtn, isHovered ? Color.DarkBlue : Color.Blue);
-                sb.DrawString(_font, Loc.Tr("Long Rest (8h)"), new Vector2(restBtn.X + 10, restBtn.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+                bool isHovered = _restBtnRect.Contains(mouse.Position);
+                sb.Draw(_pixel, _restBtnRect, isHovered ? Color.DarkBlue : Color.Blue);
+                sb.DrawString(_font, Loc.Tr("Long Rest (8h)"), new Vector2(_restBtnRect.X + 10, _restBtnRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
             }
-
         }
 
         private void DrawPartyMarker(SpriteBatch sb, Vector2 center, Campaign campaign)
