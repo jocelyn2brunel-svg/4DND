@@ -73,6 +73,14 @@ public class Race
     /// <summary>Tinker: proficiency with artisan's tools (tinker's tools); can spend 1 hour and 10 gp to construct a Tiny clockwork device (Rock Gnome).</summary>
     public bool HasTinker { get; set; } = false;
 
+    // Half-Orc-specific traits
+    /// <summary>Menacing: you gain proficiency in the Intimidation skill (Half-Orc).</summary>
+    public bool HasMenacing { get; set; } = false;
+    /// <summary>Relentless Endurance: when reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. Usable once per long rest (Half-Orc).</summary>
+    public bool HasRelentlessEndurance { get; set; } = false;
+    /// <summary>Savage Attacks: when you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit (Half-Orc).</summary>
+    public bool HasSavageAttacks { get; set; } = false;
+
     // Half-Elf-specific traits
     /// <summary>Skill Versatility: you gain proficiency in two skills of your choice (Half-Elf).</summary>
     public bool HasSkillVersatility { get; set; } = false;
@@ -245,7 +253,11 @@ public class Race
             ConstitutionBonus = 1,
             BaseSpeed = 30,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)")
+            HasMenacing = true,
+            HasRelentlessEndurance = true,
+            HasSavageAttacks = true,
+            Languages = new List<string> { "Common", "Orc" },
+            Description = Loc.Tr("Strong and tough (+2 STR, +1 CON, Darkvision 60 ft, Menacing, Relentless Endurance, Savage Attacks)")
         },
         
         ["Tiefling"] = new Race
