@@ -311,6 +311,7 @@ public class Character
         HasHalflingNimbleness = raceData.HasHalflingNimbleness;
         HasNaturallyStealthy = raceData.HasNaturallyStealthy;
         HasStoutResilience = raceData.HasStoutResilience;
+        HasKeenSenses = raceData.HasKeenSenses;
         if (raceData.HasKeenSenses)
             PerceptionProficiency = true;
     }

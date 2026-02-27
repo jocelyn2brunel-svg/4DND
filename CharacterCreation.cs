@@ -743,7 +743,13 @@ public class CharacterCreation
             spriteBatch.DrawString(_font, "  - Stonecunning: double proficiency bonus on History (stonework) checks", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
         }
-        
+
+        if (selectedRace.HasKeenSenses)
+        {
+            spriteBatch.DrawString(_font, "  - Keen Senses: proficiency in the Perception skill", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
+
         if (selectedRace.ToolProficiencyChoices.Count > 0)
         {
             string choices = string.Join(", ", selectedRace.ToolProficiencyChoices);
