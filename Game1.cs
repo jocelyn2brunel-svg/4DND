@@ -3519,7 +3519,6 @@ public class Game1 : Game
                     // If Combat UI is open, only allow movement if Move action is selected
                     bool allowExplorationMove = !_showCombatUI || _selectedAction == CombatAction.Move || _selectedAction == CombatAction.None;
 
-                    var hovered = GetHoveredTile();
                     if (hovered.HasValue && _playerCreature != null && allowExplorationMove && !clickedOnGameplayUiButton)
                     {
                         int tx = hovered.Value.x;
