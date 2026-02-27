@@ -80,6 +80,8 @@ public class Character
     public bool HasDwarvenResilience { get; set; } = false;
     /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
     public bool HasStonecunning { get; set; } = false;
+    /// <summary>Dwarven Toughness: hit point maximum increases by 1, and increases by 1 every time you gain a level (Hill Dwarf).</summary>
+    public bool HasDwarvenToughness { get; set; } = false;
     /// <summary>Keen Senses: proficiency in the Perception skill (PHB "Elf Traits").</summary>
     public bool HasKeenSenses { get; set; } = false;
     /// <summary>Fey Ancestry: advantage on saving throws against being charmed, and magic can't put you to sleep (PHB "Elf Traits").</summary>
@@ -275,29 +277,32 @@ public class Character
         // Hit Points based on class and Constitution
         var classData = ClassData.GetClass(Class);
         MaxHP = classData.GetHitPointsAtLevel(Level, GetAbilityModifier(Constitution));
+        if (HasDwarvenToughness) MaxHP += Level;
         if (CurrentHP > MaxHP) CurrentHP = MaxHP;
-        
+
         // Armor Class from inventory
         ArmorClass = InventoryData.CalculateArmorClass(GetAbilityModifier(Dexterity));
-        
+
         // Speed based on race
         var raceData = _4DND.Race.GetRace(Race);
         Speed = raceData.BaseSpeed;
 
-        // Heavy armor speed penalty
+        // Heavy armor speed penalty (dwarves are immune)
         if (InventoryData.EquippedArmor != null)
         {
             var armorItem = ItemDatabase.GetItem(InventoryData.EquippedArmor.Name);
-            if (armorItem.StrengthRequirement > 0 && Strength < armorItem.StrengthRequirement)
+            if (!raceData.HasHeavyArmorNoSpeedPenalty &&
+                armorItem.StrengthRequirement > 0 && Strength < armorItem.StrengthRequirement)
             {
                 Speed = Math.Max(0, Speed - 10);
             }
         }
-        
+
         // Darkvision from race
         DarkvisionRange = raceData.DarkvisionRange;
         HasSunlightSensitivity = raceData.HasSunlightSensitivity;
         HasDwarvenResilience = raceData.HasDwarvenResilience;
+        HasDwarvenToughness = raceData.HasDwarvenToughness;
         HasStonecunning = raceData.HasStonecunning;
         HasFeyAncestry = raceData.HasFeyAncestry;
         HasTrance = raceData.HasTrance;

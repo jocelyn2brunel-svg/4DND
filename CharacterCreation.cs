@@ -1544,9 +1544,19 @@ public class CharacterCreation
         c.CurrentHP = c.MaxHP;
         c.HitDiceTotal = 1;
         c.HitDiceRemaining = 1;
-        
+
+        if (selectedRace.HasDwarvenArmorTraining)
+        {
+            foreach (var a in new[] { "Light armor", "Medium armor" })
+            {
+                if (!c.ArmorProficiencies.Contains(a))
+                    c.ArmorProficiencies.Add(a);
+            }
+        }
+
         // Calculate AC
         c.CalculateDerivedStats();
+        c.CurrentHP = c.MaxHP;
         
         // Class-specific initialization
         if (c.Class == "Barbarian")
@@ -1633,6 +1643,7 @@ public class CharacterCreation
         // Apply racial traits
         c.HasDwarvenResilience = selectedRace.HasDwarvenResilience;
         c.HasStonecunning = selectedRace.HasStonecunning;
+        c.HasDwarvenToughness = selectedRace.HasDwarvenToughness;
         c.Languages = new List<string>(selectedRace.Languages);
         if (selectedRace.HasDwarvenCombatTraining)
         {
@@ -1640,6 +1651,14 @@ public class CharacterCreation
             {
                 if (!c.WeaponProficiencies.Contains(w))
                     c.WeaponProficiencies.Add(w);
+            }
+        }
+        if (selectedRace.HasDwarvenArmorTraining)
+        {
+            foreach (var a in new[] { "Light armor", "Medium armor" })
+            {
+                if (!c.ArmorProficiencies.Contains(a))
+                    c.ArmorProficiencies.Add(a);
             }
         }
         if (selectedRace.ToolProficiencyChoices.Count > 0)
@@ -1691,6 +1710,7 @@ public class CharacterCreation
 
         // Calculate AC from equipment
         c.CalculateDerivedStats();
+        c.CurrentHP = c.MaxHP;
 
         // Class-specific initialization
         if (c.Class == "Barbarian")

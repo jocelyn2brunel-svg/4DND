@@ -28,6 +28,12 @@ public class Race
     public bool HasDwarvenCombatTraining { get; set; } = false;
     /// <summary>Stonecunning: double proficiency bonus on Intelligence (History) checks related to stonework.</summary>
     public bool HasStonecunning { get; set; } = false;
+    /// <summary>Dwarven Toughness: hit point maximum increases by 1, and increases by 1 every time you gain a level (Hill Dwarf).</summary>
+    public bool HasDwarvenToughness { get; set; } = false;
+    /// <summary>Dwarven Armor Training: proficiency with light and medium armor (Mountain Dwarf).</summary>
+    public bool HasDwarvenArmorTraining { get; set; } = false;
+    /// <summary>Dwarf base trait: speed is not reduced by wearing heavy armor.</summary>
+    public bool HasHeavyArmorNoSpeedPenalty { get; set; } = false;
 
     // Elf-specific traits
     /// <summary>Keen Senses: proficiency in the Perception skill (PHB "Elf Traits").</summary>
@@ -231,6 +237,8 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            HasDwarvenToughness = true,
+            HasHeavyArmorNoSpeedPenalty = true,
             HeightMinFeet = 4f,
             HeightMaxFeet = 5f,
             AverageWeightPounds = 150,
@@ -241,7 +249,7 @@ public class Race
             MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
             FemaleNames = new List<string> { "Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra", "Kristryd", "Ilde", "Liftrasa", "Mardred", "Riswynn", "Sannl", "Torbera", "Torgga", "Vistra" },
             ClanNames = new List<string> { "Balderk", "Battlehammer", "Brawnanvil", "Dankil", "Fireforge", "Frostbeard", "Gorunn", "Holderhek", "Ironfist", "Loderr", "Lutgehr", "Rumnaheim", "Strakeln", "Torunn", "Ungart" },
-            Description = Loc.Tr("Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
+            Description = Loc.Tr("Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training, Dwarven Toughness)")
         },
         ["Mountain Dwarf"] = new Race
         {
@@ -255,6 +263,8 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            HasDwarvenArmorTraining = true,
+            HasHeavyArmorNoSpeedPenalty = true,
             HeightMinFeet = 4f,
             HeightMaxFeet = 5f,
             AverageWeightPounds = 150,
@@ -265,7 +275,7 @@ public class Race
             MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
             FemaleNames = new List<string> { "Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra", "Kristryd", "Ilde", "Liftrasa", "Mardred", "Riswynn", "Sannl", "Torbera", "Torgga", "Vistra" },
             ClanNames = new List<string> { "Balderk", "Battlehammer", "Brawnanvil", "Dankil", "Fireforge", "Frostbeard", "Gorunn", "Holderhek", "Ironfist", "Loderr", "Lutgehr", "Rumnaheim", "Strakeln", "Torunn", "Ungart" },
-            Description = Loc.Tr("Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
+            Description = Loc.Tr("Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training, Dwarven Armor Training)")
         },
         
         // Halflings
