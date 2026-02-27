@@ -2818,7 +2818,6 @@ public partial class Game1 : Game
                     }
                 }
             }
-        }
 
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
             Exit();
