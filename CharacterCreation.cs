@@ -395,7 +395,18 @@ public class CharacterCreation
             }
 
         }
-        // Step 3: Tool proficiency selection — interaction handled in DrawToolProficiencyStep
+        // Step 3: Tool proficiency selection
+        else if (_createStep == 3)
+        {
+            var selectedRace = Race.GetRace(_races[_raceIndex]);
+            var toolsRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 70, 460, selectedRace.ToolProficiencyChoices.Count * 52 + 10);
+            for (int i = 0; i < selectedRace.ToolProficiencyChoices.Count; i++)
+            {
+                var item = new Rectangle(toolsRect.X + 4, toolsRect.Y + i * 52 + 4, 452, 46);
+                if (IsMouseClicked(mouse, _prevMouse, item))
+                    _selectedToolIndex = i;
+            }
+        }
         // Step 4: Skill selection
         else if (_createStep == 4)
         {
@@ -790,7 +801,7 @@ public class CharacterCreation
         var selectedRace = Race.GetRace(_races[_raceIndex]);
         if (selectedRace.ToolProficiencyChoices.Count == 0)
         {
-            // Race has no tool proficiency choice — skip this step automatically
+            // Race has no tool proficiency choice ï¿½ skip this step automatically
             _createStep = 4;
             return;
         }
@@ -822,8 +833,6 @@ public class CharacterCreation
             {
                 hoveredToolIndex = i;
                 _tooltipText = $"Gain proficiency with {toolName}";
-                if (IsMouseClicked(mouse, _prevMouse, item))
-                    _selectedToolIndex = i;
             }
         }
 
