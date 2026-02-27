@@ -367,7 +367,9 @@ public class Creature
     /// to gain the benefits of 8 hours of sleep (PHB "Elf Traits").
     /// </summary>
     public bool HasTrance { get; set; } = false;
-    
+    /// <summary>True if magic cannot put this creature to sleep: either via Fey Ancestry or because it doesn't need sleep (Trance).</summary>
+    public bool IsImmuneToMagicalSleep => HasFeyAncestry || HasTrance;
+
     // Conditions
     public Condition Conditions { get; set; } = Condition.None;
 

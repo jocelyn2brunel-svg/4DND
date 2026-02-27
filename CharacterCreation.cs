@@ -750,6 +750,12 @@ public class CharacterCreation
             yOffset += 22;
         }
 
+        if (selectedRace.HasFeyAncestry)
+        {
+            spriteBatch.DrawString(_font, "  - Fey Ancestry: advantage on charmed saves, immune to magical sleep", new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+            yOffset += 22;
+        }
+
         if (selectedRace.ToolProficiencyChoices.Count > 0)
         {
             string choices = string.Join(", ", selectedRace.ToolProficiencyChoices);

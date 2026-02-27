@@ -274,12 +274,24 @@ public static class CreatureD20Extensions
         {
             hasAdvantage = true;
         }
-        
+
         // Creatures typically don't have proficiency bonus unless they're players
         // For monsters, proficiency is already baked into their proficiency flags
         int proficiencyBonus = creature.IsPlayer ? DndMath.GetProficiencyBonus(1) : 2; // Default +2 for monsters
-        
+
         return D20CheckFactory.MakeSavingThrow(abilityName, abilityScore, proficient, proficiencyBonus, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
+    }
+
+    /// <summary>
+    /// Make a saving throw for a creature against a specific condition.
+    /// Automatically applies Fey Ancestry advantage on charmed saves.
+    /// </summary>
+    public static D20Check MakeSavingThrow(this Creature creature, string abilityName, int dc, Condition conditionContext, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
+    {
+        if (creature.HasFeyAncestry && conditionContext == Condition.Charmed)
+            hasAdvantage = true;
+
+        return creature.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
     }
 }
 
@@ -401,7 +413,19 @@ public static class CharacterD20Extensions
     {
         if ((character.HasDwarvenResilience || character.HasStoutResilience) && damageContext == DamageType.Poison)
             hasAdvantage = true;
-        
+
+        return character.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
+    }
+
+    /// <summary>
+    /// Make a saving throw for a character against a specific condition.
+    /// Automatically applies Fey Ancestry advantage on charmed saves.
+    /// </summary>
+    public static D20Check MakeSavingThrow(this Character character, string abilityName, int dc, Condition conditionContext, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
+    {
+        if (character.HasFeyAncestry && conditionContext == Condition.Charmed)
+            hasAdvantage = true;
+
         return character.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
     }
 }
