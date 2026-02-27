@@ -248,10 +248,12 @@ public class Game1 : Game
                 // Only consider dungeons close to the party's current hex
                 if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
                 {
-                    // Convert world coordinates to relative dungeon coordinates
+                    // Convert world coordinates to relative dungeon coordinates.
+                    // Tactical grid coords are relative to PartyX/PartyY (in miles), so we subtract
+                    // the party position before multiplying by TacticalUnitsPerMile.
                     var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
-                    int dungeonOriginX = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
-                    int dungeonOriginY = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+                    int dungeonOriginX = (int)((worldX_miles - _currentCampaign.PartyX) * Campaign.TacticalUnitsPerMile);
+                    int dungeonOriginY = (int)((worldY_miles - _currentCampaign.PartyY) * Campaign.TacticalUnitsPerMile);
 
                     int rx = x - dungeonOriginX;
                     int ry = y - dungeonOriginY;
