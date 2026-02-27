@@ -73,6 +73,10 @@ public class Race
     /// <summary>Tinker: proficiency with artisan's tools (tinker's tools); can spend 1 hour and 10 gp to construct a Tiny clockwork device (Rock Gnome).</summary>
     public bool HasTinker { get; set; } = false;
 
+    // Half-Elf-specific traits
+    /// <summary>Skill Versatility: you gain proficiency in two skills of your choice (Half-Elf).</summary>
+    public bool HasSkillVersatility { get; set; } = false;
+
     // Dragonborn-specific traits
     /// <summary>Draconic Ancestry: you have draconic ancestry of a chosen dragon type, which determines your breath weapon and damage resistance.</summary>
     public bool HasDraconicAncestry { get; set; } = false;
@@ -312,8 +316,10 @@ public class Race
             BaseSpeed = 30,
             DarkvisionRange = 60,
             HasFeyAncestry = true,
+            HasSkillVersatility = true,
+            HasExtraLanguage = true,
             Languages = new List<string> { "Common", "Elvish" },
-            Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft, Fey Ancestry)")
+            Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft, Fey Ancestry, Skill Versatility, Extra Language)")
         }
     };
     
