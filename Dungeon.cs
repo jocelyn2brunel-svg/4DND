@@ -57,7 +57,17 @@ namespace _4DND
         public List<DungeonStairs> Stairs { get; set; } = new();
 
         // Tiles that are part of the dungeon (relative to dungeon origin)
-        // This is for persistence of changes if we don't use the global ExploredTiles for everything
-        public Dictionary<(int x, int y, int z), TileType> LayoutOverrides { get; set; } = new();
+        // We use string keys because System.Text.Json doesn't support Tuple keys.
+        public Dictionary<string, TileType> LayoutOverrides { get; set; } = new();
+
+        public void SetTile(int x, int y, int z, TileType type)
+        {
+            LayoutOverrides[$"{x},{y},{z}"] = type;
+        }
+
+        public bool TryGetTile(int x, int y, int z, out TileType type)
+        {
+            return LayoutOverrides.TryGetValue($"{x},{y},{z}", out type);
+        }
     }
 }
