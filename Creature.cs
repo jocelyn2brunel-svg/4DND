@@ -231,19 +231,34 @@ public static class SizeHelper
     }
 }
 
+public class MovementStep
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Z { get; set; }
+    public int Cost { get; set; }
+    public bool IsDiagonal { get; set; }
+}
+
 public class Creature
 {
     private readonly Queue<Vector3> _movementWaypoints = new();
+    private readonly Queue<MovementStep> _queuedSteps = new();
 
     public string Name { get; set; } = "";
     public CreatureType Type { get; set; }
     public CreatureSize Size { get; set; } = CreatureSize.Medium;
     public Alignment Alignment { get; set; } = Alignment.TrueNeutral;
     
-    // Grid position (target position)
+    // Grid position (current logical position)
     public int X { get; set; }
     public int Y { get; set; }
     public int Z { get; set; }
+
+    // Ultimate destination position (reserved)
+    public int TargetX { get; set; }
+    public int TargetY { get; set; }
+    public int TargetZ { get; set; }
     
     // Visual position for smooth movement animation
     public float VisualX { get; set; }
@@ -996,11 +1011,14 @@ public class Creature
         return (0, true, true);
     }
 
+    public bool JustFinishedStep { get; set; }
+
     /// <summary>
     /// Updates the visual position to smoothly move towards the target grid position
     /// </summary>
     public void UpdateMovementAnimation(float deltaTime)
     {
+        JustFinishedStep = false;
         Vector3 target = _movementWaypoints.Count > 0
             ? _movementWaypoints.Peek()
             : new Vector3(X, Y, Z);
@@ -1023,6 +1041,7 @@ public class Creature
                 if (_movementWaypoints.Count > 0)
                 {
                     _movementWaypoints.Dequeue();
+                    JustFinishedStep = true;
                 }
             }
             else
@@ -1037,17 +1056,43 @@ public class Creature
     }
     
     /// <summary>
-    /// Checks if the creature is currently moving (visual position != target position)
+    /// Checks if the creature is currently moving (has queued steps or visual != logical)
     /// </summary>
     public bool IsMoving()
     {
-        if (_movementWaypoints.Count > 0)
+        if (_queuedSteps.Count > 0 || _movementWaypoints.Count > 0)
             return true;
 
         float dx = X - VisualX;
         float dy = Y - VisualY;
         float dz = Z - VisualZ;
         return (dx * dx + dy * dy + dz * dz) > 0.01f;
+    }
+
+    /// <summary>
+    /// Returns true if the creature has logical steps waiting to be animated.
+    /// </summary>
+    public bool HasQueuedSteps() => _queuedSteps.Count > 0;
+
+    /// <summary>
+    /// Peeks at the next logical movement step.
+    /// </summary>
+    public MovementStep? PeekNextStep() => _queuedSteps.Count > 0 ? _queuedSteps.Peek() : null;
+
+    /// <summary>
+    /// Dequeues the current logical step.
+    /// </summary>
+    public MovementStep? DequeueStep() => _queuedSteps.Count > 0 ? _queuedSteps.Dequeue() : null;
+
+    /// <summary>
+    /// Adds a step to the logical movement queue.
+    /// </summary>
+    public void EnqueueStep(int x, int y, int z, int cost, bool isDiagonal)
+    {
+        _queuedSteps.Enqueue(new MovementStep { X = x, Y = y, Z = z, Cost = cost, IsDiagonal = isDiagonal });
+        TargetX = x;
+        TargetY = y;
+        TargetZ = z;
     }
 
     /// <summary>
@@ -1064,16 +1109,21 @@ public class Creature
     public void TeleportTo(int x, int y, int z)
     {
         _movementWaypoints.Clear();
+        _queuedSteps.Clear();
         X = x;
         Y = y;
         Z = z;
+        TargetX = x;
+        TargetY = y;
+        TargetZ = z;
         VisualX = x;
         VisualY = y;
         VisualZ = z;
     }
     
     /// <summary>
-    /// Moves the creature to a new position with animation
+    /// Moves the creature to a new position with animation.
+    /// Note: This is now typically called via StartStepAnimation when a queued step is processed.
     /// </summary>
     public void MoveTo(int x, int y, int z)
     {
@@ -1082,28 +1132,20 @@ public class Creature
         {
             _movementWaypoints.Enqueue(waypoint);
         }
-
-        X = x;
-        Y = y;
-        Z = z;
-        // VisualX/Y/Z will be updated by UpdateMovementAnimation
+        // X, Y, Z are now updated only when the visual waypoint is reached in UpdateMovementAnimation or externally.
     }
 
     /// <summary>
-    /// Interrupts current movement, keeping only the immediate next waypoint.
-    /// Logical position (X, Y, Z) is updated to this next waypoint.
+    /// Interrupts current movement, clearing queued steps.
+    /// Current logical position remains where the unit last finished a step.
     /// </summary>
     public void InterruptMovement()
     {
-        if (_movementWaypoints.Count > 0)
-        {
-            Vector3 nextWaypoint = _movementWaypoints.Peek();
-            _movementWaypoints.Clear();
-            _movementWaypoints.Enqueue(nextWaypoint);
-            X = (int)nextWaypoint.X;
-            Y = (int)nextWaypoint.Y;
-            Z = (int)nextWaypoint.Z;
-        }
+        _queuedSteps.Clear();
+        _movementWaypoints.Clear();
+        TargetX = X;
+        TargetY = Y;
+        TargetZ = Z;
     }
     
     public static Creature CreateGoblin(int x, int y, int z = 0)
@@ -1117,6 +1159,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1161,6 +1206,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1203,6 +1251,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1248,6 +1299,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1293,6 +1347,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1338,6 +1395,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1382,6 +1442,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1426,6 +1489,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,
@@ -1472,6 +1538,7 @@ public class Creature
             Size = CreatureSize.Small,
             Alignment = Alignment.Unaligned,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 7, CurrentHP = 7,
             ArmorClass = 12,
@@ -1507,6 +1574,7 @@ public class Creature
             Size = CreatureSize.Small,
             Alignment = Alignment.NeutralEvil,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 21, CurrentHP = 21,
             ArmorClass = 11,
@@ -1545,6 +1613,7 @@ public class Creature
             Size = CreatureSize.Large,
             Alignment = Alignment.Unaligned,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 34, CurrentHP = 34,
             ArmorClass = 11,
@@ -1578,6 +1647,7 @@ public class Creature
             Size = CreatureSize.Large,
             Alignment = Alignment.NeutralEvil,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 75, CurrentHP = 75,
             ArmorClass = 13,
@@ -1615,6 +1685,7 @@ public class Creature
             Size = CreatureSize.Huge,
             Alignment = Alignment.Unaligned,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 126, CurrentHP = 126,
             ArmorClass = 13,
@@ -1647,6 +1718,7 @@ public class Creature
             Size = CreatureSize.Large,
             Alignment = Alignment.ChaoticEvil,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 133, CurrentHP = 133,
             ArmorClass = 17,
@@ -1689,6 +1761,7 @@ public class Creature
             Size = CreatureSize.Huge,
             Alignment = Alignment.NeutralEvil,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 138, CurrentHP = 138,
             ArmorClass = 15,
@@ -1725,6 +1798,7 @@ public class Creature
             Size = CreatureSize.Huge,
             Alignment = Alignment.ChaoticEvil,
             X = x, Y = y, Z = z,
+            TargetX = x, TargetY = y, TargetZ = z,
             VisualX = x, VisualY = y, VisualZ = z,
             MaxHP = 137, CurrentHP = 137,
             ArmorClass = 15,
@@ -1824,6 +1898,9 @@ public class Creature
             X = x,
             Y = y,
             Z = z,
+            TargetX = x,
+            TargetY = y,
+            TargetZ = z,
             VisualX = x,
             VisualY = y,
             VisualZ = z,

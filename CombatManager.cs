@@ -791,14 +791,18 @@ public class CombatManager
         return totalCost <= creature.MovementRemaining;
     }
     
-    public void Move(Creature creature, int targetX, int targetY, int targetZ, VisionSystem? visionSystem = null)
+    /// <summary>
+    /// Commands the creature to move towards a target position.
+    /// In combat, it enqueues steps that are executed sequentially in the game loop.
+    /// </summary>
+    public void Move(Creature creature, int targetX, int targetY, int targetZ, VisionSystem? visionSystem = null, bool ignoreCost = false)
     {
         var path = FindPath(creature, targetX, targetY, targetZ);
         if (path == null)
             return;
 
         int movementSpent = 0;
-        int remaining = creature.MovementRemaining;
+        int remaining = ignoreCost ? int.MaxValue : creature.MovementRemaining;
         int diagonalCount = creature.DiagonalStepsTaken;
 
         for (int i = 1; i < path.Count; i++)
@@ -808,32 +812,57 @@ public class CombatManager
             if (movementSpent + stepCost > remaining)
                 break;
 
-            // Before each step, check whether any hostile loses melee reach — triggering an OA.
-            if (!creature.IsDisengaged)
-            {
-                CheckOpportunityAttacks(creature, path[i - 1], path[i], visionSystem);
-                if (!creature.IsAlive())
-                    break;
-            }
+            bool isDiagonal = IsDiagonalStep(path[i - 1], path[i]);
+            creature.EnqueueStep(path[i].X, path[i].Y, path[i].Z, stepCost, isDiagonal);
 
             movementSpent += stepCost;
-            if (IsDiagonalStep(path[i - 1], path[i]))
+            if (isDiagonal)
                 diagonalCount++;
-            creature.MoveTo(path[i].X, path[i].Y, path[i].Z);
+        }
+    }
 
-            // Ball bearings: DC 10 DEX save or fall prone and stop moving (PHB "Ball Bearings").
-            if (TacticalMap != null && TacticalMap.Get(path[i].X, path[i].Y, path[i].Z) == TileType.BallBearings)
+    /// <summary>
+    /// Called before a creature starts visually moving into a new tile.
+    /// Triggers Opportunity Attacks.
+    /// </summary>
+    public void OnStepStarting(Creature mover, MovementStep step, VisionSystem? visionSystem = null)
+    {
+        if (mover.IsDisengaged) return;
+
+        var from = new TacticalMapNode(mover.X, mover.Y, mover.Z);
+        var to = new TacticalMapNode(step.X, step.Y, step.Z);
+        CheckOpportunityAttacks(mover, from, to, visionSystem);
+    }
+
+    /// <summary>
+    /// Called after a creature has visually reached its next tile.
+    /// Updates logical position, deducts movement cost, and triggers tile effects.
+    /// </summary>
+    public void OnStepFinished(Creature mover, MovementStep step)
+    {
+        mover.X = step.X;
+        mover.Y = step.Y;
+        mover.Z = step.Z;
+
+        if (mover.MovementRemaining >= step.Cost)
+            mover.MovementRemaining -= step.Cost;
+        else
+            mover.MovementRemaining = 0;
+
+        if (step.IsDiagonal)
+            mover.DiagonalStepsTaken++;
+
+        // Ball bearings check
+        if (TacticalMap != null && TacticalMap.Get(mover.X, mover.Y, mover.Z) == TileType.BallBearings)
+        {
+            if (!CheckBallBearingsSave(mover))
             {
-                if (!CheckBallBearingsSave(creature))
-                    break;
+                mover.InterruptMovement();
             }
         }
 
-        creature.MovementRemaining = Math.Max(0, remaining - movementSpent);
-        creature.DiagonalStepsTaken = diagonalCount;
-
-        // Update squeezing state based on final position
-        creature.IsSqueezingThrough = WouldRequireSqueeze(creature, creature.X, creature.Y, creature.Z);
+        // Squeezing check
+        mover.IsSqueezingThrough = WouldRequireSqueeze(mover, mover.X, mover.Y, mover.Z);
     }
 
     /// <summary>
@@ -841,10 +870,11 @@ public class CombatManager
     /// from <paramref name="from"/> to <paramref name="to"/>, and triggers an opportunity attack
     /// for each such creature that still has its reaction.
     /// </summary>
-    private void CheckOpportunityAttacks(Creature mover, TacticalMapNode from, TacticalMapNode to, VisionSystem? visionSystem)
+    public void CheckOpportunityAttacks(Creature mover, TacticalMapNode from, TacticalMapNode to, VisionSystem? visionSystem)
     {
         foreach (var hostile in _combatants.ToList())
         {
+            if (!mover.IsAlive() || mover.Conditions.HasCondition(Condition.Incapacitated) || mover.Conditions.HasCondition(Condition.Unconscious)) break;
             if (hostile.IsPlayer == mover.IsPlayer) continue;
             if (!hostile.IsAlive()) continue;
             if (!hostile.HasReaction) continue;

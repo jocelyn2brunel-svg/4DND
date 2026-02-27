@@ -187,6 +187,7 @@ public partial class Game1 : Game
     }
     private List<FloatingTooltip> _activeTooltips = new();
     private Dictionary<Creature, int> _creatureHPTracker = new();
+    private readonly Dictionary<Creature, MovementStep> _activeMovementSteps = new();
 
     // Ammo tracking for post-battle recovery (PHB "Ammunition")
     private readonly Dictionary<string, int> _ammoFiredThisCombat = new();
@@ -1682,42 +1683,85 @@ public partial class Game1 : Game
 
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            if (_playerCreature != null)
+            var allCreatures = _combatManager.Combatants.ToList();
+            if (_playerCreature != null && !allCreatures.Contains(_playerCreature)) allCreatures.Add(_playerCreature);
+
+            foreach (var creature in allCreatures)
             {
-                _playerCreature.UpdateMovementAnimation(deltaTime);
-                UpdateFootstepAudio(_playerCreature);
-
-                bool isPlayerMoving = _playerCreature.IsMoving();
-                if (isPlayerMoving)
+                if (!creature.IsAlive())
                 {
-                    int roundedVisualX = (int)MathF.Round(_playerCreature.VisualX);
-                    int roundedVisualY = (int)MathF.Round(_playerCreature.VisualY);
-                    int roundedVisualZ = (int)MathF.Round(_playerCreature.VisualZ);
-                    var roundedVisualTile = (roundedVisualX, roundedVisualY, roundedVisualZ);
+                    _activeMovementSteps.Remove(creature);
+                    continue;
+                }
 
-                    if (!_wasPlayerMovingForVision || _lastRoundedVisualTile != roundedVisualTile)
+                // Process sequential logical steps
+                if (!_activeMovementSteps.ContainsKey(creature) && creature.HasQueuedSteps())
+                {
+                    var nextStep = creature.PeekNextStep();
+                    if (nextStep != null)
+                    {
+                        _combatManager.OnStepStarting(creature, nextStep, _visionSystem);
+
+                        // OA might have killed, incapacitated, or stopped them
+                        bool canContinue = creature.IsAlive() && !creature.Conditions.HasCondition(Condition.Incapacitated) && !creature.Conditions.HasCondition(Condition.Unconscious);
+
+                        if (canContinue && creature.GetRemainingWaypoints().Count == 0)
+                        {
+                            _activeMovementSteps[creature] = nextStep;
+                            creature.MoveTo(nextStep.X, nextStep.Y, nextStep.Z);
+                        }
+                        else if (!canContinue)
+                        {
+                            creature.InterruptMovement();
+                        }
+                    }
+                }
+
+                creature.UpdateMovementAnimation(deltaTime);
+                UpdateFootstepAudio(creature);
+
+                // If a unit just finished a visual step
+                if (creature.JustFinishedStep && _activeMovementSteps.TryGetValue(creature, out var finishedStep))
+                {
+                    creature.DequeueStep();
+                    _combatManager.OnStepFinished(creature, finishedStep);
+                    _activeMovementSteps.Remove(creature);
+                }
+
+                // Camera follow active unit during movement
+                bool shouldFollow = (creature.IsMoving() && _combatManager.InCombat && _combatManager.CurrentCombatant == creature)
+                                 || (creature.IsMoving() && !_combatManager.InCombat && creature == _playerCreature);
+                if (shouldFollow)
+                {
+                    var offset = SizeHelper.GetCenterOffset(creature.Size);
+                    _cameraTarget = new Vector3(creature.VisualX + offset.X, creature.VisualY + offset.Y, creature.VisualZ);
+                }
+
+                // Vision updates for player
+                if (creature == _playerCreature)
+                {
+                    bool isPlayerMoving = creature.IsMoving();
+                    if (isPlayerMoving)
+                    {
+                        int roundedVisualX = (int)MathF.Round(creature.VisualX);
+                        int roundedVisualY = (int)MathF.Round(creature.VisualY);
+                        int roundedVisualZ = (int)MathF.Round(creature.VisualZ);
+                        var roundedVisualTile = (roundedVisualX, roundedVisualY, roundedVisualZ);
+
+                        if (!_wasPlayerMovingForVision || _lastRoundedVisualTile != roundedVisualTile)
+                        {
+                            UpdateVision();
+                            _lastRoundedVisualTile = roundedVisualTile;
+                        }
+
+                        _wasPlayerMovingForVision = true;
+                    }
+                    else if (_wasPlayerMovingForVision)
                     {
                         UpdateVision();
-                        _lastRoundedVisualTile = roundedVisualTile;
+                        _wasPlayerMovingForVision = false;
+                        _lastRoundedVisualTile = null;
                     }
-
-                    _wasPlayerMovingForVision = true;
-                }
-                else if (_wasPlayerMovingForVision)
-                {
-                    // Ensure we refresh one last time when movement ends.
-                    UpdateVision();
-                    _wasPlayerMovingForVision = false;
-                    _lastRoundedVisualTile = null;
-                }
-            }
-            foreach (var creature in _combatManager.Combatants)
-            {
-                if (creature.IsAlive())
-                {
-                    creature.UpdateMovementAnimation(deltaTime);
-                    if (creature != _playerCreature)
-                        UpdateFootstepAudio(creature);
                 }
             }
             
@@ -1821,6 +1865,8 @@ public partial class Game1 : Game
             if (!_showCharacterSheet &&
                 mouseClickedThisFrame)
             {
+                bool isAnyUnitMoving = IsAnyUnitAnimatingMovement();
+
                 if (rotateLeftButtonRect.Contains(mouse.Position))
                 {
                     _targetYaw -= MathHelper.ToRadians(45f);
@@ -1831,7 +1877,7 @@ public partial class Game1 : Game
                     _targetYaw += MathHelper.ToRadians(45f);
                     clickedOnGameplayUiButton = true;
                 }
-                else if (_showCombatUI)
+                else if (_showCombatUI && !isAnyUnitMoving)
                 {
                     var currentCombatant = _combatManager.InCombat ? _combatManager.CurrentCombatant : _playerCreature;
                     if (currentCombatant != null && currentCombatant.IsPlayer)
@@ -2212,6 +2258,8 @@ public partial class Game1 : Game
             // Exploration movement (outside combat)
             if (!_combatManager.InCombat && !_showCampaignMap)
             {
+                bool isAnyUnitMoving = IsAnyUnitAnimatingMovement();
+
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
                     // Cancel travel if player clicks on tactical map
@@ -2222,6 +2270,8 @@ public partial class Game1 : Game
                         AddToCombatLog(Loc.Tr("Travel cancelled."));
                         clickedOnGameplayUiButton = true;
                     }
+
+                    if (isAnyUnitMoving) return; // Block new orders while moving
 
                     var hovered = GetHoveredTile();
                     if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
@@ -2269,11 +2319,7 @@ public partial class Game1 : Game
                                 if (path != null)
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
-                                    for (int i = 1; i < path.Count; i++)
-                                    {
-                                        var step = path[i];
-                                        _playerCreature.MoveTo(step.x, step.y, step.z);
-                                    }
+                                    _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
                                 }
                                 else
                                 {
@@ -2931,5 +2977,14 @@ public partial class Game1 : Game
         _mapSfxSynth.PlayClose();
     }
 
-
+    private bool IsAnyUnitAnimatingMovement()
+    {
+        bool moving = _combatManager.Combatants.Any(c => c.IsMoving()) || (_playerCreature?.IsMoving() == true);
+        if (moving && _currentCampaign?.IsTraveling == true && _playerCreature != null && !_playerCreature.HasQueuedSteps() && _playerCreature.GetRemainingWaypoints().Count == 0)
+        {
+            if (Math.Abs(_playerCreature.X - _playerCreature.VisualX) < 0.01f && Math.Abs(_playerCreature.Y - _playerCreature.VisualY) < 0.01f)
+                return false;
+        }
+        return moving;
+    }
 }
