@@ -182,7 +182,8 @@ namespace _4DND
         public List<ExploredTileData> ExploredTiles { get; set; } = new();
         public List<ExploredHexData> ExploredHexes { get; set; } = new();
         public List<GroundItemData> GroundItems { get; set; } = new();
-        
+        public List<DungeonData> Dungeons { get; set; } = new();
+
         // Campaign progress
         public int SessionCount { get; set; }
         public string CurrentObjective { get; set; } = "";
@@ -378,17 +379,34 @@ namespace _4DND
 
             foreach (var loc in AllLocations)
             {
-                if (loc.IsDiscovered) continue;
-
                 var (lx, ly) = AxialToMiles(loc.X, loc.Y);
                 float dist = Vector2.Distance(partyPos, new Vector2(lx, ly));
 
-                if (dist <= revealRadiusMiles)
+                if (!loc.IsDiscovered && dist <= revealRadiusMiles)
                 {
                     loc.IsDiscovered = true;
                     onDiscovered?.Invoke(Loc.Tr("Discovered: {0}!", loc.Name));
                 }
+
+                // Dungeon generation check (5 miles radius)
+                if (loc.Type == SettlementType.Dungeon && dist <= 5.0f)
+                {
+                    EnsureDungeonGenerated(loc);
+                }
             }
+        }
+
+        private void EnsureDungeonGenerated(Location loc)
+        {
+            if (Dungeons.Exists(d => d.WorldX == loc.X && d.WorldY == loc.Y))
+                return;
+
+            // Generate deterministic seed for this dungeon
+            int dungeonSeed = Seed ^ (loc.X * 13) ^ (loc.Y * 31);
+            var generator = new DungeonGenerator(dungeonSeed);
+            var dungeon = generator.Generate(loc.Name, loc.X, loc.Y);
+            Dungeons.Add(dungeon);
+            System.Console.WriteLine($"Generated dungeon: {loc.Name} at ({loc.X}, {loc.Y})");
         }
 
         /// <summary>

@@ -98,6 +98,7 @@ public class CombatManager
 
     private readonly record struct TacticalMapNode(int X, int Y, int Z);
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
+    public Func<int, int, int, DungeonDoorState?>? DoorStateProvider { get; set; }
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
     private int _currentRound = 0;
@@ -604,16 +605,32 @@ public class CombatManager
     /// </list>
     /// </para>
     /// </summary>
+    private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
+
+    private bool IsTileBlocked(TileType type, int x, int y, int z, bool canFly)
+    {
+        if (type == TileType.Wall || type == TileType.Tree || type == TileType.Shrub || type == TileType.DungeonWall)
+            return true;
+
+        if (type == TileType.Empty && !canFly)
+            return true;
+
+        if (IsDungeonDoor(type))
+        {
+            var door = DoorStateProvider?.Invoke(x, y, z);
+            return door == null || !door.IsOpen;
+        }
+
+        return false;
+    }
+
     private bool CanPassThrough(Creature mover, int x, int y, int z)
     {
         if (TacticalMap == null) return true;
 
         var tileType = TacticalMap.Get(x, y, z);
 
-        // Walls and vegetation are never passable.
-        // Empty tiles are only passable if the creature can fly.
-        if (tileType == TileType.Wall || tileType == TileType.Tree || tileType == TileType.Shrub ||
-            (tileType == TileType.Empty && !mover.CanFly))
+        if (IsTileBlocked(tileType, x, y, z, mover.CanFly))
             return false;
 
         var occupant = GetCreatureAt(x, y, z);
@@ -651,12 +668,7 @@ public class CombatManager
                 var tileType = TacticalMap.Get(checkX, checkY, z);
                 bool canFly = movingCreature?.CanFly == true;
 
-                // Walls and vegetation are never occupiable.
-                // Empty tiles are only occupiable if the creature can fly.
-                bool isBlocked = tileType == TileType.Wall || tileType == TileType.Tree || tileType == TileType.Shrub ||
-                                 (tileType == TileType.Empty && !canFly);
-
-                if (isBlocked)
+                if (IsTileBlocked(tileType, checkX, checkY, z, canFly))
                 {
                     // Normal fit failed — try squeezing (one size smaller) if allowed
                     if (allowSqueeze)
@@ -693,7 +705,7 @@ public class CombatManager
             for (int dy = 0; dy < height; dy++)
             {
                 var tileType = TacticalMap.Get(x + dx, y + dy, z);
-                if (tileType == TileType.Wall || tileType == TileType.Empty)
+                if (IsTileBlocked(tileType, x + dx, y + dy, z, creature.CanFly))
                 {
                     // Normal fit would fail; if squeezing would work, this is a squeeze
                     var smallerSize = SizeHelper.GetSmallerSize(creature.Size);
@@ -1309,8 +1321,16 @@ public class CombatManager
             int cz = (int)Math.Round(z1 + (z2 - z1) * t);
 
             var tile = TacticalMap.Get(cx, cy, cz);
-            if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub)
+            // Path blocking for ranged attacks/visibility usually ignores flight.
+            // We'll use a simplified check here.
+            if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub || tile == TileType.DungeonWall)
                 return true;
+
+            if (IsDungeonDoor(tile))
+            {
+                var door = DoorStateProvider?.Invoke(cx, cy, cz);
+                if (door == null || !door.IsOpen) return true;
+            }
 
             float tPrev = (float)(i - 1) / dist;
             int px = (int)Math.Round(x1 + (x2 - x1) * tPrev);
@@ -1368,17 +1388,17 @@ public class CombatManager
         // 2D diagonals check
         if (Abs(dx) == 1 && Abs(dy) == 1 && dz == 0)
         {
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)))
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) || IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1))
                 return false;
         }
         if (Abs(dx) == 1 && Abs(dz) == 1 && dy == 0)
         {
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
                 return false;
         }
         if (Abs(dy) == 1 && Abs(dz) == 1 && dx == 0)
         {
-            if (IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
+            if (IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
                 return false;
         }
 
@@ -1386,18 +1406,27 @@ public class CombatManager
         if (Abs(dx) == 1 && Abs(dy) == 1 && Abs(dz) == 1)
         {
             // If any adjacent square that shares a face with the path is a blocking tile, block it
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1)) ||
-                IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1)) ||
-                IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz)))
+            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) ||
+                IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1) ||
+                IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
                 return false;
         }
 
         return true;
     }
     
-    private static bool IsBlockingTile(TileType tile)
+    private bool IsBlockingTile(TileType tile, int x, int y, int z)
     {
-        return tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub;
+        if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub || tile == TileType.DungeonWall)
+            return true;
+
+        if (IsDungeonDoor(tile))
+        {
+            var door = DoorStateProvider?.Invoke(x, y, z);
+            return door == null || !door.IsOpen;
+        }
+
+        return false;
     }
 
     public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
