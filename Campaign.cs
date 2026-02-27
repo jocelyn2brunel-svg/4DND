@@ -15,6 +15,19 @@ namespace _4DND
     }
 
     /// <summary>
+    /// Overall campaign difficulty level.
+    /// Influences encounter XP budgets and monster lethality.
+    /// </summary>
+    public enum CampaignDifficulty
+    {
+        Apprentice,  // Easy
+        Adventurer,  // Medium
+        Heroic,      // Hard
+        Legendary,   // Deadly
+        Mythic       // 1.5x Deadly
+    }
+
+    /// <summary>
     /// Travel pace for overland movement (PHB p.182).
     /// Fast: 4 miles/hour, 30 miles/day, -5 penalty to passive Perception.
     /// Normal: 3 miles/hour, 24 miles/day, no effect.
@@ -217,6 +230,11 @@ namespace _4DND
         
         // Current map viewing scale
         public MapScale CurrentScale { get; set; } = MapScale.Province;
+
+        /// <summary>
+        /// Chosen difficulty for this campaign.
+        /// </summary>
+        public CampaignDifficulty Difficulty { get; set; } = CampaignDifficulty.Adventurer;
 
         /// <summary>
         /// Difficulty of the current (or most recent) combat encounter (DMG p.82).

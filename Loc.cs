@@ -98,6 +98,18 @@ public static class Loc
         _en["Select a Campaign"] = "Select a Campaign"; _fr["Select a Campaign"] = "Choisir une Campagne";
         _en["Create New Campaign"] = "Create New Campaign"; _fr["Create New Campaign"] = "Créer une nouvelle Campagne";
         _en["Adventure Summary"] = "Adventure Summary"; _fr["Adventure Summary"] = "Résumé de l'Aventure";
+        _en["Apprentice"] = "Apprentice"; _fr["Apprentice"] = "Apprenti";
+        _en["Adventurer"] = "Adventurer"; _fr["Adventurer"] = "Aventurier";
+        _en["Heroic"] = "Heroic"; _fr["Heroic"] = "Héroïque";
+        _en["Legendary"] = "Legendary"; _fr["Legendary"] = "Légendaire";
+        _en["Mythic"] = "Mythic"; _fr["Mythic"] = "Mythique";
+        _en["Campaign Difficulty"] = "Campaign Difficulty"; _fr["Campaign Difficulty"] = "Difficulté de la Campagne";
+        _en["Select campaign difficulty:"] = "Select campaign difficulty:"; _fr["Select campaign difficulty:"] = "Sélectionnez la difficulté de la campagne :";
+        _en["Apprentice: Easy encounters, great for learning."] = "Apprentice: Easy encounters, great for learning."; _fr["Apprentice: Easy encounters, great for learning."] = "Apprenti : Rencontres faciles, idéal pour apprendre.";
+        _en["Adventurer: Standard D&D challenge."] = "Adventurer: Standard D&D challenge."; _fr["Adventurer: Standard D&D challenge."] = "Aventurier : Défi D&D standard.";
+        _en["Heroic: Hard encounters, requires tactical thinking."] = "Heroic: Hard encounters, requires tactical thinking."; _fr["Heroic: Hard encounters, requires tactical thinking."] = "Héroïque : Rencontres difficiles, nécessite une réflexion tactique.";
+        _en["Legendary: Deadly encounters, survival is not guaranteed."] = "Legendary: Deadly encounters, survival is not guaranteed."; _fr["Legendary: Deadly encounters, survival is not guaranteed."] = "Légendaire : Rencontres mortelles, la survie n'est pas garantie.";
+        _en["Mythic: Beyond deadly, only for the most experienced heroes."] = "Mythic: Beyond deadly, only for the most experienced heroes."; _fr["Mythic: Beyond deadly, only for the most experienced heroes."] = "Mythique : Au-delà du mortel, réservé aux héros les plus expérimentés.";
 
         // Combat UI & Log
         _en["Combat started!"] = "Combat started!"; _fr["Combat started!"] = "Le combat commence !";

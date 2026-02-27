@@ -307,7 +307,17 @@ public class Game1 : Game
         if (_currentCharacter == null || _playerCreature == null) return;
         
         var combatants = new List<Creature>();
-        combatants.Add(_playerCreature);
+
+        // Add all existing player characters to combat
+        var existingPlayers = _combatManager.Combatants.Where(c => c.IsPlayer && c.IsAlive()).ToList();
+        if (existingPlayers.Count == 0)
+        {
+            combatants.Add(_playerCreature);
+        }
+        else
+        {
+            combatants.AddRange(existingPlayers);
+        }
         
         // Add existing enemies to combat
         var existingEnemies = _combatManager.Combatants.Where(c => !c.IsPlayer && c.IsAlive()).ToList();
@@ -318,6 +328,14 @@ public class Game1 : Game
         // Clear and restart with proper initiative
         _combatManager.Combatants.Clear();
         _combatManager.StartCombat(combatants);
+
+        if (_currentCampaign != null)
+        {
+            var players = combatants.Where(c => c.IsPlayer);
+            var enemies = combatants.Where(c => !c.IsPlayer);
+            _currentCampaign.CurrentEncounterDifficulty = CombatManager.GetEncounterDifficulty(players, enemies).Difficulty;
+        }
+
         _showCombatUI = _hudAlwaysVisible;
         _selectedAction = CombatAction.Move;
         AddToCombatLog(Loc.Tr("Combat started!"));
@@ -382,7 +400,50 @@ public class Game1 : Game
         _combatManager.Combatants.Clear();
     }
     
-    private bool TrySpawnRandomCreatureNearPlayer(int targetDistance = 20)
+    private void TriggerEncounterSpawn(int targetDistance = 20)
+    {
+        if (_playerCreature == null || _currentCampaign == null)
+            return;
+
+        // 1. Determine current biome
+        float milesX = ((float)_playerCreature.X / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyX;
+        float milesY = ((float)_playerCreature.Y / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyY;
+        BiomeType biome = WorldGenerator.GetBiome(milesX, milesY, _currentCampaign.Seed);
+
+        // 2. Determine party levels (all player creatures present)
+        var playerCreatures = _combatManager.Combatants.Where(c => c.IsPlayer && c.IsAlive()).ToList();
+        if (playerCreatures.Count == 0) playerCreatures.Add(_playerCreature);
+
+        var partyLevels = playerCreatures.Select(c => c.Level);
+
+        // 3. Generate encounter
+        var enemiesToSpawn = CombatManager.GenerateEncounter(_currentCampaign.Difficulty, biome, partyLevels, _random);
+
+        if (enemiesToSpawn.Count == 0)
+        {
+            AddToCombatLog(Loc.Tr("No enemies fit the budget for this area."));
+            return;
+        }
+
+        // 4. Spawn them
+        int spawnedCount = 0;
+        foreach (var type in enemiesToSpawn)
+        {
+            if (TrySpawnSpecificCreatureNearPlayer(type, targetDistance))
+                spawnedCount++;
+        }
+
+        if (spawnedCount > 0)
+        {
+            UpdateVision();
+        }
+        else
+        {
+            AddToCombatLog(Loc.Tr("Spawn failed: no valid tile found nearby."));
+        }
+    }
+
+    private bool TrySpawnSpecificCreatureNearPlayer(CreatureType type, int targetDistance = 20)
     {
         if (_playerCreature == null)
             return false;
@@ -403,31 +464,18 @@ public class Game1 : Game
                 continue;
 
             var tile = _tacticalMap.Get(spawnX, spawnY, spawnZ);
-            if (tile != TileType.Floor && tile != TileType.Grass && tile != TileType.DifficultTerrain)
+            if (tile == TileType.Wall || tile == TileType.Water || tile == TileType.Empty)
                 continue;
 
-            int enemyType = _random.Next(0, 7);
-            Creature enemy = enemyType switch
-            {
-                0 => Creature.CreateGoblin(spawnX, spawnY, spawnZ),
-                1 => Creature.CreateOrc(spawnX, spawnY, spawnZ),
-                2 => Creature.CreateSkeleton(spawnX, spawnY, spawnZ),
-                3 => Creature.CreateWolf(spawnX, spawnY, spawnZ),
-                4 => Creature.CreateKobold(spawnX, spawnY, spawnZ),
-                5 => Creature.CreateZombie(spawnX, spawnY, spawnZ),
-                _ => Creature.CreateCouatl(spawnX, spawnY, spawnZ)
-            };
+            Creature enemy = Creature.Create(type, spawnX, spawnY, spawnZ);
 
             if (enemy.CanFly && _random.NextDouble() < 0.35)
                 enemy.IsFlying = true;
 
             _combatManager.Combatants.Add(enemy);
             AddToCombatLog(Loc.Tr("Spawn: {0} appears at ({1}, {2}, {3}).", enemy.Name, spawnX, spawnY, spawnZ));
-            UpdateVision();
             return true;
         }
-
-        AddToCombatLog(Loc.Tr("Spawn failed: no valid tile found within 20 tiles."));
         return false;
     }
 
@@ -2671,6 +2719,19 @@ public class Game1 : Game
         {
             _campaignMapViewer.Update(_currentCampaign, _characters, mouse, kb, _prevKb, gameTime, GraphicsDevice.Viewport);
 
+            if (_campaignMapViewer.EncounterRequested)
+            {
+                _campaignMapViewer.EncounterRequested = false;
+                CloseCampaignMap();
+                TriggerEncounterSpawn();
+                StartCombatWithNearbyEnemies();
+
+                _prevKb = kb;
+                _prevMouse = mouse;
+                base.Update(gameTime);
+                return;
+            }
+
             var closeMapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
             if (mouse.LeftButton == ButtonState.Pressed &&
                 _prevMouse.LeftButton == ButtonState.Released &&
@@ -2992,7 +3053,7 @@ public class Game1 : Game
                 mouseClickedThisFrame &&
                 spawnButtonRect.Contains(mouse.Position))
             {
-                TrySpawnRandomCreatureNearPlayer();
+                TriggerEncounterSpawn();
                 clickedOnGameplayUiButton = true;
             }
 

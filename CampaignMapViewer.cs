@@ -991,9 +991,12 @@ namespace _4DND
                 {
                     SetTravelMessage(Loc.Tr("Random encounter! Travel stops."));
                     _isTraveling = false;
+                    EncounterRequested = true;
                 }
             }
         }
+
+        public bool EncounterRequested { get; set; } = false;
 
         private void DrawTravelProgress(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
