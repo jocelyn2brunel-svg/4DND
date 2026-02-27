@@ -355,7 +355,8 @@ public class ClassData
             SpellcastingAbility = "Intelligence"
         };
 
-        // Aliases
+        // Backward-compatibility aliases for older saves/UI labels.
+        // Official class names remain Fighter and Wizard.
         _classDatabase["Warrior"] = _classDatabase["Fighter"];
         _classDatabase["Mage"] = _classDatabase["Wizard"];
     }
