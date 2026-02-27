@@ -757,6 +757,20 @@ public class CharacterCreation
             yOffset += 22;
         }
         
+        if (selectedRace.MaturityAge > 0 || selectedRace.MaxAge > 0)
+        {
+            if (selectedRace.MaturityAge > 0)
+            {
+                spriteBatch.DrawString(_font, $"  - {Loc.Tr("Adulthood:")} {selectedRace.MaturityAge} {Loc.Tr("years")}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                yOffset += 22;
+            }
+            if (selectedRace.MaxAge > 0)
+            {
+                spriteBatch.DrawString(_font, $"  - {Loc.Tr("Lifespan: up to")} {selectedRace.MaxAge} {Loc.Tr("years")}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                yOffset += 22;
+            }
+        }
+
         if (selectedRace.Languages.Count > 0)
         {
             string langs = string.Join(", ", selectedRace.Languages);
