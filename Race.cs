@@ -58,6 +58,8 @@ public class Race
     public bool HasHalflingNimbleness { get; set; } = false;
     /// <summary>Naturally Stealthy: you can attempt to hide even when obscured only by a creature at least one size larger than you (Lightfoot Halfling).</summary>
     public bool HasNaturallyStealthy { get; set; } = false;
+    /// <summary>Stout Resilience: advantage on saving throws against poison, and resistance against poison damage (Stout Halfling).</summary>
+    public bool HasStoutResilience { get; set; } = false;
 
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
@@ -203,7 +205,7 @@ public class Race
             HasLucky = true,
             HasBrave = true,
             HasHalflingNimbleness = true,
-            HasDwarvenResilience = true,
+            HasStoutResilience = true,
             Languages = new List<string> { "Common", "Halfling" },
             Description = Loc.Tr("Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)")
         },

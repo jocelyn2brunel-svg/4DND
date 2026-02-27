@@ -380,7 +380,7 @@ public static class CharacterD20Extensions
     /// </summary>
     public static D20Check MakeSavingThrow(this Character character, string abilityName, int dc, DamageType damageContext, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
     {
-        if (character.HasDwarvenResilience && damageContext == DamageType.Poison)
+        if ((character.HasDwarvenResilience || character.HasStoutResilience) && damageContext == DamageType.Poison)
             hasAdvantage = true;
         
         return character.MakeSavingThrow(abilityName, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);

@@ -272,6 +272,8 @@ public static class Loc
         _fr["Nimble and charming (+2 DEX, +1 CHA)"] = "Agile et charmant (+2 DEX, +1 CHA)";
         _en["Nimble and resilient (+2 DEX, +1 CON)"] = "Nimble and resilient (+2 DEX, +1 CON)";
         _fr["Nimble and resilient (+2 DEX, +1 CON)"] = "Agile et résistant (+2 DEX, +1 CON)";
+        _en["Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)"] = "Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)";
+        _fr["Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)"] = "Agile et résistant (+2 DEX, +1 CON, Chanceux, Courageux, Agilité halfling, Résilience robuste)";
         _en["Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)"] = "Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)";
         _fr["Strong and tough (+2 STR, +1 CON, Darkvision 60 ft)"] = "Fort et robuste (+2 FOR, +1 CON, Vision dans le noir 18m)";
         _en["Infernal heritage with darkvision (+2 CHA, +1 INT, Darkvision 60 ft)"] = "Infernal heritage with darkvision (+2 CHA, +1 INT, Darkvision 60 ft)";

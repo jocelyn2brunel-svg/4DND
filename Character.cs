@@ -94,6 +94,8 @@ public class Character
     public bool HasHalflingNimbleness { get; set; } = false;
     /// <summary>Naturally Stealthy: you can attempt to hide even when obscured only by a creature at least one size larger than you (Lightfoot Halfling).</summary>
     public bool HasNaturallyStealthy { get; set; } = false;
+    /// <summary>Stout Resilience: advantage on saving throws against poison, and resistance against poison damage (Stout Halfling).</summary>
+    public bool HasStoutResilience { get; set; } = false;
     /// <summary>Languages this character can speak, read, and write.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
@@ -287,6 +289,7 @@ public class Character
         HasBrave = raceData.HasBrave;
         HasHalflingNimbleness = raceData.HasHalflingNimbleness;
         HasNaturallyStealthy = raceData.HasNaturallyStealthy;
+        HasStoutResilience = raceData.HasStoutResilience;
         if (raceData.HasKeenSenses)
             PerceptionProficiency = true;
     }
