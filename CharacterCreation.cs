@@ -42,6 +42,7 @@ public class CharacterCreation
     
     // Mouse state tracking
     private MouseState _prevMouse;
+    private bool _waitingForMouseRelease = false;
     
     // Animation for dice rolling
     private bool _isRolling = false;
@@ -109,6 +110,7 @@ public class CharacterCreation
         _selectedClassSkills.Clear();
         _useStartingWealth = false;
         _rolledStartingWealth = 0;
+        _waitingForMouseRelease = true;
         UpdateAvailableNames();
     }
 
@@ -117,6 +119,16 @@ public class CharacterCreation
         createdCharacter = null;
         var mouse = Mouse.GetState();
         var vp = graphics.Viewport;
+
+        // Wait for mouse button to be fully released before processing clicks,
+        // to avoid a phantom click from the button that opened this screen.
+        if (_waitingForMouseRelease)
+        {
+            if (mouse.LeftButton == ButtonState.Released)
+                _waitingForMouseRelease = false;
+            _prevMouse = mouse;
+            return true;
+        }
 
         // Larger window for better visibility
         int menuWidthC = 1000;
