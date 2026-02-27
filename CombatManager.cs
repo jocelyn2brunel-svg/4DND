@@ -1045,21 +1045,24 @@ public class CombatManager
     private List<TacticalMapNode>? FindPathToAdjacent(Creature creature, Creature target)
     {
         var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
-        var openSet = new List<TacticalMapNode> { start };
+        var openSet = new PriorityQueue<TacticalMapNode, int>();
+        openSet.Enqueue(start, HeuristicToAdjacent(start, target));
+
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = HeuristicToAdjacent(start, target) };
 
-        while (openSet.Count > 0)
+        int iterations = 0;
+        const int maxIterations = 2000;
+
+        while (openSet.Count > 0 && iterations++ < maxIterations)
         {
-            var current = openSet.OrderBy(n => fScore.GetValueOrDefault(n, int.MaxValue)).First();
+            var current = openSet.Dequeue();
 
             if (IsAdjacentToTarget(current, target) && CanOccupySpace(creature.Size, current.X, current.Y, current.Z, creature))
                 return ReconstructPath(cameFrom, current);
-
-            openSet.Remove(current);
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
@@ -1081,10 +1084,9 @@ public class CombatManager
                 gScore[neighbor] = tentativeG;
                 turnCount[neighbor] = tentativeTurns;
                 diagParity[neighbor] = newDiagParity;
-                fScore[neighbor] = tentativeG + HeuristicToAdjacent(neighbor, target);
-
-                if (!openSet.Contains(neighbor))
-                    openSet.Add(neighbor);
+                int tentativeF = tentativeG + HeuristicToAdjacent(neighbor, target);
+                fScore[neighbor] = tentativeF;
+                openSet.Enqueue(neighbor, tentativeF);
             }
         }
 
@@ -1157,20 +1159,23 @@ public class CombatManager
         if (start == goal)
             return new List<TacticalMapNode> { start };
 
-        var openSet = new List<TacticalMapNode> { start };
+        var openSet = new PriorityQueue<TacticalMapNode, int>();
+        openSet.Enqueue(start, Heuristic(start, goal));
+
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
 
-        while (openSet.Count > 0)
+        int iterations = 0;
+        const int maxIterations = 2000;
+
+        while (openSet.Count > 0 && iterations++ < maxIterations)
         {
-            var current = openSet.OrderBy(n => fScore.GetValueOrDefault(n, int.MaxValue)).First();
+            var current = openSet.Dequeue();
             if (current == goal)
                 return ReconstructPath(cameFrom, current);
-
-            openSet.Remove(current);
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
@@ -1192,10 +1197,9 @@ public class CombatManager
                 gScore[neighbor] = tentativeG;
                 turnCount[neighbor] = tentativeTurns;
                 diagParity[neighbor] = newDiagParity;
-                fScore[neighbor] = tentativeG + Heuristic(neighbor, goal);
-
-                if (!openSet.Contains(neighbor))
-                    openSet.Add(neighbor);
+                int tentativeF = tentativeG + Heuristic(neighbor, goal);
+                fScore[neighbor] = tentativeF;
+                openSet.Enqueue(neighbor, tentativeF);
             }
         }
 
