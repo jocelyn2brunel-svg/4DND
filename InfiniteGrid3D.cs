@@ -93,6 +93,31 @@ namespace _4DND
             return (minX, maxX, minY, maxY, minZ, maxZ);
         }
 
+        /// <summary>
+        /// Pre-populates the cache for a rectangular region by calling the default factory
+        /// for every cell that is not already cached. This avoids a lag spike when the
+        /// renderer first queries a large number of uncached cells in a single frame.
+        /// </summary>
+        public void PreWarm(int centerX, int centerY, int z, int radius)
+        {
+            if (_defaultFactory == null || !AutoCache) return;
+
+            for (int y = centerY - radius; y <= centerY + radius; y++)
+            {
+                for (int x = centerX - radius; x <= centerX + radius; x++)
+                {
+                    var key = (x, y, z);
+                    if (_cells.ContainsKey(key)) continue;
+
+                    var result = _defaultFactory(x, y, z);
+                    if (!EqualityComparer<T>.Default.Equals(result, default))
+                    {
+                        _cells[key] = result;
+                    }
+                }
+            }
+        }
+
         public IEnumerable<(int x, int y, int z)> SpiralCoords(int cx = 0, int cy = 0, int cz = 0)
         {
             int x = cx, y = cy;

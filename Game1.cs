@@ -2834,6 +2834,13 @@ public partial class Game1 : Game
             PlacePlayerAtNearestValidTile();
             _playerCreature.InterruptMovement();
             _cameraTarget = Vector3.Zero;
+
+            // Pre-warm the tile cache for the visible area so the first render frame
+            // does not stall generating thousands of procedural tiles on-demand.
+            int warmCenterX = _playerCreature?.X ?? 0;
+            int warmCenterY = _playerCreature?.Y ?? 0;
+            _tacticalMap.PreWarm(warmCenterX, warmCenterY, 0, 40);
+
             UpdateVision();
             _campaignMapViewer.ResetTravelFlags(_currentCampaign);
         }
