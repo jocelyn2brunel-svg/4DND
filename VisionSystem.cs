@@ -289,8 +289,12 @@ public class VisionSystem
             _visibleTiles.Add((cx, cy, cz));
             _exploredTiles.Add((cx + worldXOffset, cy + worldYOffset, cz));
 
-            if (TacticalMap != null && TacticalMap.Get(cx, cy, cz) == TileType.Wall)
-                break;
+            if (TacticalMap != null)
+            {
+                var tile = TacticalMap.Get(cx, cy, cz);
+                if (tile == TileType.Wall || tile == TileType.DungeonWall || IsDoorOpaque(tile, cx, cy, cz))
+                    break;
+            }
 
             // Check area effects that block vision
             bool blockedByEffect = false;
@@ -431,6 +435,18 @@ public class VisionSystem
         }
     }
     
+    private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
+
+    public delegate DungeonDoorState? GetDoorStateDelegate(int x, int y, int z);
+    public GetDoorStateDelegate? DoorStateProvider { get; set; }
+
+    private bool IsDoorOpaque(TileType type, int x, int y, int z)
+    {
+        if (!IsDungeonDoor(type)) return false;
+        var door = DoorStateProvider?.Invoke(x, y, z);
+        return door == null || !door.IsOpen;
+    }
+
     public bool IsVisible(int x, int y, int z = 0)
     {
         return _visibleTiles.Contains((x, y, z));
@@ -729,7 +745,11 @@ public class VisionSystem
             curY += stepY;
             curZ += stepZ;
 
-            if (TacticalMap.Get((int)curX, (int)curY, (int)curZ) == TileType.Wall)
+            int cx = (int)curX;
+            int cy = (int)curY;
+            int cz = (int)curZ;
+            var tile = TacticalMap.Get(cx, cy, cz);
+            if (tile == TileType.Wall || tile == TileType.DungeonWall || IsDoorOpaque(tile, cx, cy, cz))
                 return false;
         }
 

@@ -16,5 +16,16 @@ public enum TileType
     Rock,
     Tree,
     Shrub,
-    BallBearings
+    BallBearings,
+
+    // Dungeon specific
+    DungeonFloor,
+    DungeonWall,
+    DungeonDoorWooden,
+    DungeonDoorStone,
+    DungeonDoorIron,
+    DungeonPortcullis,
+    DungeonSecretDoor,
+    DungeonStairsUp,
+    DungeonStairsDown
 }

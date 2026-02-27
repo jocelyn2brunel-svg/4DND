@@ -149,6 +149,10 @@ public class Game1 : Game
     private string _enemyExamineText = "";
     private Rectangle _enemyExaminePopupRect;
     private Spell? _activeSpell = null;
+    private bool _showDoorContextMenu = false;
+    private Rectangle _doorContextMenuRect;
+    private (int x, int y, int z) _contextTargetDoor;
+    private Dictionary<string, Rectangle> _doorMenuOptionRects = new();
     private DiceRoll3DAnimation _diceRollAnimation = new();
     private readonly Random _random = new();
 
@@ -233,9 +237,36 @@ public class Game1 : Game
 
     private TileType GetProceduralTile(int x, int y, int z)
     {
+        // 1. Check for dungeon tiles in the current campaign
+        if (_currentCampaign != null)
+        {
+            var partyHex = Campaign.CartesianToAxial(_currentCampaign.PartyX, _currentCampaign.PartyY);
+
+            // Search all generated dungeons in this campaign
+            foreach (var dungeon in _currentCampaign.Dungeons)
+            {
+                // Only consider dungeons close to the party's current hex
+                if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
+                {
+                    // Convert world coordinates to relative dungeon coordinates
+                    var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
+                    int dungeonOriginX = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
+                    int dungeonOriginY = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+
+                    int rx = x - dungeonOriginX;
+                    int ry = y - dungeonOriginY;
+
+                    if (dungeon.LayoutOverrides.TryGetValue((rx, ry, z), out var dungeonTile))
+                    {
+                        return dungeonTile;
+                    }
+                }
+            }
+        }
+
         if (z != 0) return TileType.Empty;
 
-        // Use the seed and party location from the current campaign
+        // 2. Standard procedural world tiles
         int seed = _currentCampaign?.Seed ?? 0;
         float offsetX = _currentCampaign?.PartyX ?? 0;
         float offsetY = _currentCampaign?.PartyY ?? 0;
@@ -276,7 +307,9 @@ public class Game1 : Game
 
         Initialize3DRendering();
         _combatManager.TacticalMap = _tacticalMap;
+        _combatManager.DoorStateProvider = GetDoorState;
         _visionSystem.TacticalMap = _tacticalMap;
+        _visionSystem.DoorStateProvider = GetDoorState;
         _visionSystem.AmbientLight = _currentCampaign?.GetCurrentLightLevel() ?? LightType.Bright;
 
         // Procedural ground is now handled by InfiniteGrid3D factory.
@@ -368,7 +401,7 @@ public class Game1 : Game
 
     private static bool IsValidPlayerSpawnTile(TileType tile)
     {
-        return tile != TileType.Water && tile != TileType.Wall && tile != TileType.Empty;
+        return tile != TileType.Water && tile != TileType.Wall && tile != TileType.DungeonWall && tile != TileType.Empty;
     }
 
     private void PlacePlayerAtNearestValidTile(int preferredX = 0, int preferredY = 0, int preferredZ = 0)
@@ -1068,7 +1101,7 @@ public class Game1 : Game
                 Color color = GetTileColor(type, x, y, 0, zLevel);
                 if (color.A == 0) continue;
 
-                if (type == TileType.Wall)
+                if (type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type))
                 {
                     AddThinWallVertices(_reusableWallVertices, x, y, 0, color);
                 }
@@ -1106,7 +1139,7 @@ public class Game1 : Game
             Color color = GetTileColor(cell.Value, cx, cy, cz, zLevel);
             if (color.A == 0) continue;
 
-            if (cell.Value == TileType.Wall)
+            if (cell.Value == TileType.Wall || cell.Value == TileType.DungeonWall || IsDungeonDoor(cell.Value))
             {
                 AddThinWallVertices(_reusableWallVertices, cx, cy, cz, color);
             }
@@ -1224,11 +1257,20 @@ public class Game1 : Game
             TileType.Rock => new Color(120, 120, 125),
             TileType.Tree => new Color(40, 80, 30),
             TileType.Shrub => new Color(60, 100, 40),
+            TileType.DungeonFloor => new Color(60, 60, 65),
+            TileType.DungeonWall => new Color(90, 90, 95),
+            TileType.DungeonDoorWooden => new Color(100, 70, 40),
+            TileType.DungeonDoorStone => new Color(110, 110, 115),
+            TileType.DungeonDoorIron => new Color(70, 70, 80),
+            TileType.DungeonPortcullis => new Color(50, 50, 55),
+            TileType.DungeonSecretDoor => new Color(90, 90, 95),
+            TileType.DungeonStairsUp => new Color(80, 80, 85),
+            TileType.DungeonStairsDown => new Color(80, 80, 85),
             _ => Color.ForestGreen
         };
 
         // Deterministic tile-level variation to mimic texture diversity and reduce visible tiling.
-        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock || type == TileType.Tree || type == TileType.Shrub)
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock || type == TileType.Tree || type == TileType.Shrub || type == TileType.DungeonFloor || type == TileType.DungeonWall)
         {
             float dryness = Hash01(x, y, z, 11);
             float moisture = Hash01(x, y, z, 23);
@@ -1380,14 +1422,17 @@ public class Game1 : Game
         }
     }
 
+    private bool IsWallLike(TileType type) => type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type);
+    private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
+
     private void AddThinWallVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
     {
         // Check neighbors to see which edges need a vertical plane
         // A plane is drawn if the neighbor is NOT a wall
-        bool north = _tacticalMap.Get(x, y + 1, z) != TileType.Wall;
-        bool south = _tacticalMap.Get(x, y - 1, z) != TileType.Wall;
-        bool east = _tacticalMap.Get(x + 1, y, z) != TileType.Wall;
-        bool west = _tacticalMap.Get(x - 1, y, z) != TileType.Wall;
+        bool north = !IsWallLike(_tacticalMap.Get(x, y + 1, z));
+        bool south = !IsWallLike(_tacticalMap.Get(x, y - 1, z));
+        bool east = !IsWallLike(_tacticalMap.Get(x + 1, y, z));
+        bool west = !IsWallLike(_tacticalMap.Get(x - 1, y, z));
 
         const float halfTile = 0.5f;
         const float wallHeight = 1.0f;
@@ -1439,10 +1484,10 @@ public class Game1 : Game
         Vector3 bl = new Vector3(x - halfTile, y + halfTile, topZ);
 
         // Check neighbors to avoid drawing caps where walls are continuous
-        bool north = _tacticalMap.Get(x, y + 1, z) != TileType.Wall;
-        bool south = _tacticalMap.Get(x, y - 1, z) != TileType.Wall;
-        bool east = _tacticalMap.Get(x + 1, y, z) != TileType.Wall;
-        bool west = _tacticalMap.Get(x - 1, y, z) != TileType.Wall;
+        bool north = !IsWallLike(_tacticalMap.Get(x, y + 1, z));
+        bool south = !IsWallLike(_tacticalMap.Get(x, y - 1, z));
+        bool east = !IsWallLike(_tacticalMap.Get(x + 1, y, z));
+        bool west = !IsWallLike(_tacticalMap.Get(x - 1, y, z));
 
         if (north) AddCapSegment(vertices, bl, br, thickness, color);
         if (south) AddCapSegment(vertices, tr, tl, thickness, color);
@@ -1981,10 +2026,7 @@ public class Game1 : Game
             int hy = (int)Math.Round(near.Y + dir.Y * d.Value);
             var tileType = _tacticalMap.Get(hx, hy, hz);
 
-            // Walls are never selectable and block selection of anything below them.
-            if (tileType == TileType.Wall) return null;
-
-            // Found a solid tile.
+            // Found a solid tile (including walls and doors).
             if (tileType != TileType.Empty)
             {
                 return (hx, hy, hz);
@@ -2934,6 +2976,14 @@ public class Game1 : Game
             bool rightClickedThisFrame = mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released;
             bool clickedOnGameplayUiButton = false;
 
+        if (_showDoorContextMenu && mouseClickedThisFrame)
+        {
+            if (HandleDoorContextMenu(mouse.Position))
+                clickedOnGameplayUiButton = true;
+            else
+                _showDoorContextMenu = false;
+        }
+
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (_playerCreature != null)
@@ -3409,7 +3459,12 @@ public class Game1 : Game
                     target = _combatManager.GetCreatureAt(hovered.Value.x, hovered.Value.y, hovered.Value.z);
                 }
 
-                if (target != null && !target.IsPlayer && target.IsAlive())
+                if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
+                {
+                    ShowDoorContextMenu(hovered.Value.x, hovered.Value.y, hovered.Value.z, mouse.Position);
+                    clickedOnGameplayUiButton = true;
+                }
+                else if (target != null && !target.IsPlayer && target.IsAlive())
                 {
                     _contextTargetEnemy = target;
                     _showEnemyContextMenu = true;
@@ -3455,11 +3510,17 @@ public class Game1 : Game
             {
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
+                    var hovered = GetHoveredTile();
+                    if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
+                    {
+                        ToggleDoor(hovered.Value.x, hovered.Value.y, hovered.Value.z);
+                        clickedOnGameplayUiButton = true;
+                    }
                     // If Combat UI is open, only allow movement if Move action is selected
                     bool allowExplorationMove = !_showCombatUI || _selectedAction == CombatAction.Move || _selectedAction == CombatAction.None;
 
                     var hovered = GetHoveredTile();
-                    if (hovered.HasValue && _playerCreature != null && allowExplorationMove)
+                    if (hovered.HasValue && _playerCreature != null && allowExplorationMove && !clickedOnGameplayUiButton)
                     {
                         int tx = hovered.Value.x;
                         int ty = hovered.Value.y;
@@ -3499,6 +3560,22 @@ public class Game1 : Game
                                 _playerCreature.X = actualX;
                                 _playerCreature.Y = actualY;
                                 _playerCreature.Z = actualZ;
+
+                                // Check if destination is stairs
+                                if (tileType == TileType.DungeonStairsUp || tileType == TileType.DungeonStairsDown)
+                                {
+                                    // Use stairs immediately
+                                    var stairs = GetStairsState(tx, ty, tz);
+                                    if (stairs != null)
+                                    {
+                                        _playerCreature.TeleportTo(tx, ty, stairs.TargetZ);
+                                        _currentViewLevel = stairs.TargetZ;
+                                        AddToCombatLog(Loc.Tr("You used the stairs."));
+                                        UpdateVision();
+                                        clickedOnGameplayUiButton = true;
+                                        return;
+                                    }
+                                }
 
                                 if (path != null)
                                 {
@@ -4527,6 +4604,7 @@ public class Game1 : Game
             DrawRotationButtons(vp);
             DrawEnemyContextMenu(vp);
             DrawEnemyExaminePopup(vp);
+            DrawDoorContextMenu(vp);
 
             // Vision/status debug markers intentionally hidden to keep the tactical UI clean.
         }
@@ -5408,6 +5486,151 @@ public class Game1 : Game
         DrawBorder(_spriteBatch, _pixel, _enemyContextMenuRect, Color.White, 2);
         _spriteBatch.Draw(_pixel, _enemyExamineOptionRect, isHovered ? Color.DarkGoldenrod : Color.DarkSlateGray);
         _spriteBatch.DrawString(_font, Loc.Tr("Inspect"), new Vector2(_enemyExamineOptionRect.X + 10, _enemyExamineOptionRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+    }
+
+    private DungeonDoorState? GetDoorState(int x, int y, int z)
+    {
+        if (_currentCampaign == null) return null;
+        var partyHex = Campaign.CartesianToAxial(_currentCampaign.PartyX, _currentCampaign.PartyY);
+        foreach (var dungeon in _currentCampaign.Dungeons)
+        {
+            if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
+            {
+                var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
+                int ox = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
+                int oy = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+                int rx = x - ox, ry = y - oy;
+                return dungeon.Doors.FirstOrDefault(d => d.X == rx && d.Y == ry && d.Z == z);
+            }
+        }
+        return null;
+    }
+
+    private void ToggleDoor(int x, int y, int z)
+    {
+        var door = GetDoorState(x, y, z);
+        if (door == null) return;
+
+        if (door.IsLocked || door.IsBarred)
+        {
+            AddToCombatLog(Loc.Tr("The door is locked or barred."));
+            return;
+        }
+
+        door.IsOpen = !door.IsOpen;
+        AddToCombatLog(Loc.Tr(door.IsOpen ? "You opened the door." : "You closed the door."));
+        UpdateVision();
+    }
+
+    private void ShowDoorContextMenu(int x, int y, int z, Point screenPos)
+    {
+        _contextTargetDoor = (x, y, z);
+        _showDoorContextMenu = true;
+        _doorMenuOptionRects.Clear();
+
+        string[] options = { "Open", "Lockpick", "Destroy", "Examine" };
+        int menuWidth = 140;
+        int itemHeight = 32;
+        int menuHeight = options.Length * itemHeight + 12;
+
+        int mx = Math.Clamp(screenPos.X, 8, GraphicsDevice.Viewport.Width - menuWidth - 8);
+        int my = Math.Clamp(screenPos.Y, 8, GraphicsDevice.Viewport.Height - menuHeight - 8);
+        _doorContextMenuRect = new Rectangle(mx, my, menuWidth, menuHeight);
+
+        for (int i = 0; i < options.Length; i++)
+        {
+            _doorMenuOptionRects[options[i]] = new Rectangle(mx + 6, my + 6 + i * itemHeight, menuWidth - 12, itemHeight - 4);
+        }
+    }
+
+    private bool HandleDoorContextMenu(Point mousePos)
+    {
+        foreach (var option in _doorMenuOptionRects)
+        {
+            if (option.Value.Contains(mousePos))
+            {
+                ExecuteDoorAction(option.Key);
+                _showDoorContextMenu = false;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void ExecuteDoorAction(string action)
+    {
+        var door = GetDoorState(_contextTargetDoor.x, _contextTargetDoor.y, _contextTargetDoor.z);
+        if (door == null) return;
+
+        switch (action)
+        {
+            case "Open":
+                ToggleDoor(_contextTargetDoor.x, _contextTargetDoor.y, _contextTargetDoor.z);
+                break;
+            case "Lockpick":
+                if (door.IsLocked)
+                {
+                    int roll = Dice.Roll(20);
+                    int bonus = _currentCharacter?.GetSkillBonus("Sleight of Hand", out _) ?? 0;
+                    if (roll + bonus >= door.LockDC)
+                    {
+                        door.IsLocked = false;
+                        AddToCombatLog(Loc.Tr("You successfully picked the lock!"));
+                    }
+                    else AddToCombatLog(Loc.Tr("You failed to pick the lock."));
+                }
+                else AddToCombatLog(Loc.Tr("The door is not locked."));
+                break;
+            case "Destroy":
+                AddToCombatLog(Loc.Tr("You attack the door!"));
+                // Simple destruction for now
+                door.CurrentHP -= 10;
+                if (door.CurrentHP <= 0)
+                {
+                    _tacticalMap.Set(_contextTargetDoor.x, _contextTargetDoor.y, _contextTargetDoor.z, TileType.DungeonFloor);
+                    AddToCombatLog(Loc.Tr("The door is destroyed!"));
+                    UpdateVision();
+                }
+                break;
+            case "Examine":
+                string status = door.IsOpen ? Loc.Tr("Open") : Loc.Tr("Closed");
+                if (door.IsLocked) status += ", " + Loc.Tr("Locked");
+                if (door.IsBarred) status += ", " + Loc.Tr("Barred");
+                AddToCombatLog(Loc.Tr("Door ({0}): {1}, HP {2}/{3}", door.Type, status, door.CurrentHP, door.MaxHP));
+                break;
+        }
+    }
+
+    private void DrawDoorContextMenu(Viewport viewport)
+    {
+        if (!_showDoorContextMenu || _font == null) return;
+        _spriteBatch.Draw(_pixel, _doorContextMenuRect, new Color(20, 20, 20, 240));
+        DrawBorder(_spriteBatch, _pixel, _doorContextMenuRect, Color.White, 2);
+
+        foreach (var option in _doorMenuOptionRects)
+        {
+            bool isHovered = option.Value.Contains(Mouse.GetState().Position);
+            _spriteBatch.Draw(_pixel, option.Value, isHovered ? Color.DarkGoldenrod : Color.DarkSlateGray);
+            _spriteBatch.DrawString(_font, Loc.Tr(option.Key), new Vector2(option.Value.X + 10, option.Value.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private DungeonStairs? GetStairsState(int x, int y, int z)
+    {
+        if (_currentCampaign == null) return null;
+        var partyHex = Campaign.CartesianToAxial(_currentCampaign.PartyX, _currentCampaign.PartyY);
+        foreach (var dungeon in _currentCampaign.Dungeons)
+        {
+            if (Campaign.GetHexDistance(partyHex.q, partyHex.r, dungeon.WorldX, dungeon.WorldY) <= 1)
+            {
+                var (worldX_miles, worldY_miles) = Campaign.AxialToMiles(dungeon.WorldX, dungeon.WorldY);
+                int ox = (int)(worldX_miles * Campaign.TacticalUnitsPerMile);
+                int oy = (int)(worldY_miles * Campaign.TacticalUnitsPerMile);
+                int rx = x - ox, ry = y - oy;
+                return dungeon.Stairs.FirstOrDefault(s => s.X == rx && s.Y == ry && s.Z == z);
+            }
+        }
+        return null;
     }
 
     private void DrawEnemyExaminePopup(Viewport viewport)
