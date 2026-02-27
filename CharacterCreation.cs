@@ -796,12 +796,14 @@ public class CharacterCreation
         }
 
         spriteBatch.DrawString(_font, "Choose your Artisan Tool Proficiency:", new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
-        spriteBatch.DrawString(_font, "(Smith's tools, Brewer's supplies, or Mason's tools)", new Vector2(menuRect.X + padding, menuRect.Y + titleH + 35), Color.LightGray, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+        string dynamicSubtitle = "(" + string.Join(", ", selectedRace.ToolProficiencyChoices) + ")";
+        spriteBatch.DrawString(_font, dynamicSubtitle, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 35), Color.LightGray, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
 
         var toolsRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 70, 460, selectedRace.ToolProficiencyChoices.Count * 52 + 10);
         spriteBatch.Draw(_pixel, toolsRect, Color.Gray * 0.7f);
         DrawBorder(spriteBatch, toolsRect, 2, Color.Gold * 0.4f);
 
+        int hoveredToolIndex = -1;
         for (int i = 0; i < selectedRace.ToolProficiencyChoices.Count; i++)
         {
             var item = new Rectangle(toolsRect.X + 4, toolsRect.Y + i * 52 + 4, 452, 46);
@@ -818,9 +820,47 @@ public class CharacterCreation
 
             if (isHovered)
             {
+                hoveredToolIndex = i;
                 _tooltipText = $"Gain proficiency with {toolName}";
                 if (IsMouseClicked(mouse, _prevMouse, item))
                     _selectedToolIndex = i;
+            }
+        }
+
+        // Right-side detail panel
+        int detailIndex = hoveredToolIndex >= 0 ? hoveredToolIndex : _selectedToolIndex;
+        var detailsRect = new Rectangle(menuRect.X + padding + 480, menuRect.Y + titleH + 40, 480, 420);
+        spriteBatch.Draw(_pixel, detailsRect, Color.DarkSlateGray * 0.8f);
+        DrawBorder(spriteBatch, detailsRect, 2, Color.Gold * 0.4f);
+
+        int yOffset = detailsRect.Y + 12;
+
+        spriteBatch.DrawString(_font, "Tool Proficiency", new Vector2(detailsRect.X + 12, yOffset), Color.Gold, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+        yOffset += 35;
+
+        string traitDesc = "You gain proficiency with the artisan's tools of your choice: " +
+            string.Join(", ", selectedRace.ToolProficiencyChoices).ToLower() +
+            ". Proficiency lets you add your proficiency bonus to ability checks you make when using these tools.";
+        DrawWrappedText(spriteBatch, traitDesc, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.White, 0.55f);
+        yOffset += 90;
+
+        if (detailIndex >= 0 && detailIndex < selectedRace.ToolProficiencyChoices.Count)
+        {
+            string selectedTool = selectedRace.ToolProficiencyChoices[detailIndex];
+            spriteBatch.DrawString(_font, selectedTool, new Vector2(detailsRect.X + 12, yOffset), Color.LightGreen, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+            yOffset += 28;
+
+            var toolItem = ItemDatabase.GetItem(selectedTool);
+            if (toolItem != null)
+            {
+                if (!string.IsNullOrEmpty(toolItem.Description))
+                {
+                    DrawWrappedText(spriteBatch, toolItem.Description, new Vector2(detailsRect.X + 12, yOffset), detailsRect.Width - 24, Color.LightGray, 0.55f);
+                    yOffset += 55;
+                }
+                spriteBatch.DrawString(_font, $"Weight: {toolItem.Weight} lbs", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
+                yOffset += 22;
+                spriteBatch.DrawString(_font, $"Value: {toolItem.Value / 100} gp", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             }
         }
     }
@@ -1144,6 +1184,24 @@ public class CharacterCreation
         var weaponText = "  " + string.Join(", ", selectedClass.WeaponProficiencies);
         DrawWrappedText(spriteBatch, weaponText, new Vector2(rightX, yOffset), 450, Color.White, 0.5f);
         yOffset += 45;
+
+        // Tool proficiencies: from race choice and class
+        var allToolProfs = new List<string>(selectedClass.ToolProficiencies);
+        if (selectedRace.ToolProficiencyChoices.Count > 0)
+        {
+            int chosenIdx = Math.Clamp(_selectedToolIndex, 0, selectedRace.ToolProficiencyChoices.Count - 1);
+            string chosenTool = selectedRace.ToolProficiencyChoices[chosenIdx];
+            if (!allToolProfs.Contains(chosenTool))
+                allToolProfs.Insert(0, chosenTool);
+        }
+        if (allToolProfs.Count > 0)
+        {
+            spriteBatch.DrawString(_font, "Tool Proficiencies:", new Vector2(rightX, yOffset), Color.LightBlue, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+            yOffset += 22;
+            var toolProfText = "  " + string.Join(", ", allToolProfs);
+            DrawWrappedText(spriteBatch, toolProfText, new Vector2(rightX, yOffset), 450, Color.White, 0.5f);
+            yOffset += 45;
+        }
 
         var selectedSkills = GetSelectedSkillsForClass(selectedClass);
         if (selectedSkills.Count > 0)
