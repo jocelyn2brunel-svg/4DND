@@ -375,6 +375,24 @@ public class Race
         }
     };
     
+    /// <summary>
+    /// Lookup table for the PHB "Draconic Ancestry" table.
+    /// Maps each <see cref="DragonAncestryType"/> to its damage type, breath weapon shape, and saving throw.
+    /// </summary>
+    public static readonly Dictionary<DragonAncestryType, DraconicAncestryEntry> DraconicAncestryTable = new()
+    {
+        [DragonAncestryType.Black]  = new DraconicAncestryEntry(DamageType.Acid,      BreathWeaponShape.Line5x30, "Dexterity"),
+        [DragonAncestryType.Blue]   = new DraconicAncestryEntry(DamageType.Lightning, BreathWeaponShape.Line5x30, "Dexterity"),
+        [DragonAncestryType.Brass]  = new DraconicAncestryEntry(DamageType.Fire,      BreathWeaponShape.Line5x30, "Dexterity"),
+        [DragonAncestryType.Bronze] = new DraconicAncestryEntry(DamageType.Lightning, BreathWeaponShape.Line5x30, "Dexterity"),
+        [DragonAncestryType.Copper] = new DraconicAncestryEntry(DamageType.Acid,      BreathWeaponShape.Line5x30, "Dexterity"),
+        [DragonAncestryType.Gold]   = new DraconicAncestryEntry(DamageType.Fire,      BreathWeaponShape.Cone15,   "Dexterity"),
+        [DragonAncestryType.Green]  = new DraconicAncestryEntry(DamageType.Poison,    BreathWeaponShape.Cone15,   "Constitution"),
+        [DragonAncestryType.Red]    = new DraconicAncestryEntry(DamageType.Fire,      BreathWeaponShape.Cone15,   "Dexterity"),
+        [DragonAncestryType.Silver] = new DraconicAncestryEntry(DamageType.Cold,      BreathWeaponShape.Cone15,   "Constitution"),
+        [DragonAncestryType.White]  = new DraconicAncestryEntry(DamageType.Cold,      BreathWeaponShape.Cone15,   "Constitution"),
+    };
+
     public static Race GetRace(string name)
     {
         return AllRaces.TryGetValue(name, out var race) ? race : AllRaces["Human"];

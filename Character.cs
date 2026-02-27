@@ -96,6 +96,8 @@ public class Character
     public bool HasNaturallyStealthy { get; set; } = false;
     /// <summary>Stout Resilience: advantage on saving throws against poison, and resistance against poison damage (Stout Halfling).</summary>
     public bool HasStoutResilience { get; set; } = false;
+    /// <summary>The chosen draconic ancestry type for Dragonborn characters. Determines damage type, breath weapon shape, and saving throw (PHB "Draconic Ancestry" table).</summary>
+    public DragonAncestryType DragonAncestry { get; set; } = DragonAncestryType.Black;
     /// <summary>Languages this character can speak, read, and write.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
