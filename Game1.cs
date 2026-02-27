@@ -1432,20 +1432,6 @@ public partial class Game1 : Game
                 TriggerEncounterSpawn();
                 StartCombatWithNearbyEnemies();
             }
-
-            var closeMapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
-            if (mouse.LeftButton == ButtonState.Pressed &&
-                _prevMouse.LeftButton == ButtonState.Released &&
-                closeMapButtonRect.Contains(mouse.Position))
-            {
-                CloseCampaignMap();
-            }
-            
-            // Close map with M
-            if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
-            {
-                CloseCampaignMap();
-            }
         }
 
         // Handle Combat Log dragging
@@ -1800,7 +1786,10 @@ public partial class Game1 : Game
                 mouseClickedThisFrame &&
                 mapButtonRect.Contains(mouse.Position))
             {
-                OpenCampaignMap();
+                if (_showCampaignMap)
+                    CloseCampaignMap();
+                else
+                    OpenCampaignMap();
                 clickedOnGameplayUiButton = true;
             }
 
@@ -2241,35 +2230,7 @@ public partial class Game1 : Game
                         {
                             if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                             {
-                                // Determine effective start position for new movement (finish current tile first)
-                                int startX = _playerCreature.X;
-                                int startY = _playerCreature.Y;
-                                int startZ = _playerCreature.Z;
-                                if (_playerCreature.IsMoving())
-                                {
-                                    var waypoints = _playerCreature.GetRemainingWaypoints();
-                                    if (waypoints.Count > 0)
-                                    {
-                                        startX = (int)waypoints[0].X;
-                                        startY = (int)waypoints[0].Y;
-                                        startZ = (int)waypoints[0].Z;
-                                    }
-                                }
-
-                                // Temporarily update logical position to check path from next tile
-                                int actualX = _playerCreature.X;
-                                int actualY = _playerCreature.Y;
-                                int actualZ = _playerCreature.Z;
-                                _playerCreature.X = startX;
-                                _playerCreature.Y = startY;
-                                _playerCreature.Z = startZ;
-
                                 var path = _combatManager.GetPath(_playerCreature, tx, ty, tz);
-
-                                // Restore logical position
-                                _playerCreature.X = actualX;
-                                _playerCreature.Y = actualY;
-                                _playerCreature.Z = actualZ;
 
                                 // Check if destination is stairs
                                 if (tileType == TileType.DungeonStairsUp || tileType == TileType.DungeonStairsDown)
@@ -2630,39 +2591,10 @@ public partial class Game1 : Game
                                 // Check if tile is empty and within movement range
                                 if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                                 {
-                                    // Determine effective start position for new movement (finish current tile first)
-                                    int startX = currentCombatant.X;
-                                    int startY = currentCombatant.Y;
-                                    int startZ = currentCombatant.Z;
-                                    if (currentCombatant.IsMoving())
-                                    {
-                                        var waypoints = currentCombatant.GetRemainingWaypoints();
-                                        if (waypoints.Count > 0)
-                                        {
-                                            startX = (int)waypoints[0].X;
-                                            startY = (int)waypoints[0].Y;
-                                            startZ = (int)waypoints[0].Z;
-                                        }
-                                    }
-
-                                    // Temporarily update logical position to check if movement from next tile is valid
-                                    int actualX = currentCombatant.X;
-                                    int actualY = currentCombatant.Y;
-                                    int actualZ = currentCombatant.Z;
-                                    currentCombatant.X = startX;
-                                    currentCombatant.Y = startY;
-                                    currentCombatant.Z = startZ;
-
                                     bool canMove = _combatManager.CanMove(currentCombatant, tx, ty, tz);
-
-                                    // Restore logical position
-                                    currentCombatant.X = actualX;
-                                    currentCombatant.Y = actualY;
-                                    currentCombatant.Z = actualZ;
 
                                     if (canMove)
                                     {
-                                        currentCombatant.InterruptMovement();
                                         int prevX = currentCombatant.X;
                                         int prevY = currentCombatant.Y;
                                         int prevZ = currentCombatant.Z;

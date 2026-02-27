@@ -1048,6 +1048,7 @@ public class CombatManager
         var openSet = new PriorityQueue<TacticalMapNode, int>();
         openSet.Enqueue(start, HeuristicToAdjacent(start, target));
 
+        var closedSet = new HashSet<TacticalMapNode>();
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
@@ -1055,11 +1056,14 @@ public class CombatManager
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = HeuristicToAdjacent(start, target) };
 
         int iterations = 0;
-        const int maxIterations = 2000;
+        const int maxIterations = 10000;
 
         while (openSet.Count > 0 && iterations++ < maxIterations)
         {
             var current = openSet.Dequeue();
+
+            if (!closedSet.Add(current))
+                continue;
 
             if (IsAdjacentToTarget(current, target) && CanOccupySpace(creature.Size, current.X, current.Y, current.Z, creature))
                 return ReconstructPath(cameFrom, current);
@@ -1162,6 +1166,7 @@ public class CombatManager
         var openSet = new PriorityQueue<TacticalMapNode, int>();
         openSet.Enqueue(start, Heuristic(start, goal));
 
+        var closedSet = new HashSet<TacticalMapNode>();
         var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
         var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
         var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
@@ -1169,13 +1174,16 @@ public class CombatManager
         var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
 
         int iterations = 0;
-        const int maxIterations = 2000;
+        const int maxIterations = 10000;
 
         while (openSet.Count > 0 && iterations++ < maxIterations)
         {
             var current = openSet.Dequeue();
             if (current == goal)
                 return ReconstructPath(cameFrom, current);
+
+            if (!closedSet.Add(current))
+                continue;
 
             foreach (var neighbor in GetNeighbors(creature, current))
             {
