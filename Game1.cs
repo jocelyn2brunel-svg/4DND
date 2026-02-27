@@ -131,6 +131,11 @@ public partial class Game1 : Game
     private int _combatTopPanelHeight = 125; // Reduced from 220
     private MouseState _prevMouse;
 
+    // AI Turn management
+    private float _aiDelayTimer = 0f;
+    private enum AiPhase { Start, Move, Action, BonusAction, End }
+    private AiPhase _currentAiPhase = AiPhase.Start;
+
     // Auto-save timer
     private double _autoSaveTimer = 0;
     private const double AutoSaveInterval = 5 * 60; // 5 minutes in seconds
@@ -383,6 +388,8 @@ public partial class Game1 : Game
 
         _showCombatUI = _hudAlwaysVisible;
         _selectedAction = CombatAction.Move;
+        _currentAiPhase = AiPhase.Start;
+        _aiDelayTimer = 1.0f;
         AddToCombatLog(Loc.Tr("Combat started!"));
         AddToCombatLog(Loc.Tr("Round {0} begins!", _combatManager.CurrentRound));
         
@@ -965,6 +972,9 @@ public partial class Game1 : Game
         var mouse = Mouse.GetState();
 
         float totalSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (_aiDelayTimer > 0)
+            _aiDelayTimer -= totalSeconds;
+
         _diceRollAnimation.Update(totalSeconds);
 
         for (int i = _activeTooltips.Count - 1; i >= 0; i--)
@@ -2681,150 +2691,120 @@ public partial class Game1 : Game
                 }
                 else if (currentCombatant != null && !currentCombatant.IsPlayer)
                 {
-                    bool shouldEndTurn = true;
-
-                    // AI turn - check if they have action
-                    if (currentCombatant.HasAction || currentCombatant.MovementRemaining > 0)
+                    // Delay logic for AI turns to improve readability
+                    bool isAnimating = currentCombatant.IsMoving();
+                    if (!isAnimating && _aiDelayTimer <= 0)
                     {
                         var playerCreature = _combatManager.Combatants.FirstOrDefault(c => c.IsPlayer);
+                        bool canAct = playerCreature != null;
 
-                        if (playerCreature != null)
+                        if (canAct && playerCreature != null)
                         {
                             bool inMeleeRange = _combatManager.IsInMeleeRange(currentCombatant, playerCreature);
-                            int distanceFeet  = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
+                            int distanceFeet = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
                                                                                   playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
 
-                            // Select the best action from the monster's stat block Actions list (MM "Actions").
-                            // Prefer a melee attack when already in range, otherwise fall back to a ranged attack.
-                            // Monsters without a populated Actions list fall through to the legacy single-attack path.
-                            if (currentCombatant.HasAction && currentCombatant.Actions.Count > 0)
+                            switch (_currentAiPhase)
                             {
-                                MonsterAction? chosen = null;
+                                case AiPhase.Start:
+                                    _currentAiPhase = AiPhase.Move;
+                                    break;
 
-                                if (inMeleeRange)
-                                {
-                                    // Pick a melee attack, preferring the first listed.
-                                    chosen = currentCombatant.Actions.FirstOrDefault(a => a.ActionType == MonsterActionType.MeleeAttack);
-                                }
-
-                                if (chosen == null)
-                                {
-                                    // Not in melee range (or no melee action): try a ranged attack that can reach the target.
-                                    chosen = currentCombatant.Actions.FirstOrDefault(a =>
-                                        a.ActionType == MonsterActionType.RangedAttack &&
-                                        distanceFeet <= (a.LongRange > 0 ? a.LongRange : a.NormalRange));
-                                }
-
-                                if (chosen != null && chosen.ActionType != MonsterActionType.Special)
-                                {
-                                    // Apply the chosen stat-block action to the creature's attack fields.
-                                    chosen.ApplyTo(currentCombatant);
-
-                                    var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
-                                    AddToCombatLog(result.GetMessage());
-                                    AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
-                                    if (result.IsHit)
+                                case AiPhase.Move:
+                                    if (currentCombatant.MovementRemaining > 0 && !inMeleeRange)
                                     {
-                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
-                                        AddTooltip(playerCreature, dmgText, Color.Red);
+                                        var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
+                                        if (nextStep.HasValue && _combatManager.GetCreatureAt(nextStep.Value.x, nextStep.Value.y, nextStep.Value.z) == null && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
+                                        {
+                                            _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
+                                            FlushTurnMessages();
+                                            AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
+                                            UpdateVision();
+                                            _aiDelayTimer = 2.0f; // Pause after moving
+                                        }
                                     }
-                                    else
-                                        AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
-                                    _diceRollAnimation.Start(result.AttackRoll);
-                                    shouldEndTurn = false;
+                                    _currentAiPhase = AiPhase.Action;
+                                    break;
 
-                                    // Nimble Escape: bonus action Disengage, then retreat
+                                case AiPhase.Action:
+                                    if (currentCombatant.HasAction)
+                                    {
+                                        MonsterAction? chosen = null;
+                                        if (currentCombatant.Actions.Count > 0)
+                                        {
+                                            if (inMeleeRange)
+                                                chosen = currentCombatant.Actions.FirstOrDefault(a => a.ActionType == MonsterActionType.MeleeAttack);
+
+                                            if (chosen == null)
+                                                chosen = currentCombatant.Actions.FirstOrDefault(a => a.ActionType == MonsterActionType.RangedAttack && distanceFeet <= (a.LongRange > 0 ? a.LongRange : a.NormalRange));
+
+                                            if (chosen != null && chosen.ActionType != MonsterActionType.Special)
+                                                chosen.ApplyTo(currentCombatant);
+                                        }
+
+                                        // Only proceed if we have an action or if we are using the legacy path (no actions list but in range)
+                                        if (chosen != null || (inMeleeRange && currentCombatant.Actions.Count == 0))
+                                        {
+                                            var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
+                                            AddToCombatLog(result.GetMessage());
+                                            AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
+                                            if (result.IsHit)
+                                            {
+                                                string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
+                                                AddTooltip(playerCreature, dmgText, Color.Red);
+                                            }
+                                            else
+                                                AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
+
+                                            _diceRollAnimation.Start(result.AttackRoll);
+                                            _aiDelayTimer = 2.0f; // Pause after attacking
+                                        }
+                                    }
+                                    _currentAiPhase = AiPhase.BonusAction;
+                                    break;
+
+                                case AiPhase.BonusAction:
                                     if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
                                     {
                                         if (_combatManager.Disengage(currentCombatant, isBonusAction: true))
                                             AddTooltip(currentCombatant, Loc.Tr("Action: Disengage"), Color.Cyan);
                                         FlushTurnMessages();
                                         var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
-                                        if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
+                                        if (retreatStep.HasValue && _combatManager.GetCreatureAt(retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z) == null && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
                                         {
                                             _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
                                             UpdateVision();
+                                            _aiDelayTimer = 2.0f; // Pause after retreat
                                         }
                                         currentCombatant.MovementRemaining = 0;
                                     }
-                                }
-                                else if (currentCombatant.MovementRemaining > 0)
-                                {
-                                    // No usable attack action yet — move towards the player.
-                                    var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
-                                    if (nextStep.HasValue && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
-                                    {
-                                        _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
-                                        FlushTurnMessages();
-                                        AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
-                                        UpdateVision();
-                                        shouldEndTurn = false;
-                                    }
-                                }
-                            }
-                            else if (inMeleeRange && currentCombatant.HasAction)
-                            {
-                                // Legacy path: no Actions list defined — use the creature's existing attack fields directly.
-                                var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
-                                AddToCombatLog(result.GetMessage());
-                                AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
-                                if (result.IsHit)
-                                {
-                                    string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
-                                    AddTooltip(playerCreature, dmgText, Color.Red);
-                                }
-                                else
-                                    AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
-                                _diceRollAnimation.Start(result.AttackRoll);
-                                shouldEndTurn = false;
+                                    _currentAiPhase = AiPhase.End;
+                                    break;
 
-                                // Nimble Escape: bonus action Disengage, then retreat
-                                if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
-                                {
-                                    if (_combatManager.Disengage(currentCombatant, isBonusAction: true))
-                                        AddTooltip(currentCombatant, Loc.Tr("Action: Disengage"), Color.Cyan);
+                                case AiPhase.End:
+                                    int prevRound = _combatManager.CurrentRound;
+                                    _combatManager.NextTurn();
                                     FlushTurnMessages();
-                                    var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
-                                    if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
-                                    {
-                                        _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
-                                        FlushTurnMessages();
-                                        AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
-                                        UpdateVision();
-                                    }
-                                    currentCombatant.MovementRemaining = 0;
-                                }
-                            }
-                            else if (currentCombatant.MovementRemaining > 0)
-                            {
-                                var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
-                                if (nextStep.HasValue && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
-                                {
-                                    _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
-                                    FlushTurnMessages();
-                                    AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
-                                    UpdateVision();
-                                    shouldEndTurn = false;
-                                }
+                                    int newRound = _combatManager.CurrentRound;
+
+                                    if (newRound > prevRound)
+                                        AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
+
+                                    _currentAiPhase = AiPhase.Start;
+                                    _aiDelayTimer = 1.0f; // Short pause between turns
+                                    break;
                             }
                         }
-                    }
-
-                    if (shouldEndTurn)
-                    {
-                        // No valid action/move left, end turn.
-                        int prevRound = _combatManager.CurrentRound;
-                        _combatManager.NextTurn();
-                        FlushTurnMessages();
-                        int newRound = _combatManager.CurrentRound;
-
-                        if (newRound > prevRound)
+                        else
                         {
-                            AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
+                            // No player or cannot act, just end turn
+                            _combatManager.NextTurn();
+                            _currentAiPhase = AiPhase.Start;
                         }
                     }
+                }
                     
                     // Check if combat ended
                     if (!_combatManager.InCombat)
