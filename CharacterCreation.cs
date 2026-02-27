@@ -756,6 +756,12 @@ public class CharacterCreation
             string langs = string.Join(", ", selectedRace.Languages);
             spriteBatch.DrawString(_font, $"  - Languages: {langs}", new Vector2(detailsRect.X + 12, yOffset), Color.White, 0f, Vector2.Zero, 0.55f, SpriteEffects.None, 0f);
             yOffset += 22;
+
+            if (!string.IsNullOrEmpty(selectedRace.LanguageDescription))
+            {
+                DrawWrappedText(spriteBatch, selectedRace.LanguageDescription, new Vector2(detailsRect.X + 24, yOffset), detailsRect.Width - 36, Color.LightGray, 0.5f);
+                yOffset += 40;
+            }
         }
     }
 

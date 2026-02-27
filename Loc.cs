@@ -223,6 +223,8 @@ public static class Loc
         _en["Elf (Drow)"] = "Elf (Drow)"; _fr["Elf (Drow)"] = "Elfe noir (Drow)";
         _en["Dwarf (Hill)"] = "Dwarf (Hill)"; _fr["Dwarf (Hill)"] = "Nain des collines";
         _en["Dwarf (Mountain)"] = "Dwarf (Mountain)"; _fr["Dwarf (Mountain)"] = "Nain des montagnes";
+        _en["Dwarvish language description"] = "Dwarvish is full of hard consonants and guttural sounds, and those characteristics spill over into whatever other language a dwarf might speak.";
+        _fr["Dwarvish language description"] = "Le nain est riche en consonnes dures et en sons gutturaux, et ces caractéristiques se retrouvent dans toute autre langue que le nain pourrait parler.";
         _en["Halfling (Lightfoot)"] = "Halfling (Lightfoot)"; _fr["Halfling (Lightfoot)"] = "Halfelin pied-léger";
         _en["Halfling (Stout)"] = "Halfling (Stout)"; _fr["Halfling (Stout)"] = "Halfelin robuste";
         _en["Half-Orc"] = "Half-Orc"; _fr["Half-Orc"] = "Demi-orc";
