@@ -36,6 +36,12 @@ public class Race
     public bool HasFeyAncestry { get; set; } = false;
     /// <summary>Trance: elves don't need to sleep; they meditate for 4 hours a day to gain the benefits of 8 hours of sleep (PHB "Elf Traits").</summary>
     public bool HasTrance { get; set; } = false;
+    /// <summary>Elf Weapon Training: proficiency with longsword, shortsword, shortbow, and longbow (High Elf and Wood Elf).</summary>
+    public bool HasElfWeaponTraining { get; set; } = false;
+    /// <summary>High Elf Cantrip: knows one cantrip of their choice from the wizard spell list; Intelligence is the spellcasting ability.</summary>
+    public bool HasHighElfCantrip { get; set; } = false;
+    /// <summary>Extra Language: can speak, read, and write one extra language of their choice (High Elf).</summary>
+    public bool HasExtraLanguage { get; set; } = false;
 
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
@@ -74,8 +80,11 @@ public class Race
             HasKeenSenses = true,
             HasFeyAncestry = true,
             HasTrance = true,
+            HasElfWeaponTraining = true,
+            HasHighElfCantrip = true,
+            HasExtraLanguage = true,
             Languages = new List<string> { "Common", "Elvish" },
-            Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance)")
+            Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance, Elf Weapon Training, Cantrip, Extra Language)")
         },
         ["Wood Elf"] = new Race
         {
