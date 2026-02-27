@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>FF7 Spell Cast Effect - Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      color: #ccc;
+    }
+    h1 { margin-bottom: 8px; font-size: 1.1rem; color: #aaa; letter-spacing: 2px; text-transform: uppercase; }
+    #gameCanvas {
+      border: 2px solid #333;
+      image-rendering: pixelated;
+      display: block;
+    }
+    .controls {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 8px 18px;
+      border: 1px solid #555;
+      background: #1a1a1a;
+      color: #eee;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    button:hover { background: #2a2a2a; border-color: #888; }
+    button.fire   { border-color: #c43; color: #f86; }
+    button.ice    { border-color: #46c; color: #8bf; }
+    button.bolt   { border-color: #ca3; color: #ff8; }
+    button.cure   { border-color: #3a8; color: #7fc; }
+    button.holy   { border-color: #cc8; color: #ffd; }
+    .info { margin-top: 8px; font-size: 0.75rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>FF7 — Spell Cast Effect</h1>
+  <canvas id="gameCanvas" width="320" height="240"></canvas>
+  <div class="controls">
+    <button class="fire"  onclick="castSpell('fire')">  🔥 Fire  </button>
+    <button class="ice"   onclick="castSpell('ice')">   ❄️ Ice   </button>
+    <button class="bolt"  onclick="castSpell('bolt')">  ⚡ Bolt  </button>
+    <button class="cure"  onclick="castSpell('cure')">  💚 Cure  </button>
+    <button class="holy"  onclick="castSpell('holy')">  ✨ Holy  </button>
+  </div>
+  <div class="info">Cliquez sur un sort pour voir l'effet FF7 style</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ─── Spell Configs ────────────────────────────────────────────────────────────
+const SPELLS = {
+  fire: {
+    name: 'Fire',
+    primaryColor: '#ff4400',
+    secondaryColor: '#ffaa00',
+    flashColor: 'rgba(255,120,0,',
+    particleCount: 60,
+    particleType: 'ember',
+    circleColor: '#ff6600',
+    circleGlow: '#ff2200',
+    impactColor: '#ffcc44',
+    screenTint: [255, 80, 0],
+  },
+  ice: {
+    name: 'Ice',
+    primaryColor: '#66bbff',
+    secondaryColor: '#ffffff',
+    flashColor: 'rgba(100,180,255,',
+    particleCount: 55,
+    particleType: 'crystal',
+    circleColor: '#44aaff',
+    circleGlow: '#0066ff',
+    impactColor: '#cceeff',
+    screenTint: [0, 100, 200],
+  },
+  bolt: {
+    name: 'Bolt',
+    primaryColor: '#ffee00',
+    secondaryColor: '#ffffff',
+    flashColor: 'rgba(255,255,100,',
+    particleCount: 0,
+    particleType: 'spark',
+    circleColor: '#ffcc00',
+    circleGlow: '#ffee44',
+    impactColor: '#ffffff',
+    screenTint: [220, 200, 0],
+  },
+  cure: {
+    name: 'Cure',
+    primaryColor: '#44ff88',
+    secondaryColor: '#aaffcc',
+    flashColor: 'rgba(80,255,150,',
+    particleCount: 40,
+    particleType: 'orb',
+    circleColor: '#33dd77',
+    circleGlow: '#00ff88',
+    impactColor: '#ccffdd',
+    screenTint: [0, 180, 80],
+  },
+  holy: {
+    name: 'Holy',
+    primaryColor: '#ffffaa',
+    secondaryColor: '#ffffff',
+    flashColor: 'rgba(255,255,200,',
+    particleCount: 70,
+    particleType: 'star',
+    circleColor: '#ffee88',
+    circleGlow: '#ffffff',
+    impactColor: '#ffffff',
+    screenTint: [255, 240, 180],
+  },
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let effects = [];
+let flashAlpha = 0;
+let flashColor = [255,255,255];
+let screenShake = { x: 0, y: 0, duration: 0 };
+let animFrame;
+
+// ─── Scene drawing (fake FF7 battle background) ───────────────────────────────
+function drawScene(shakeX, shakeY) {
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Background gradient (FF7 battle bg feel)
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0d0820');
+  bgGrad.addColorStop(0.5, '#12101a');
+  bgGrad.addColorStop(1, '#080510');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(-4, -4, W+8, H+8);
+
+  // Floor grid (perspective-ish, FF7 style)
+  ctx.strokeStyle = 'rgba(80,60,120,0.35)';
+  ctx.lineWidth = 1;
+  const horizon = H * 0.58;
+  for (let x = -W; x < W * 2; x += 22) {
+    ctx.beginPath();
+    ctx.moveTo(x, horizon);
+    ctx.lineTo(W/2 + (x - W/2) * 4, H + 40);
+    ctx.stroke();
+  }
+  for (let y = horizon; y < H + 40; y += 18) {
+    const t = (y - horizon) / (H + 40 - horizon);
+    ctx.globalAlpha = t * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(-W, y);
+    ctx.lineTo(W * 2, y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Enemy placeholder (simple silhouette)
+  drawEnemy(220, 90);
+  // Player placeholder
+  drawPlayer(70, 160);
+
+  ctx.restore();
+}
+
+function drawEnemy(cx, cy) {
+  ctx.save();
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 42, 28, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Body
+  const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, 35);
+  grad.addColorStop(0, '#6040a0');
+  grad.addColorStop(1, '#20103a');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 10, 26, 38, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Eye
+  ctx.fillStyle = '#ff2244';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 5, 7, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#ff88aa';
+  ctx.beginPath();
+  ctx.arc(cx - 2, cy - 7, 3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPlayer(cx, cy) {
+  ctx.save();
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 12, 18, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Body
+  ctx.fillStyle = '#4488cc';
+  ctx.fillRect(cx - 10, cy - 30, 20, 35);
+  // Head
+  ctx.fillStyle = '#ffcc88';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 36, 11, 0, Math.PI*2);
+  ctx.fill();
+  // Hair (Cloud style)
+  ctx.fillStyle = '#ccddee';
+  ctx.beginPath();
+  ctx.moveTo(cx - 10, cy - 44);
+  ctx.lineTo(cx + 14, cy - 48);
+  ctx.lineTo(cx + 8, cy - 36);
+  ctx.lineTo(cx - 8, cy - 36);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ─── Magic Circle ─────────────────────────────────────────────────────────────
+function createMagicCircle(x, y, spell) {
+  return {
+    type: 'circle',
+    x, y,
+    radius: 0,
+    maxRadius: 55,
+    rotation: 0,
+    alpha: 0,
+    phase: 'grow', // grow → hold → shrink
+    phaseTimer: 0,
+    spell,
+    age: 0,
+    innerRings: [
+      { radius: 0, maxR: 28, speed: 2.1 },
+      { radius: 0, maxR: 42, speed: 1.6 },
+      { radius: 0, maxR: 55, speed: 1.1 },
+    ],
+    runes: Array.from({length: 8}, (_, i) => ({ angle: i * Math.PI/4 })),
+  };
+}
+
+function drawMagicCircle(e) {
+  const cfg = SPELLS[e.spell];
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(e.rotation);
+  ctx.globalAlpha = e.alpha;
+
+  // Glow
+  const glowR = e.radius + 12;
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR);
+  glow.addColorStop(0, cfg.circleGlow.replace('#', 'rgba(').split('').join('') + '0.2)');
+  glow.addColorStop(0, hexToRgba(cfg.circleGlow, 0.25));
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, glowR, 0, Math.PI*2);
+  ctx.fill();
+
+  // Rings
+  for (const ring of e.innerRings) {
+    if (ring.radius < 2) continue;
+    ctx.strokeStyle = cfg.circleColor;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = cfg.circleGlow;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(0, 0, ring.radius, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Outer ring with dashes
+  if (e.radius > 5) {
+    ctx.setLineDash([6, 5]);
+    ctx.lineDashOffset = -e.rotation * 20;
+    ctx.strokeStyle = cfg.primaryColor;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = cfg.circleGlow;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.radius, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Rune dots on outer ring
+  if (e.radius > 20) {
+    for (const rune of e.runes) {
+      const rx = Math.cos(rune.angle + e.rotation * 2) * e.radius;
+      const ry = Math.sin(rune.angle + e.rotation * 2) * e.radius;
+      ctx.fillStyle = cfg.secondaryColor;
+      ctx.shadowColor = cfg.circleGlow;
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // Center star
+  if (e.radius > 10) {
+    ctx.shadowColor = cfg.circleGlow;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = cfg.secondaryColor;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const len = e.radius * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+// ─── Particles ────────────────────────────────────────────────────────────────
+function spawnParticles(x, y, spell, count) {
+  const cfg = SPELLS[spell];
+  const particles = [];
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.5 + Math.random() * 3;
+    particles.push({
+      type: 'particle',
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - Math.random() * 2,
+      size: 1 + Math.random() * 3,
+      alpha: 0.8 + Math.random() * 0.2,
+      decay: 0.015 + Math.random() * 0.025,
+      spell,
+      particleType: cfg.particleType,
+      color: Math.random() < 0.5 ? cfg.primaryColor : cfg.secondaryColor,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+      gravity: spell === 'fire' ? -0.04 : (spell === 'cure' ? -0.06 : 0.04),
+    });
+  }
+  return particles;
+}
+
+function drawParticle(p) {
+  ctx.save();
+  ctx.globalAlpha = p.alpha;
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.rotation);
+  ctx.shadowColor = p.color;
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = p.color;
+
+  switch (p.particleType) {
+    case 'ember':
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.size * 0.5, p.size * 1.5, 0, 0, Math.PI*2);
+      ctx.fill();
+      break;
+    case 'crystal':
+      ctx.beginPath();
+      ctx.moveTo(0, -p.size*1.5);
+      ctx.lineTo(p.size*0.7, 0);
+      ctx.lineTo(0, p.size*1.5);
+      ctx.lineTo(-p.size*0.7, 0);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'orb':
+      ctx.beginPath();
+      ctx.arc(0, 0, p.size, 0, Math.PI*2);
+      ctx.fill();
+      break;
+    case 'star':
+      drawStar(ctx, 0, 0, 5, p.size * 1.2, p.size * 0.5);
+      ctx.fill();
+      break;
+    default:
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+  }
+  ctx.restore();
+}
+
+function drawStar(ctx, cx, cy, spikes, outerR, innerR) {
+  ctx.beginPath();
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI/2;
+    if (i === 0) ctx.moveTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+    else ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+  }
+  ctx.closePath();
+}
+
+// ─── Lightning bolt ───────────────────────────────────────────────────────────
+function createLightning(x, y) {
+  return {
+    type: 'lightning',
+    x, y,
+    bolts: generateBolts(x - 10, -10, x + 10, y, 4),
+    alpha: 1,
+    timer: 0,
+    maxTime: 30,
+    flashTimer: 6,
+  };
+}
+
+function generateBolts(x1, y1, x2, y2, depth) {
+  if (depth === 0) return [{ x1, y1, x2, y2 }];
+  const mx = (x1+x2)/2 + (Math.random()-0.5) * 30;
+  const my = (y1+y2)/2 + (Math.random()-0.5) * 15;
+  return [
+    ...generateBolts(x1, y1, mx, my, depth-1),
+    ...generateBolts(mx, my, x2, y2, depth-1),
+  ];
+}
+
+function drawLightning(e) {
+  ctx.save();
+  ctx.globalAlpha = e.alpha;
+
+  // White core
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#ffff88';
+  ctx.shadowBlur = 12;
+  for (const seg of e.bolts) {
+    ctx.beginPath();
+    ctx.moveTo(seg.x1, seg.y1);
+    ctx.lineTo(seg.x2, seg.y2);
+    ctx.stroke();
+  }
+
+  // Yellow glow
+  ctx.strokeStyle = '#ffee44';
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 20;
+  for (const seg of e.bolts) {
+    ctx.beginPath();
+    ctx.moveTo(seg.x1, seg.y1);
+    ctx.lineTo(seg.x2, seg.y2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// ─── Impact Flash ─────────────────────────────────────────────────────────────
+function createImpact(x, y, spell) {
+  return {
+    type: 'impact',
+    x, y,
+    spell,
+    radius: 2,
+    maxRadius: 40,
+    alpha: 1,
+    rings: 3,
+  };
+}
+
+function drawImpact(e) {
+  const cfg = SPELLS[e.spell];
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.globalAlpha = e.alpha;
+
+  for (let r = 0; r < e.rings; r++) {
+    const rad = e.radius * (1 - r * 0.28);
+    ctx.strokeStyle = r === 0 ? cfg.impactColor : cfg.primaryColor;
+    ctx.lineWidth = 2 - r * 0.5;
+    ctx.shadowColor = cfg.circleGlow;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, 0, Math.PI*2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ─── Screen Flash Overlay ─────────────────────────────────────────────────────
+function triggerFlash(color, alpha) {
+  flashColor = color;
+  flashAlpha = alpha;
+}
+
+function triggerShake(duration, intensity) {
+  screenShake.duration = duration;
+  screenShake.intensity = intensity;
+}
+
+// ─── Cast a Spell ─────────────────────────────────────────────────────────────
+function castSpell(spellName) {
+  const cfg = SPELLS[spellName];
+  effects = [];
+
+  const targetX = 220, targetY = 110;
+  const casterX = 70,  casterY = 140;
+
+  // 1. Magic circle at target
+  const circle = createMagicCircle(targetX, targetY - 20, spellName);
+  effects.push(circle);
+
+  // 2. Particles burst
+  if (cfg.particleCount > 0) {
+    const ptcls = spawnParticles(targetX, targetY - 20, spellName, cfg.particleCount);
+    ptcls.forEach(p => { p.delay = 18; p.active = false; });
+    effects.push(...ptcls);
+  }
+
+  // 3. Lightning bolts
+  if (spellName === 'bolt') {
+    for (let b = 0; b < 3; b++) {
+      const bolt = createLightning(targetX + (Math.random()-0.5)*30, targetY - 20);
+      bolt.delay = 15 + b * 5;
+      effects.push(bolt);
+    }
+  }
+
+  // 4. Impact ring
+  const impact = createImpact(targetX, targetY - 20, spellName);
+  impact.delay = 28;
+  effects.push(impact);
+
+  // Trigger flash
+  setTimeout(() => triggerFlash(cfg.screenTint, 0.65), 500);
+  setTimeout(() => triggerShake(15, 4), 500);
+}
+
+// ─── Update ───────────────────────────────────────────────────────────────────
+function update() {
+  // Update flash
+  if (flashAlpha > 0) flashAlpha -= 0.035;
+
+  // Update shake
+  if (screenShake.duration > 0) {
+    screenShake.duration--;
+    const i = screenShake.intensity || 3;
+    screenShake.x = (Math.random() - 0.5) * i;
+    screenShake.y = (Math.random() - 0.5) * i;
+  } else {
+    screenShake.x = 0; screenShake.y = 0;
+  }
+
+  effects = effects.filter(e => {
+    if (e.delay > 0) { e.delay--; return true; }
+    if (!e.active && e.type === 'particle') e.active = true;
+
+    if (e.type === 'circle') {
+      e.age++;
+      e.rotation += 0.018;
+      for (const ring of e.innerRings) {
+        if (ring.radius < ring.maxR) ring.radius += ring.speed;
+      }
+      if (e.phase === 'grow') {
+        e.radius = Math.min(e.radius + 3.5, e.maxRadius);
+        e.alpha = Math.min(e.alpha + 0.08, 0.9);
+        if (e.radius >= e.maxRadius) { e.phase = 'hold'; e.phaseTimer = 25; }
+      } else if (e.phase === 'hold') {
+        e.phaseTimer--;
+        if (e.phaseTimer <= 0) e.phase = 'shrink';
+      } else {
+        e.alpha -= 0.04;
+        return e.alpha > 0;
+      }
+      return true;
+    }
+
+    if (e.type === 'particle' && e.active) {
+      e.x += e.vx;
+      e.y += e.vy;
+      e.vy += e.gravity;
+      e.vx *= 0.97;
+      e.alpha -= e.decay;
+      e.rotation += e.rotSpeed;
+      return e.alpha > 0;
+    }
+
+    if (e.type === 'lightning') {
+      e.timer++;
+      if (e.timer % 4 === 0) e.bolts = generateBolts(e.x - 10, -10, e.x + 10, 110, 4);
+      e.alpha = Math.max(0, 1 - e.timer / e.maxTime);
+      if (e.timer === e.flashTimer) { triggerFlash([220, 220, 0], 0.5); triggerShake(10, 5); }
+      return e.timer < e.maxTime;
+    }
+
+    if (e.type === 'impact') {
+      e.radius += (e.maxRadius - e.radius) * 0.22;
+      e.alpha -= 0.045;
+      return e.alpha > 0;
+    }
+
+    return false;
+  });
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Scene
+  drawScene(screenShake.x, screenShake.y);
+
+  // Effects
+  ctx.save();
+  ctx.translate(screenShake.x, screenShake.y);
+  for (const e of effects) {
+    if (e.delay > 0 || (e.type === 'particle' && !e.active)) continue;
+    if (e.type === 'circle')    drawMagicCircle(e);
+    if (e.type === 'particle')  drawParticle(e);
+    if (e.type === 'lightning') drawLightning(e);
+    if (e.type === 'impact')    drawImpact(e);
+  }
+  ctx.restore();
+
+  // Screen flash overlay
+  if (flashAlpha > 0) {
+    ctx.fillStyle = `rgba(${flashColor[0]},${flashColor[1]},${flashColor[2]},${flashAlpha.toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Pixel scanline effect (CRT feel)
+  ctx.globalAlpha = 0.06;
+  for (let y = 0; y < H; y += 2) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, y, W, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ─── Loop ─────────────────────────────────────────────────────────────────────
+function loop() {
+  update();
+  render();
+  animFrame = requestAnimationFrame(loop);
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+loop();
+</script>
+</body>
+</html>
