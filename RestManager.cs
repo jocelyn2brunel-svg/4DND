@@ -31,6 +31,8 @@ public class LongRestResult
     public bool BardicInspirationRestored { get; set; }
     public int[] SpellSlotsRestored { get; set; } = Array.Empty<int>();
     public bool ExhaustionReduced { get; set; }
+    /// <summary>True if the character used the Trance trait (4-hour meditation) instead of sleeping for 8 hours.</summary>
+    public bool TranceUsed { get; set; }
     public List<string> Log { get; set; } = new();
 }
 
@@ -168,7 +170,15 @@ public static class RestManager
 
         character.HasLongRestedToday = true;
         result.Success = true;
-        result.Log.Insert(0, $"{character.Name} completes a long rest.");
+        if (character.HasTrance)
+        {
+            result.TranceUsed = true;
+            result.Log.Insert(0, $"{character.Name} enters a trance, meditating deeply for 4 hours and gaining the benefit of a full night's sleep.");
+        }
+        else
+        {
+            result.Log.Insert(0, $"{character.Name} completes a long rest.");
+        }
         return result;
     }
 
