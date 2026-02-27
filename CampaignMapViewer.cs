@@ -29,21 +29,11 @@ namespace _4DND
         private MouseState _prevMouse;
         private int _prevScrollValue = 0;
         private bool _showAdventureDetails = false;
-        public bool TravelOccurred { get; private set; } = false;
-        public bool PartyPositionChanged { get; private set; } = false;
+        public bool FloorChanged { get; private set; } = false;
 
         private System.Collections.Generic.List<Character> _characters = new();
-        private bool _isTraveling = false;
-        private float _targetPartyX;
-        private float _targetPartyY;
-        private Vector2 _startPartyPos;
-        private TravelPace _travelPace = TravelPace.Normal;
-        private System.Random _random = new System.Random();
-        private float _minutesSinceLastEncounterCheck = 0;
-        private string _travelMessage = "";
-        private float _travelMessageTimer = 0f;
 
-        private const float TimeScale = 20f; // 1 seconde rÃ©elle = 20 minutes de jeu
+        public const float TimeScale = 20f; // 1 seconde rÃ©elle = 20 minutes de jeu
 
         // Miles par heure selon l'allure (PHB p.182)
         private static float GetTravelSpeedMPH(TravelPace pace) => pace switch
@@ -72,64 +62,12 @@ namespace _4DND
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             // Handle travel movement
-            if (_isTraveling)
+            campaign.UpdateTravel(dt, TimeScale, characters, VisionSystem);
+
+            if (campaign.TravelMessageTimer > 0)
             {
-                // Block travel if anyone is donning/doffing
-                bool isAnyMemberBusy = characters.Exists(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
-                if (isAnyMemberBusy)
-                {
-                    return;
-                }
-
-                float gameMinutesPassed = dt * TimeScale;
-                campaign.TotalGameMinutes += gameMinutesPassed;
-
-                ProcessSurvival(campaign, characters, gameMinutesPassed);
-                CheckRandomEncounters(campaign, gameMinutesPassed);
-
-                if (_isTraveling) // Might have been stopped by encounter or fatigue
-                {
-                    Vector2 startPos = new Vector2(campaign.PartyX, campaign.PartyY);
-                    Vector2 targetPos = new Vector2(_targetPartyX, _targetPartyY);
-                    float dist = Vector2.Distance(startPos, targetPos);
-
-                    float mph = GetTravelSpeedMPH(_travelPace);
-                    float milesPerMinute = mph / 60f;
-                    float moveAmount = milesPerMinute * gameMinutesPassed;
-
-                    if (dist <= moveAmount)
-                    {
-                        campaign.PartyX = _targetPartyX;
-                        campaign.PartyY = _targetPartyY;
-                        PartyPositionChanged = true;
-                        _isTraveling = false;
-                        TravelOccurred = true;
-                    }
-                    else if (dist > 0f)
-                    {
-                        Vector2 direction = Vector2.Normalize(targetPos - startPos);
-                        Vector2 newPos = startPos + direction * moveAmount;
-                        campaign.PartyX = newPos.X;
-                        campaign.PartyY = newPos.Y;
-                        PartyPositionChanged = true;
-                    }
-
-                    Vector2 endPos = new Vector2(campaign.PartyX, campaign.PartyY);
-
-                    // Calculate reveal radius based on light level and party capabilities
-                    float revealRadiusFeet = VisionSystem.GetRevealRadius(campaign, characters);
-
-                    VisionSystem?.RevealPath(startPos, endPos, revealRadiusFeet);
-
-                    // Auto-discover locations revealed by the party's vision
-                    campaign.DiscoverLocations(revealRadiusFeet, msg => SetTravelMessage(msg));
-                }
-            }
-
-            if (_travelMessageTimer > 0)
-            {
-                _travelMessageTimer -= dt;
-                if (_travelMessageTimer <= 0) _travelMessage = "";
+                campaign.TravelMessageTimer -= dt;
+                if (campaign.TravelMessageTimer <= 0) campaign.LastTravelMessage = "";
             }
 
             var center = new Vector2(viewport.Width / 2f, viewport.Height / 2f);
@@ -158,18 +96,36 @@ namespace _4DND
             // Switch travel pace with F4/F5/F6 keys
             if (kb.IsKeyDown(Keys.F4) && !prevKb.IsKeyDown(Keys.F4))
             {
-                _travelPace = TravelPace.Fast;
+                campaign.TravelPace = TravelPace.Fast;
                 System.Console.WriteLine("Travel pace: Fast (4 mi/h, 30 mi/day, -5 passive Perception)");
             }
             if (kb.IsKeyDown(Keys.F5) && !prevKb.IsKeyDown(Keys.F5))
             {
-                _travelPace = TravelPace.Normal;
+                campaign.TravelPace = TravelPace.Normal;
                 System.Console.WriteLine("Travel pace: Normal (3 mi/h, 24 mi/day)");
             }
             if (kb.IsKeyDown(Keys.F6) && !prevKb.IsKeyDown(Keys.F6))
             {
-                _travelPace = TravelPace.Slow;
+                campaign.TravelPace = TravelPace.Slow;
                 System.Console.WriteLine("Travel pace: Slow (2 mi/h, 18 mi/day, stealth available)");
+            }
+
+            // Floor switching
+            if (kb.IsKeyDown(Keys.PageDown) && !prevKb.IsKeyDown(Keys.PageDown) && campaign.CurrentFloor == 0)
+            {
+                campaign.CurrentFloor = -1;
+                FloorChanged = true;
+                _selectedHex = null;
+                _selectedLocation = null;
+                _biomeCache.Clear();
+            }
+            if (kb.IsKeyDown(Keys.PageUp) && !prevKb.IsKeyDown(Keys.PageUp) && campaign.CurrentFloor == -1)
+            {
+                campaign.CurrentFloor = 0;
+                FloorChanged = true;
+                _selectedHex = null;
+                _selectedLocation = null;
+                _biomeCache.Clear();
             }
 
             // Hover detection
@@ -214,10 +170,10 @@ namespace _4DND
             {
                 if (_travelBtnRect.Contains(mouse.Position))
                 {
-                    if (_isTraveling)
+                    if (campaign.IsTraveling)
                     {
                         // Cancel travel
-                        _isTraveling = false;
+                        campaign.IsTraveling = false;
                         System.Console.WriteLine("Travel cancelled.");
                     }
                     else if (_selectedLocation != null || _selectedHex != null)
@@ -226,7 +182,7 @@ namespace _4DND
                         var busyMember = characters.Find(c => campaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
                         if (busyMember != null)
                         {
-                            SetTravelMessage(Loc.Tr("Cannot travel: {0} is busy.", busyMember.Name));
+                            campaign.SetTravelMessage(Loc.Tr("Cannot travel: {0} is busy.", busyMember.Name));
                             return;
                         }
 
@@ -246,14 +202,14 @@ namespace _4DND
                             ty = miles.y;
                         }
 
-                        _targetPartyX = tx;
-                        _targetPartyY = ty;
-                        _startPartyPos = new Vector2(campaign.PartyX, campaign.PartyY);
-                        _isTraveling = true;
+                        campaign.TargetPartyX = tx;
+                        campaign.TargetPartyY = ty;
+                        campaign.StartPartyPos = new Vector2(campaign.PartyX, campaign.PartyY);
+                        campaign.IsTraveling = true;
                         System.Console.WriteLine($"Traveling to ({tx:F1}, {ty:F1}) miles");
                     }
                 }
-                else if (_restBtnRect.Contains(mouse.Position) && !_isTraveling)
+                else if (_restBtnRect.Contains(mouse.Position) && !campaign.IsTraveling)
                 {
                     // Long Rest
                     campaign.TotalGameMinutes += 8 * 60;
@@ -261,7 +217,7 @@ namespace _4DND
                     {
                         RestManager.LongRest(c);
                     }
-                    SetTravelMessage(Loc.Tr("The party took a long rest (8h)."));
+                    campaign.SetTravelMessage(Loc.Tr("The party took a long rest (8h)."));
                 }
                 else if (!overUI)
                 {
@@ -280,10 +236,11 @@ namespace _4DND
             _prevMouse = mouse;
         }
 
-        public void ResetTravelFlags()
+        public void ResetTravelFlags(Campaign campaign)
         {
-            TravelOccurred = false;
-            PartyPositionChanged = false;
+            campaign.TravelOccurred = false;
+            campaign.PartyPositionChanged = false;
+            FloorChanged = false;
         }
 
         public void SyncScrollBaseline(int scrollWheelValue)
@@ -321,18 +278,20 @@ namespace _4DND
                 DrawHexagon(sb, pos, _tileSize * _zoom, Color.Yellow, 4f);
             }
 
-            // Draw regions at current scale
+            // Draw regions at current scale and floor
             var regionsAtScale = campaign.GetRegionsAtScale(campaign.CurrentScale);
             foreach (var region in regionsAtScale)
             {
-                DrawRegion(sb, center, region, campaign.CurrentScale);
+                if (region.Floor == campaign.CurrentFloor)
+                    DrawRegion(sb, center, region, campaign.CurrentScale);
             }
             
-            // Draw locations at current scale
+            // Draw locations at current scale and floor
             var locationsAtScale = campaign.GetLocationsAtScale(campaign.CurrentScale);
             foreach (var location in locationsAtScale)
             {
-                DrawLocation(sb, center, location, campaign.CurrentScale);
+                if (location.Floor == campaign.CurrentFloor)
+                    DrawLocation(sb, center, location, campaign.CurrentScale);
             }
 
             // Draw Party Marker
@@ -345,7 +304,7 @@ namespace _4DND
             DrawScaleIndicator(sb, vp, campaign);
 
             DrawTravelProgress(sb, vp, campaign);
-            DrawTravelMessage(sb, vp);
+            DrawTravelMessage(sb, vp, campaign);
             
             DrawTooltip(sb, vp, campaign);
 
@@ -355,7 +314,7 @@ namespace _4DND
             }
 
             // Draw travel pace panel
-            DrawTravelPacePanel(sb, vp);
+            DrawTravelPacePanel(sb, vp, campaign);
 
             // Instructions
             if (_font != null)
@@ -364,7 +323,7 @@ namespace _4DND
             }
         }
         
-        private void DrawTravelPacePanel(SpriteBatch sb, Viewport vp)
+        private void DrawTravelPacePanel(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
             if (_font == null) return;
 
@@ -390,7 +349,7 @@ namespace _4DND
 
             foreach (var (pace, label, ftMin, miHr, miDay, effect) in paces)
             {
-                bool isCurrent = pace == _travelPace;
+                bool isCurrent = pace == campaign.TravelPace;
                 Color color = isCurrent ? Color.Yellow : Color.LightGray;
                 string row = $"{label}  {ftMin,3}     {miHr}      {miDay,2}     {effect}";
                 sb.DrawString(_font, row, new Vector2(panelRect.X + 10, y), color, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
@@ -543,7 +502,7 @@ namespace _4DND
                     if (!_biomeCache.TryGetValue(cacheKey, out BiomeType biome))
                     {
                         var (x_miles, y_miles) = Campaign.AxialToMiles((float)q * hexSizeInMiles, (float)r * hexSizeInMiles);
-                        biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed);
+                        biome = WorldGenerator.GetBiome(x_miles, y_miles, campaign.Seed, campaign.CurrentFloor, campaign);
                         _biomeCache[cacheKey] = biome;
                     }
 
@@ -587,8 +546,11 @@ namespace _4DND
             {
                 BiomeType.Forest => 5,
                 BiomeType.Swamp => 3,
-                BiomeType.Plains => 1,
+                BiomeType.Grassland => 1,
+                BiomeType.Hill => 2,
                 BiomeType.Mountain => 1,
+                BiomeType.Arctic => 1,
+                BiomeType.Desert => 1,
                 _ => 0
             };
 
@@ -852,6 +814,11 @@ namespace _4DND
             sb.DrawString(_font, campaign.Name, new Vector2(panelRect.X + 10, y), Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
             y += 25;
 
+            string floorName = campaign.CurrentFloor == 0 ? Loc.Tr("Surface") : Loc.Tr("Underworld");
+            string floorText = Loc.Tr("Floor: {0}", floorName);
+            sb.DrawString(_font, floorText, new Vector2(panelRect.X + 10, y), Color.Cyan, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            y += 20;
+
             sb.DrawString(_font, campaign.GameTimeDisplay, new Vector2(panelRect.X + 10, y), Color.LimeGreen, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             y += 25;
 
@@ -917,7 +884,7 @@ namespace _4DND
                 {
                     int selectedHexSize = Campaign.GetHexSize(campaign.CurrentScale);
                     var (xm, ym) = Campaign.AxialToMiles(_selectedHex.Value.q * selectedHexSize, _selectedHex.Value.r * selectedHexSize);
-                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed);
+                    var biome = WorldGenerator.GetBiome(xm, ym, campaign.Seed, campaign.CurrentFloor, campaign);
                     sb.DrawString(_font, Loc.Tr("Terrain: {0}", Loc.Tr(biome.ToString())), new Vector2(panelRect.X + 10, y), Color.LightGray, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
                     y += 18;
                 }
@@ -929,17 +896,17 @@ namespace _4DND
                 var mouse = Mouse.GetState();
                 bool isHovered = _travelBtnRect.Contains(mouse.Position);
 
-                Color btnColor = _isTraveling ? Color.DarkRed : Color.Green;
-                if (isHovered) btnColor = _isTraveling ? Color.Red : Color.DarkGreen;
+                Color btnColor = campaign.IsTraveling ? Color.DarkRed : Color.Green;
+                if (isHovered) btnColor = campaign.IsTraveling ? Color.Red : Color.DarkGreen;
 
                 sb.Draw(_pixel, _travelBtnRect, btnColor);
-                string btnLabel = _isTraveling ? Loc.Tr("Cancel Travel") : Loc.Tr("Travel Here");
+                string btnLabel = campaign.IsTraveling ? Loc.Tr("Cancel Travel") : Loc.Tr("Travel Here");
                 sb.DrawString(_font, btnLabel, new Vector2(_travelBtnRect.X + 10, _travelBtnRect.Y + 5), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
                 y += 40;
             }
 
             // Long Rest Button
-            if (!_isTraveling)
+            if (!campaign.IsTraveling)
             {
                 _restBtnRect = new Rectangle(panelRect.X + 20, y, 180, 30);
                 var mouse = Mouse.GetState();
@@ -968,107 +935,14 @@ namespace _4DND
             }
         }
         
-        private void SetTravelMessage(string msg)
-        {
-            _travelMessage = msg;
-            _travelMessageTimer = 5f;
-            System.Console.WriteLine(msg);
-        }
-
-        private void ProcessSurvival(Campaign campaign, System.Collections.Generic.List<Character> characters, float gameMinutesPassed)
-        {
-            if (campaign == null || characters == null || characters.Count == 0) return;
-
-            // Track hours traveled for exhaustion (Forced March PHB p.181)
-            float prevHours = campaign.HoursTraveledToday;
-            campaign.HoursTraveledToday += gameMinutesPassed / 60f;
-
-            if (campaign.HoursTraveledToday > 8.0f)
-            {
-                int currentHourInt = (int)Math.Floor(campaign.HoursTraveledToday);
-                int prevHourInt = (int)Math.Floor(prevHours);
-
-                if (currentHourInt > prevHourInt && currentHourInt > 8)
-                {
-                    // Chaque heure au-dela de 8h, jet de sauvegarde de CON DC 10 + 1 par heure supp.
-                    int extraHours = currentHourInt - 8;
-                    int dc = 10 + extraHours;
-
-                    foreach (var c in characters)
-                    {
-                        var save = c.MakeSavingThrow("CON", dc, false, false);
-                        if (!save.Success)
-                        {
-                            if (c.ExhaustionLevel < 6)
-                            {
-                                c.ExhaustionLevel++;
-                                SetTravelMessage(Loc.Tr("{0} is exhausted from forced march (CON save DC {1} failed)!", c.Name, dc));
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Daily survival check (midnight)
-            int currentDay = campaign.GameDay;
-            int prevDay = (int)((campaign.TotalGameMinutes - gameMinutesPassed) / (24 * 60)) + 1;
-
-            if (currentDay > prevDay)
-            {
-                foreach (var character in characters)
-                {
-                    // Food consumption
-                    if (character.FoodConsumedToday < 1f)
-                    {
-                        if (character.InventoryData.RemoveItem("Rations (1 day)"))
-                        {
-                            character.FoodConsumedToday = 1f;
-                        }
-                        else
-                        {
-                            character.DaysWithoutFood += 1f;
-                            if (character.DaysWithoutFood > 3 + DndMath.GetAbilityModifier(character.Constitution))
-                            {
-                                character.ExhaustionLevel++;
-                                SetTravelMessage(Loc.Tr("{0} suffers from hunger!", character.Name));
-                            }
-                        }
-                    }
-
-                    character.FoodConsumedToday = 0;
-                    character.WaterConsumedToday = 0;
-                    campaign.HoursTraveledToday = 0;
-
-                    RestManager.ResetLongRestTracker(character);
-                }
-                SetTravelMessage(Loc.Tr("A new day begins. Day {0}.", currentDay));
-            }
-        }
-
-        private void CheckRandomEncounters(Campaign campaign, float gameMinutesPassed)
-        {
-            _minutesSinceLastEncounterCheck += gameMinutesPassed;
-            if (_minutesSinceLastEncounterCheck >= 4 * 60) // Every 4 hours
-            {
-                _minutesSinceLastEncounterCheck = 0;
-                if (_random.Next(1, 21) >= 19) // 10% chance
-                {
-                    SetTravelMessage(Loc.Tr("Random encounter! Travel stops."));
-                    _isTraveling = false;
-                    EncounterRequested = true;
-                }
-            }
-        }
-
-        public bool EncounterRequested { get; set; } = false;
 
         private void DrawTravelProgress(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
-            if (!_isTraveling) return;
+            if (!campaign.IsTraveling) return;
 
             var currentPos = new Vector2(campaign.PartyX, campaign.PartyY);
-            var targetPos = new Vector2(_targetPartyX, _targetPartyY);
-            float totalDist = Vector2.Distance(_startPartyPos, targetPos);
+            var targetPos = new Vector2(campaign.TargetPartyX, campaign.TargetPartyY);
+            float totalDist = Vector2.Distance(campaign.StartPartyPos, targetPos);
             float currentDist = Vector2.Distance(currentPos, targetPos);
             float progress = totalDist > 0.1f ? 1f - (currentDist / totalDist) : 1f;
             progress = MathHelper.Clamp(progress, 0f, 1f);
@@ -1086,16 +960,16 @@ namespace _4DND
             }
         }
 
-        private void DrawTravelMessage(SpriteBatch sb, Viewport vp)
+        private void DrawTravelMessage(SpriteBatch sb, Viewport vp, Campaign campaign)
         {
-            if (string.IsNullOrEmpty(_travelMessage) || _font == null) return;
+            if (string.IsNullOrEmpty(campaign.LastTravelMessage) || _font == null) return;
 
-            var size = _font.MeasureString(_travelMessage) * 0.9f;
+            var size = _font.MeasureString(campaign.LastTravelMessage) * 0.9f;
             var pos = new Vector2(vp.Width / 2 - size.X / 2, 100);
 
             sb.Draw(_pixel, new Rectangle((int)pos.X - 10, (int)pos.Y - 5, (int)size.X + 20, (int)size.Y + 10), Color.Black * 0.7f);
             DrawBorder(sb, new Rectangle((int)pos.X - 10, (int)pos.Y - 5, (int)size.X + 20, (int)size.Y + 10), Color.Orange, 1);
-            sb.DrawString(_font, _travelMessage, pos, Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+            sb.DrawString(_font, campaign.LastTravelMessage, pos, Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
         }
 
         private Vector2 HexToScreen(float q, float r, Vector2 center)
