@@ -2687,12 +2687,86 @@ public partial class Game1 : Game
                     if (currentCombatant.HasAction || currentCombatant.MovementRemaining > 0)
                     {
                         var playerCreature = _combatManager.Combatants.FirstOrDefault(c => c.IsPlayer);
-                        
+
                         if (playerCreature != null)
                         {
-                            if (_combatManager.IsInMeleeRange(currentCombatant, playerCreature) && currentCombatant.HasAction)
+                            bool inMeleeRange = _combatManager.IsInMeleeRange(currentCombatant, playerCreature);
+                            int distanceFeet  = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
+                                                                                  playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
+
+                            // Select the best action from the monster's stat block Actions list (MM "Actions").
+                            // Prefer a melee attack when already in range, otherwise fall back to a ranged attack.
+                            // Monsters without a populated Actions list fall through to the legacy single-attack path.
+                            if (currentCombatant.HasAction && currentCombatant.Actions.Count > 0)
                             {
-                                // Attack
+                                MonsterAction? chosen = null;
+
+                                if (inMeleeRange)
+                                {
+                                    // Pick a melee attack, preferring the first listed.
+                                    chosen = currentCombatant.Actions.FirstOrDefault(a => a.ActionType == MonsterActionType.MeleeAttack);
+                                }
+
+                                if (chosen == null)
+                                {
+                                    // Not in melee range (or no melee action): try a ranged attack that can reach the target.
+                                    chosen = currentCombatant.Actions.FirstOrDefault(a =>
+                                        a.ActionType == MonsterActionType.RangedAttack &&
+                                        distanceFeet <= (a.LongRange > 0 ? a.LongRange : a.NormalRange));
+                                }
+
+                                if (chosen != null && chosen.ActionType != MonsterActionType.Special)
+                                {
+                                    // Apply the chosen stat-block action to the creature's attack fields.
+                                    chosen.ApplyTo(currentCombatant);
+
+                                    var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
+                                    AddToCombatLog(result.GetMessage());
+                                    AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);
+                                    if (result.IsHit)
+                                    {
+                                        string dmgText = result.IsCritical ? Loc.Tr("CRIT! -{0} HP", result.Damage) : Loc.Tr("-{0} HP", result.Damage);
+                                        AddTooltip(playerCreature, dmgText, Color.Red);
+                                    }
+                                    else
+                                        AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
+                                    _diceRollAnimation.Start(result.AttackRoll);
+                                    shouldEndTurn = false;
+
+                                    // Nimble Escape: bonus action Disengage, then retreat
+                                    if (currentCombatant.HasNimbleEscape && currentCombatant.HasBonusAction && currentCombatant.MovementRemaining > 0)
+                                    {
+                                        if (_combatManager.Disengage(currentCombatant, isBonusAction: true))
+                                            AddTooltip(currentCombatant, Loc.Tr("Action: Disengage"), Color.Cyan);
+                                        FlushTurnMessages();
+                                        var retreatStep = _combatManager.GetNextStepAwayFrom(currentCombatant, playerCreature);
+                                        if (retreatStep.HasValue && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
+                                        {
+                                            _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
+                                            FlushTurnMessages();
+                                            AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
+                                            UpdateVision();
+                                        }
+                                        currentCombatant.MovementRemaining = 0;
+                                    }
+                                }
+                                else if (currentCombatant.MovementRemaining > 0)
+                                {
+                                    // No usable attack action yet — move towards the player.
+                                    var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
+                                    if (nextStep.HasValue && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
+                                    {
+                                        _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
+                                        FlushTurnMessages();
+                                        AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
+                                        UpdateVision();
+                                        shouldEndTurn = false;
+                                    }
+                                }
+                            }
+                            else if (inMeleeRange && currentCombatant.HasAction)
+                            {
+                                // Legacy path: no Actions list defined — use the creature's existing attack fields directly.
                                 var result = _combatManager.MakeAttack(currentCombatant, playerCreature, _visionSystem);
                                 AddToCombatLog(result.GetMessage());
                                 AddTooltip(currentCombatant, Loc.Tr("Attack: {0}", currentCombatant.AttackName), Color.Orange);

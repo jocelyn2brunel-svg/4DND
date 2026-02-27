@@ -397,7 +397,16 @@ public class Creature
 
     /// <summary>Conditions this creature cannot be affected by.</summary>
     public Condition ConditionImmunities { get; set; } = Condition.None;
-    
+
+    /// <summary>
+    /// Named actions from this creature's stat block (MM "Actions").
+    /// When taking an action the creature may choose one of these or a generic
+    /// PHB action (Dash, Hide, etc.).  An empty list means the creature uses the
+    /// legacy single-attack fields directly.
+    /// </summary>
+    public List<MonsterAction> Actions { get; set; } = new();
+
+
     // Saving throw proficiencies (for monsters)
     public bool StrengthSaveProficiency { get; set; } = false;
     public bool DexteritySaveProficiency { get; set; } = false;
@@ -1133,6 +1142,11 @@ public class Creature
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.Green,
             IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Scimitar",  ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 4, DamageDice = "1d6", DamageBonus = 2, DamageType = DamageType.Slashing },
+                new() { Name = "Shortbow",  ActionType = MonsterActionType.RangedAttack, AttackBonus = 4, DamageDice = "1d6", DamageBonus = 2, DamageType = DamageType.Piercing, NormalRange = 80, LongRange = 320 },
+            },
         };
     }
 
@@ -1170,6 +1184,11 @@ public class Creature
             XPReward = 100,  // CR 1/2
             DisplayColor = Color.DarkRed,
             IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Greataxe", ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 5, DamageDice = "1d12", DamageBonus = 3, DamageType = DamageType.Slashing },
+                new() { Name = "Javelin",  ActionType = MonsterActionType.RangedAttack, AttackBonus = 5, DamageDice = "1d6",  DamageBonus = 3, DamageType = DamageType.Piercing, NormalRange = 30, LongRange = 120 },
+            },
         };
     }
 
@@ -1210,6 +1229,11 @@ public class Creature
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.White,
             IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Shortsword", ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 4, DamageDice = "1d6", DamageBonus = 2, DamageType = DamageType.Piercing },
+                new() { Name = "Shortbow",   ActionType = MonsterActionType.RangedAttack, AttackBonus = 4, DamageDice = "1d6", DamageBonus = 2, DamageType = DamageType.Piercing, NormalRange = 80, LongRange = 320 },
+            },
         };
     }
 
@@ -1251,6 +1275,10 @@ public class Creature
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.DarkOliveGreen,
             IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Slam", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 3, DamageDice = "1d6", DamageBonus = 1, DamageType = DamageType.Bludgeoning },
+            },
         };
     }
 
@@ -1291,7 +1319,11 @@ public class Creature
             HasKeenSenses = true,
             XPReward = 50,  // CR 1/4
             DisplayColor = Color.Gray,
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Bite", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 4, DamageDice = "2d4", DamageBonus = 2, DamageType = DamageType.Piercing, Description = "Hit: the target must succeed on a DC 11 Strength saving throw or be knocked prone." },
+            },
         };
     }
 
@@ -1330,7 +1362,12 @@ public class Creature
             HasPackTactics = true,
             XPReward = 25,  // CR 1/8
             DisplayColor = Color.Brown,
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Dagger", ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 4, DamageDice = "1d4", DamageBonus = 2, DamageType = DamageType.Piercing },
+                new() { Name = "Sling",  ActionType = MonsterActionType.RangedAttack, AttackBonus = 4, DamageDice = "1d4", DamageBonus = 2, DamageType = DamageType.Bludgeoning, NormalRange = 30, LongRange = 120 },
+            },
         };
     }
 
@@ -1369,7 +1406,12 @@ public class Creature
             TremorsenseRange = 60,
             XPReward = 1800,  // CR 5
             DisplayColor = Color.DarkGray,
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Bite",  ActionType = MonsterActionType.MeleeAttack, AttackBonus = 8, DamageDice = "2d10", DamageBonus = 5, DamageType = DamageType.Slashing },
+                new() { Name = "Claws", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 8, DamageDice = "2d8",  DamageBonus = 5, DamageType = DamageType.Slashing },
+            },
         };
     }
 
@@ -1412,7 +1454,12 @@ public class Creature
             DisplayColor = Color.LightGoldenrodYellow,
             IsPlayer = false,
             CharismaSaveProficiency = true,
-            WisdomSaveProficiency = true
+            WisdomSaveProficiency = true,
+            Actions = new()
+            {
+                new() { Name = "Bite",  ActionType = MonsterActionType.MeleeAttack, AttackBonus = 6, DamageDice = "1d8", DamageBonus = 3, DamageType = DamageType.Piercing, Description = "Hit: the target must succeed on a DC 13 Constitution saving throw or be poisoned for 24 hours." },
+                new() { Name = "Constrict", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 6, DamageDice = "2d6", DamageBonus = 3, DamageType = DamageType.Bludgeoning, Description = "Hit: the target is grappled (escape DC 15) and restrained until this grapple ends." },
+            },
         };
     }
 
@@ -1443,7 +1490,11 @@ public class Creature
             HasKeenSenses = true,
             XPReward = 25,  // CR 1/8
             DisplayColor = Color.DarkRed,
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Beak", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 4, DamageDice = "1d4", DamageBonus = 2, DamageType = DamageType.Piercing },
+            },
         };
     }
 
@@ -1476,7 +1527,12 @@ public class Creature
             ConditionImmunities = Condition.Poisoned,
             XPReward = 100,  // CR 1/2
             DisplayColor = new Color(180, 220, 240),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Claws",        ActionType = MonsterActionType.MeleeAttack, AttackBonus = 3, DamageDice = "2d4", DamageBonus = 1, DamageType = DamageType.Slashing },
+                new() { Name = "Frost Breath", ActionType = MonsterActionType.Special, DamageDice = "4d6", DamageType = DamageType.Cold, Description = "Recharge 6. Each creature in a 15-foot cone must make a DC 10 Dexterity saving throw, taking 4d6 cold damage on a failed save." },
+            },
         };
     }
 
@@ -1504,7 +1560,12 @@ public class Creature
             HasKeenSenses = true,
             XPReward = 200,  // CR 1
             DisplayColor = new Color(139, 90, 43),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Bite",  ActionType = MonsterActionType.MeleeAttack, AttackBonus = 5, DamageDice = "1d8", DamageBonus = 4, DamageType = DamageType.Piercing },
+                new() { Name = "Claws", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 5, DamageDice = "2d6", DamageBonus = 4, DamageType = DamageType.Slashing },
+            },
         };
     }
 
@@ -1536,7 +1597,12 @@ public class Creature
             PerceptionProficiency = true,
             XPReward = 700,  // CR 3
             DisplayColor = new Color(220, 230, 240),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Bite",         ActionType = MonsterActionType.MeleeAttack, AttackBonus = 6, DamageDice = "2d6", DamageBonus = 4, DamageType = DamageType.Piercing },
+                new() { Name = "Cold Breath",  ActionType = MonsterActionType.Special, DamageDice = "10d8", DamageType = DamageType.Cold, Description = "Recharge 5-6. Each creature in a 60-foot cone must make a DC 12 Dexterity saving throw, taking 10d8 cold damage on a failed save, or half on a success." },
+            },
         };
     }
 
@@ -1563,7 +1629,12 @@ public class Creature
             IsMeleeAttack = true,
             XPReward = 2300,  // CR 6
             DisplayColor = new Color(100, 80, 60),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Gore",  ActionType = MonsterActionType.MeleeAttack, AttackBonus = 10, DamageDice = "4d8", DamageBonus = 7, DamageType = DamageType.Piercing, Reach = 2, Description = "Trampling charge: if the mammoth moves at least 20 ft. straight toward the target and hits, the target must succeed on a DC 18 Strength saving throw or be knocked prone; the mammoth can stomp the prone target as a bonus action." },
+                new() { Name = "Stomp", ActionType = MonsterActionType.MeleeAttack, AttackBonus = 10, DamageDice = "4d10", DamageBonus = 7, DamageType = DamageType.Bludgeoning, Reach = 2, Description = "Melee weapon attack against a prone creature." },
+            },
         };
     }
 
@@ -1599,7 +1670,13 @@ public class Creature
             CharismaSaveProficiency = true,
             XPReward = 2300,  // CR 6
             DisplayColor = new Color(200, 220, 240),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Bite",         ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 7, DamageDice = "2d10", DamageBonus = 4, DamageType = DamageType.Piercing },
+                new() { Name = "Claw",         ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 7, DamageDice = "2d6",  DamageBonus = 4, DamageType = DamageType.Slashing },
+                new() { Name = "Cold Breath",  ActionType = MonsterActionType.Special, DamageDice = "10d8", DamageType = DamageType.Cold, Description = "Recharge 5-6. Each creature in a 30-foot cone must make a DC 15 Constitution saving throw, taking 10d8 cold damage on a failed save, or half on a success." },
+            },
         };
     }
 
@@ -1630,7 +1707,12 @@ public class Creature
             PerceptionProficiency = true,
             XPReward = 3900,  // CR 8
             DisplayColor = new Color(150, 190, 220),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Greataxe", ActionType = MonsterActionType.MeleeAttack,  AttackBonus = 9, DamageDice = "3d12", DamageBonus = 6, DamageType = DamageType.Slashing },
+                new() { Name = "Rock",     ActionType = MonsterActionType.RangedAttack, AttackBonus = 9, DamageDice = "4d10", DamageBonus = 6, DamageType = DamageType.Bludgeoning, NormalRange = 60, LongRange = 240 },
+            },
         };
     }
 
@@ -1662,7 +1744,12 @@ public class Creature
             StealthProficiency = true,
             XPReward = 5000,  // CR 9
             DisplayColor = new Color(240, 245, 250),
-            IsPlayer = false
+            IsPlayer = false,
+            Actions = new()
+            {
+                new() { Name = "Claw",          ActionType = MonsterActionType.MeleeAttack, AttackBonus = 10, DamageDice = "2d8", DamageBonus = 7, DamageType = DamageType.Slashing },
+                new() { Name = "Chilling Gaze", ActionType = MonsterActionType.Special, Description = "One creature within 30 ft. that can see the yeti must make a DC 18 Constitution saving throw or take 3d6 cold damage and be paralyzed for 1 minute (save ends)." },
+            },
         };
     }
 
