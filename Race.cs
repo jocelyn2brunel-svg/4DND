@@ -61,6 +61,10 @@ public class Race
     /// <summary>Stout Resilience: advantage on saving throws against poison, and resistance against poison damage (Stout Halfling).</summary>
     public bool HasStoutResilience { get; set; } = false;
 
+    // Gnome-specific traits
+    /// <summary>Gnome Cunning: advantage on all Intelligence, Wisdom, and Charisma saving throws against magic.</summary>
+    public bool HasGnomeCunning { get; set; } = false;
+
     // Dragonborn-specific traits
     /// <summary>Draconic Ancestry: you have draconic ancestry of a chosen dragon type, which determines your breath weapon and damage resistance.</summary>
     public bool HasDraconicAncestry { get; set; } = false;
@@ -268,7 +272,9 @@ public class Race
             IntelligenceBonus = 2,
             BaseSpeed = 25,
             DarkvisionRange = 60,
-            Description = Loc.Tr("Small and clever (+2 INT, Darkvision 60 ft)")
+            HasGnomeCunning = true,
+            Languages = new List<string> { "Common", "Gnomish" },
+            Description = Loc.Tr("Small and clever (+2 INT, Darkvision 60 ft, Gnome Cunning)")
         },
         
         ["Half-Elf"] = new Race
