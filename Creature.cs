@@ -27,7 +27,16 @@ public enum CreatureType
     Wolf,
     Kobold,
     Umber_Hulk,  // Tremorsense
-    Couatl       // Truesight
+    Couatl,      // Truesight
+    // Arctic monsters
+    BloodHawk,        // CR 1/8
+    IceMephit,        // CR 1/2
+    BrownBear,        // CR 1
+    WinterWolf,       // CR 3
+    Mammoth,          // CR 6
+    YoungWhiteDragon, // CR 6
+    FrostGiant,       // CR 8
+    AbominableYeti    // CR 9
 }
 
 public enum CreatureSize
@@ -1394,16 +1403,274 @@ public class Creature
             WisdomSaveProficiency = true
         };
     }
-    
+
+    public static Creature CreateBloodHawk(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Blood Hawk",
+            Type = CreatureType.BloodHawk,
+            Size = CreatureSize.Small,
+            Alignment = Alignment.Unaligned,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 7, CurrentHP = 7,
+            ArmorClass = 12,
+            Speed = 10,
+            FlySpeed = 60,
+            CanFly = true,
+            Strength = 6, Dexterity = 14, Constitution = 10,
+            Intelligence = 3, Wisdom = 14, Charisma = 5,
+            AttackName = "Beak",
+            AttackBonus = 4,
+            DamageDice = "1d4",
+            DamageBonus = 2,
+            CurrentDamageType = DamageType.Piercing,
+            IsMeleeAttack = true,
+            HasPackTactics = true,
+            HasKeenSenses = true,
+            XPReward = 25,  // CR 1/8
+            DisplayColor = Color.DarkRed,
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateIceMephit(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Ice Mephit",
+            Type = CreatureType.IceMephit,
+            Size = CreatureSize.Small,
+            Alignment = Alignment.NeutralEvil,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 21, CurrentHP = 21,
+            ArmorClass = 11,
+            Speed = 30,
+            FlySpeed = 30,
+            CanFly = true,
+            Strength = 7, Dexterity = 13, Constitution = 10,
+            Intelligence = 9, Wisdom = 11, Charisma = 12,
+            AttackName = "Claws",
+            AttackBonus = 3,
+            DamageDice = "2d4",
+            DamageBonus = 1,
+            CurrentDamageType = DamageType.Slashing,
+            IsMeleeAttack = true,
+            DarkvisionRange = 60,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Cold, DamageType.Poison },
+            DamageVulnerabilities = new HashSet<DamageType> { DamageType.Fire, DamageType.Bludgeoning },
+            ConditionImmunities = Condition.Poisoned,
+            XPReward = 100,  // CR 1/2
+            DisplayColor = new Color(180, 220, 240),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateBrownBear(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Brown Bear",
+            Type = CreatureType.BrownBear,
+            Size = CreatureSize.Large,
+            Alignment = Alignment.Unaligned,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 34, CurrentHP = 34,
+            ArmorClass = 11,
+            Speed = 40,
+            Strength = 19, Dexterity = 10, Constitution = 16,
+            Intelligence = 2, Wisdom = 13, Charisma = 7,
+            AttackName = "Bite",
+            AttackBonus = 5,
+            DamageDice = "1d8",
+            DamageBonus = 4,
+            CurrentDamageType = DamageType.Piercing,
+            IsMeleeAttack = true,
+            HasKeenSenses = true,
+            XPReward = 200,  // CR 1
+            DisplayColor = new Color(139, 90, 43),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateWinterWolf(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Winter Wolf",
+            Type = CreatureType.WinterWolf,
+            Size = CreatureSize.Large,
+            Alignment = Alignment.NeutralEvil,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 75, CurrentHP = 75,
+            ArmorClass = 13,
+            Speed = 50,
+            Strength = 18, Dexterity = 13, Constitution = 14,
+            Intelligence = 7, Wisdom = 12, Charisma = 8,
+            AttackName = "Bite",
+            AttackBonus = 6,
+            DamageDice = "2d6",
+            DamageBonus = 4,
+            CurrentDamageType = DamageType.Piercing,
+            IsMeleeAttack = true,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Cold },
+            HasPackTactics = true,
+            HasKeenSenses = true,
+            StealthProficiency = true,
+            PerceptionProficiency = true,
+            XPReward = 700,  // CR 3
+            DisplayColor = new Color(220, 230, 240),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateMammoth(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Mammoth",
+            Type = CreatureType.Mammoth,
+            Size = CreatureSize.Huge,
+            Alignment = Alignment.Unaligned,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 126, CurrentHP = 126,
+            ArmorClass = 13,
+            Speed = 40,
+            Strength = 24, Dexterity = 9, Constitution = 21,
+            Intelligence = 3, Wisdom = 11, Charisma = 6,
+            AttackName = "Gore",
+            AttackBonus = 10,
+            DamageDice = "4d8",
+            DamageBonus = 7,
+            CurrentDamageType = DamageType.Piercing,
+            IsMeleeAttack = true,
+            XPReward = 2300,  // CR 6
+            DisplayColor = new Color(100, 80, 60),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateYoungWhiteDragon(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Young White Dragon",
+            Type = CreatureType.YoungWhiteDragon,
+            Size = CreatureSize.Large,
+            Alignment = Alignment.ChaoticEvil,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 133, CurrentHP = 133,
+            ArmorClass = 17,
+            Speed = 40,
+            FlySpeed = 80,
+            CanFly = true,
+            Strength = 18, Dexterity = 10, Constitution = 18,
+            Intelligence = 6, Wisdom = 11, Charisma = 12,
+            AttackName = "Bite",
+            AttackBonus = 7,
+            DamageDice = "2d10",
+            DamageBonus = 4,
+            CurrentDamageType = DamageType.Piercing,
+            IsMeleeAttack = true,
+            DarkvisionRange = 60,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Cold },
+            PerceptionProficiency = true,
+            StealthProficiency = true,
+            ConstitutionSaveProficiency = true,
+            WisdomSaveProficiency = true,
+            CharismaSaveProficiency = true,
+            XPReward = 2300,  // CR 6
+            DisplayColor = new Color(200, 220, 240),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateFrostGiant(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Frost Giant",
+            Type = CreatureType.FrostGiant,
+            Size = CreatureSize.Huge,
+            Alignment = Alignment.NeutralEvil,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 138, CurrentHP = 138,
+            ArmorClass = 15,
+            Speed = 40,
+            Strength = 23, Dexterity = 9, Constitution = 21,
+            Intelligence = 9, Wisdom = 10, Charisma = 12,
+            AttackName = "Greataxe",
+            AttackBonus = 9,
+            DamageDice = "3d12",
+            DamageBonus = 6,
+            CurrentDamageType = DamageType.Slashing,
+            IsMeleeAttack = true,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Cold },
+            StrengthSaveProficiency = true,
+            ConstitutionSaveProficiency = true,
+            PerceptionProficiency = true,
+            XPReward = 3900,  // CR 8
+            DisplayColor = new Color(150, 190, 220),
+            IsPlayer = false
+        };
+    }
+
+    public static Creature CreateAbominableYeti(int x, int y, int z = 0)
+    {
+        return new Creature
+        {
+            Name = "Abominable Yeti",
+            Type = CreatureType.AbominableYeti,
+            Size = CreatureSize.Huge,
+            Alignment = Alignment.ChaoticEvil,
+            X = x, Y = y, Z = z,
+            VisualX = x, VisualY = y, VisualZ = z,
+            MaxHP = 137, CurrentHP = 137,
+            ArmorClass = 15,
+            Speed = 40,
+            Strength = 24, Dexterity = 10, Constitution = 22,
+            Intelligence = 9, Wisdom = 13, Charisma = 9,
+            AttackName = "Claw",
+            AttackBonus = 10,
+            DamageDice = "2d8",
+            DamageBonus = 7,
+            CurrentDamageType = DamageType.Slashing,
+            IsMeleeAttack = true,
+            DarkvisionRange = 60,
+            DamageImmunities = new HashSet<DamageType> { DamageType.Cold },
+            HasKeenSenses = true,
+            PerceptionProficiency = true,
+            StealthProficiency = true,
+            XPReward = 5000,  // CR 9
+            DisplayColor = new Color(240, 245, 250),
+            IsPlayer = false
+        };
+    }
+
     public static int GetXPForType(CreatureType type) => type switch
     {
         CreatureType.Kobold => 25,
+        CreatureType.BloodHawk => 25,
         CreatureType.Goblin => 50,
         CreatureType.Skeleton => 50,
         CreatureType.Zombie => 50,
         CreatureType.Wolf => 50,
+        CreatureType.IceMephit => 100,
         CreatureType.Orc => 100,
+        CreatureType.BrownBear => 200,
         CreatureType.Couatl => 1100,
+        CreatureType.WinterWolf => 700,
+        CreatureType.Mammoth => 2300,
+        CreatureType.YoungWhiteDragon => 2300,
+        CreatureType.FrostGiant => 3900,
+        CreatureType.AbominableYeti => 5000,
         CreatureType.Umber_Hulk => 1800,
         _ => 0
     };
@@ -1414,9 +1681,9 @@ public class Creature
         BiomeType.Forest => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Umber_Hulk },
         BiomeType.Plains => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Skeleton, CreatureType.Zombie },
         BiomeType.Swamp => new() { CreatureType.Kobold, CreatureType.Zombie, CreatureType.Orc, CreatureType.Umber_Hulk },
-        BiomeType.Tundra => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Zombie, CreatureType.Skeleton },
+        BiomeType.Tundra => new() { CreatureType.Wolf, CreatureType.BloodHawk, CreatureType.IceMephit, CreatureType.BrownBear, CreatureType.WinterWolf, CreatureType.Mammoth, CreatureType.FrostGiant, CreatureType.AbominableYeti },
         BiomeType.Mountain => new() { CreatureType.Orc, CreatureType.Kobold, CreatureType.Wolf, CreatureType.Umber_Hulk, CreatureType.Couatl },
-        BiomeType.SnowMountain => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Skeleton },
+        BiomeType.SnowMountain => new() { CreatureType.Wolf, CreatureType.BloodHawk, CreatureType.IceMephit, CreatureType.WinterWolf, CreatureType.YoungWhiteDragon, CreatureType.FrostGiant, CreatureType.AbominableYeti },
         BiomeType.Coast => new() { CreatureType.Kobold, CreatureType.Goblin, CreatureType.Couatl },
         BiomeType.Ocean => new() { CreatureType.Couatl }, // Flyers/Swimmers
         _ => new() { CreatureType.Goblin }
@@ -1432,6 +1699,14 @@ public class Creature
         CreatureType.Kobold => CreateKobold(x, y, z),
         CreatureType.Umber_Hulk => CreateUmberHulk(x, y, z),
         CreatureType.Couatl => CreateCouatl(x, y, z),
+        CreatureType.BloodHawk => CreateBloodHawk(x, y, z),
+        CreatureType.IceMephit => CreateIceMephit(x, y, z),
+        CreatureType.BrownBear => CreateBrownBear(x, y, z),
+        CreatureType.WinterWolf => CreateWinterWolf(x, y, z),
+        CreatureType.Mammoth => CreateMammoth(x, y, z),
+        CreatureType.YoungWhiteDragon => CreateYoungWhiteDragon(x, y, z),
+        CreatureType.FrostGiant => CreateFrostGiant(x, y, z),
+        CreatureType.AbominableYeti => CreateAbominableYeti(x, y, z),
         _ => CreateGoblin(x, y, z)
     };
 
