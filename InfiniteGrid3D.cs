@@ -61,7 +61,9 @@ namespace _4DND
 
         public IEnumerable<KeyValuePair<(int x, int y, int z), T>> EnumerateNonEmpty()
         {
-            foreach (var kv in _cells) yield return kv;
+            var snapshot = new KeyValuePair<(int x, int y, int z), T>[_cells.Count];
+            ((ICollection<KeyValuePair<(int x, int y, int z), T>>)_cells).CopyTo(snapshot, 0);
+            foreach (var kv in snapshot) yield return kv;
         }
 
         public IEnumerable<(int x, int y, int z)> Region(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax)
