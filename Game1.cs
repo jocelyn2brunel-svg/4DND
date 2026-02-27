@@ -2040,6 +2040,9 @@ public class Game1 : Game
             float? d = ray.Intersects(plane);
             if (!d.HasValue) continue;
 
+            // Don't hover tiles that are excessively far (prevents hovering "the void" in dungeons/cities)
+            if (d.Value > 100f) continue;
+
             int hx = (int)Math.Round(near.X + dir.X * d.Value);
             int hy = (int)Math.Round(near.Y + dir.Y * d.Value);
             var tileType = _tacticalMap.Get(hx, hy, hz);
