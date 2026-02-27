@@ -134,7 +134,8 @@ public class Game1 : Game
     // Auto-save timer
     private double _autoSaveTimer = 0;
     private const double AutoSaveInterval = 5 * 60; // 5 minutes in seconds
-    private double _gameTimeTimer = 0;
+    private double _lastTotalGameMinutes = 0;
+    private double _torchTimerAccumulator = 0;
 
     private class GroundItem
     {
@@ -594,6 +595,8 @@ public class Game1 : Game
 
     private void UpdateTorchDurations(int minutes)
     {
+        if (minutes <= 0) return;
+
         bool changed = false;
         foreach (var character in _characters)
         {
@@ -606,7 +609,9 @@ public class Game1 : Game
                     if (item.RemainingMinutes <= 0)
                     {
                         character.InventoryData.RemoveItemInstance(item);
-                        AddToCombatLog(Loc.Tr("{0}'s torch has burned out!", character.Name));
+                        string msg = Loc.Tr("{0}'s torch has burned out!", character.Name);
+                        AddToCombatLog(msg);
+                        _currentCampaign?.SetTravelMessage(msg);
                         changed = true;
                     }
                 }
@@ -622,7 +627,9 @@ public class Game1 : Game
                 if (gi.Item.RemainingMinutes <= 0)
                 {
                     _groundItems.RemoveAt(i);
-                    AddToCombatLog(Loc.Tr("A torch on the ground has burned out!"));
+                    string msg = Loc.Tr("A torch on the ground has burned out!");
+                    AddToCombatLog(msg);
+                    _currentCampaign?.SetTravelMessage(msg);
                     changed = true;
                 }
             }
@@ -2739,6 +2746,8 @@ public class Game1 : Game
                 if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
                 {
                     _currentCampaign = _campaigns[_campaignIndex];
+                    _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
+                    _torchTimerAccumulator = 0;
                     RestoreVisionExplorationFromCampaign();
                     RestoreGroundItemsFromCampaign();
                     if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
@@ -2868,6 +2877,8 @@ public class Game1 : Game
             else if (newCampaign != null)
             {
                 _currentCampaign = newCampaign;
+                _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
+                _torchTimerAccumulator = 0;
                 RestoreVisionExplorationFromCampaign();
                 if (_currentCharacter != null)
                 {
@@ -2902,11 +2913,6 @@ public class Game1 : Game
                 CloseCampaignMap();
                 TriggerEncounterSpawn();
                 StartCombatWithNearbyEnemies();
-
-                _prevKb = kb;
-                _prevMouse = mouse;
-                base.Update(gameTime);
-                return;
             }
 
             var closeMapButtonRect = GetMapButtonRect(GraphicsDevice.Viewport);
@@ -2922,11 +2928,6 @@ public class Game1 : Game
             {
                 CloseCampaignMap();
             }
-            
-            _prevKb = kb;
-            _prevMouse = mouse;
-            base.Update(gameTime);
-            return;
         }
 
         // Handle Combat Log dragging
@@ -3101,7 +3102,6 @@ public class Game1 : Game
                         double minutesToAdvance = dtPlaying * 10.0; // 10 minutes per real second while busy?
 
                         _currentCampaign.TotalGameMinutes += minutesToAdvance;
-                        UpdateTorchDurations((int)minutesToAdvance);
 
                         foreach (var c in activeProcesses)
                         {
@@ -3142,17 +3142,6 @@ public class Game1 : Game
                 }
             }
 
-            // Advance game time (1 minute game time per 60 seconds real time)
-            _gameTimeTimer += dtPlaying;
-            if (_gameTimeTimer >= 60.0)
-            {
-                _gameTimeTimer -= 60.0;
-                if (_currentCampaign != null)
-                {
-                    _currentCampaign.TotalGameMinutes += 1.0;
-                    UpdateTorchDurations(1);
-                }
-            }
 
             _luteMusic.Update(dtPlaying);
             _luteSynth.Update();
@@ -4303,6 +4292,35 @@ public class Game1 : Game
         }
 
         UpdateHPTooltips();
+
+        // Advance game time and update torches (AppState.Playing)
+        if (_state == AppState.Playing && _currentCampaign != null)
+        {
+            // 1. Advance game time if nothing else is advancing it
+            // (Travel and Map-Waiting advance it themselves)
+            bool isTraveling = _currentCampaign.IsTraveling;
+            bool isAnyMemberBusy = _characters.Exists(c => _currentCampaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+            bool isWaitingOnMap = _showCampaignMap && isAnyMemberBusy;
+
+            if (!isTraveling && !isWaitingOnMap)
+            {
+                _currentCampaign.TotalGameMinutes += totalSeconds / 60.0;
+            }
+
+            // 2. Unified torch duration update based on TotalGameMinutes delta
+            double deltaMinutes = _currentCampaign.TotalGameMinutes - _lastTotalGameMinutes;
+            if (deltaMinutes > 0)
+            {
+                _torchTimerAccumulator += deltaMinutes;
+                if (_torchTimerAccumulator >= 1.0)
+                {
+                    int minutesToConsume = (int)Math.Floor(_torchTimerAccumulator);
+                    UpdateTorchDurations(minutesToConsume);
+                    _torchTimerAccumulator -= minutesToConsume;
+                }
+            }
+            _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
+        }
 
         _prevKb = kb;
         _prevMouse = mouse;
