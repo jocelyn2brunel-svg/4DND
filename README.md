@@ -14,7 +14,9 @@ A MonoGame-based D&D 5th Edition character management and tactical combat system
   - Lightfoot Halfling (+2 DEX, +1 CHA, 25 ft speed)
   - Stout Halfling (+2 DEX, +1 CON, 25 ft speed)
 
-- **Classes**: Warrior, Mage, Rogue (each with unique proficiencies and starting equipment)
+- **Classes**: Full 12-class SRD roster in character creation:
+  - Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard
+  - Backward-compatible aliases are still supported internally: `Warrior` → `Fighter`, `Mage` → `Wizard`
 
 - **Ability Score Rolling**: Standard 4d6 drop lowest method with reroll option
 
@@ -30,9 +32,19 @@ A MonoGame-based D&D 5th Edition character management and tactical combat system
   - Stealth disadvantage on heavy armor
 
 - **Starting Equipment**: Each class receives appropriate starting gear
-  - Warriors: Longsword, Chain Mail, Shield
-  - Mages: Quarterstaff, Dagger
-  - Rogues: Rapier, Shortbow, Leather Armor, Daggers
+  - Barbarian: Greataxe, handaxes, javelins, explorer-style adventuring gear
+  - Bard: Rapier, dagger, leather armor, entertainer-style adventuring gear
+  - Cleric: Mace, scale mail, shield, priest-style adventuring gear
+  - Druid: Scimitar, leather armor, druidic focus, explorer-style adventuring gear
+  - Fighter: Longsword, chain mail, shield, light crossbow, dungeoneer-style adventuring gear
+  - Monk: Shortsword, quarterstaff, darts, explorer-style adventuring gear
+  - Paladin: Longsword, chain mail, shield, javelins, priest-style adventuring gear
+  - Ranger: Longbow, shortswords, leather armor, explorer-style adventuring gear
+  - Rogue: Rapier, shortbow, leather armor, daggers, burglar-style adventuring gear
+  - Sorcerer: Light crossbow, daggers, arcane focus, dungeoneer-style adventuring gear
+  - Warlock: Light crossbow, simple weapon, leather armor, component pouch, scholar-style adventuring gear
+  - Wizard: Quarterstaff, dagger, spellbook, component pouch, scholar-style adventuring gear
+  - Legacy labels in saves/UI remain compatible: `Warrior` uses Fighter data, `Mage` uses Wizard data
 
 ### Combat System
 - **Turn-Based Tactical Combat**
@@ -130,7 +142,7 @@ A MonoGame-based D&D 5th Edition character management and tactical combat system
 
 ## Future Enhancements
 - Spellcasting system
-- More character classes and subclasses
+- More subclasses and class feature depth
 - Leveling and XP progression
 - Treasure and loot system
 - Dungeon generation
