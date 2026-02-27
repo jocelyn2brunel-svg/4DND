@@ -33,6 +33,15 @@ namespace _4DND
             return result;
         }
 
+        /// <summary>
+        /// Returns the cached value without invoking the default factory.
+        /// Use this when you only want to read tiles that were previously loaded.
+        /// </summary>
+        public bool TryGetCached(int x, int y, int z, out T value)
+        {
+            return _cells.TryGetValue((x, y, z), out value!);
+        }
+
         public bool Remove(int x, int y, int z) => _cells.Remove((x, y, z));
 
         public IEnumerable<(int x, int y, int z)> Neighbors(int x, int y, int z, bool diag = false, bool includeVertical = true)

@@ -231,44 +231,52 @@ public partial class Game1
             }
         }
 
-        // 2. Draw non-empty cells from dictionary (for verticality and overrides)
-        foreach (var cell in _tacticalMap.EnumerateNonEmpty())
+        // 2. Draw cached cells at upper levels and z=0 border within a bounded range.
+        // Only consult previously-cached tiles (TryGetCached) to avoid triggering the
+        // procedural factory for every coordinate and to keep cost O(viewArea) per frame
+        // instead of O(totalCachedCells) which grows without bound.
+        int extMinX = minX - 5;
+        int extMaxX = maxX + 5;
+        int extMinY = minY - 5;
+        int extMaxY = maxY + 5;
+
+        for (int cz = 0; cz <= zLevel; cz++)
         {
-            int cx = cell.Key.x, cy = cell.Key.y, cz = cell.Key.z;
-
-            // Skip cells already drawn in the view box at z=0
-            if (cz == 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) continue;
-
-            // Culling: Skip cells too far from camera
-            if (cx < minX - 5 || cx > maxX + 5 || cy < minY - 5 || cy > maxY + 5) continue;
-
-            if (cz > zLevel || cell.Value == TileType.Empty) continue;
-
-            Color color = GetTileColor(cell.Value, cx, cy, cz, zLevel);
-            if (color.A == 0) continue;
-
-            if (cell.Value == TileType.Wall || cell.Value == TileType.DungeonWall || IsDungeonDoor(cell.Value))
+            for (int cy = extMinY; cy <= extMaxY; cy++)
             {
-                AddThinWallVertices(_reusableWallVertices, cx, cy, cz, color);
-            }
-            else if (cell.Value == TileType.Tree || cell.Value == TileType.Shrub)
-            {
-                // Draw floor under vegetation if it's above ground, otherwise grass
-                TileType baseType = cz > 0 ? TileType.Floor : TileType.Grass;
-                Color groundColor = GetTileColor(baseType, cx, cy, cz, zLevel);
-                AddTileVertices(_reusableTileVertices, cx, cy, cz, baseType, groundColor);
-                _reusableVegetation.Add((cx, cy, cz, cell.Value));
-            }
-            else
-            {
-                AddTileVertices(_reusableTileVertices, cx, cy, cz, cell.Value, color);
-                if (cell.Value == TileType.DifficultTerrain)
+                for (int cx = extMinX; cx <= extMaxX; cx++)
                 {
-                    AddDifficultTerrainLines(_reusableLineVertices, cx, cy, cz);
-                }
-                else if (cell.Value == TileType.BallBearings)
-                {
-                    AddBallBearingsOverlay(_reusableLineVertices, cx, cy, cz);
+                    // Skip cells already drawn in the view box at z=0
+                    if (cz == 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) continue;
+
+                    if (!_tacticalMap.TryGetCached(cx, cy, cz, out var type) || type == TileType.Empty) continue;
+
+                    Color color = GetTileColor(type, cx, cy, cz, zLevel);
+                    if (color.A == 0) continue;
+
+                    if (type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type))
+                    {
+                        AddThinWallVertices(_reusableWallVertices, cx, cy, cz, color);
+                    }
+                    else if (type == TileType.Tree || type == TileType.Shrub)
+                    {
+                        TileType baseType = cz > 0 ? TileType.Floor : TileType.Grass;
+                        Color groundColor = GetTileColor(baseType, cx, cy, cz, zLevel);
+                        AddTileVertices(_reusableTileVertices, cx, cy, cz, baseType, groundColor);
+                        _reusableVegetation.Add((cx, cy, cz, type));
+                    }
+                    else
+                    {
+                        AddTileVertices(_reusableTileVertices, cx, cy, cz, type, color);
+                        if (type == TileType.DifficultTerrain)
+                        {
+                            AddDifficultTerrainLines(_reusableLineVertices, cx, cy, cz);
+                        }
+                        else if (type == TileType.BallBearings)
+                        {
+                            AddBallBearingsOverlay(_reusableLineVertices, cx, cy, cz);
+                        }
+                    }
                 }
             }
         }
