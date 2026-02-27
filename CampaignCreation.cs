@@ -19,7 +19,7 @@ namespace _4DND
         private SpriteFont _font;
         private Texture2D _pixel;
         
-        private int _step = -1; // -1=Mode selection, 0=Name, 1=Difficulty, 2=HomeBase, 3=Region, 4=Hook, 5=Middle, 6=Ending
+        private int _step = -1; // -1=Mode selection, 0=Name, 1=HomeBase, 2=Region, 3=Hook, 4=Middle, 5=Ending, 6=MaxDifficulty
         
         // Campaign data
         private bool _isRandomMode = false;
@@ -31,11 +31,25 @@ namespace _4DND
         private string _adventureHook = "";
         private string _adventureMiddle = "";
         private string _adventureEnding = "";
-        
+        private int _selectedMaxDifficultyIndex = 3; // Default to Deadly
+
         private int _selectedModeIndex = 0; // 0=Random, 1=Custom
         private int _selectedDifficultyIndex = 1; // Default to Adventurer
         private int _selectedTypeIndex = 2; // Default to Village
         private int _selectedTerrainIndex = 0;
+        
+        private static readonly string[] _difficultyLabels = new[]
+        {
+            "Easy", "Medium", "Hard", "Deadly"
+        };
+
+        private static readonly string[] _difficultyDescriptions = new[]
+        {
+            "Easy: Victory is almost guaranteed. Little resource drain.",
+            "Medium: One or two scary moments; party should emerge victorious.",
+            "Hard: Could go badly; weaker characters might fall.",
+            "Deadly: Could be lethal; survival requires tactics and quick thinking."
+        };
         
         private readonly string[] _creationModes = new[]
         {
@@ -127,6 +141,7 @@ namespace _4DND
             _adventureHook = "";
             _adventureMiddle = "";
             _adventureEnding = "";
+            _selectedMaxDifficultyIndex = 3;
             _selectedModeIndex = 0;
             _selectedDifficultyIndex = 1;
             _selectedTypeIndex = 2;
@@ -162,11 +177,10 @@ namespace _4DND
                 bool wasTyping = _isTyping;
                 HandleTyping(kb, prevKb);
                 
-                // If we just finished typing the ending, we might want to complete the campaign
-                if (wasTyping && !_isTyping && _step == 6 && !string.IsNullOrEmpty(_adventureEnding))
+                // If we just finished typing the ending, advance to the difficulty step
+                if (wasTyping && !_isTyping && _step == 5 && !string.IsNullOrEmpty(_adventureEnding))
                 {
-                    outCampaign = CreateFinalCampaign();
-                    return true;
+                    _step = 6;
                 }
 
                 // Handle clicking input boxes while typing
@@ -278,6 +292,8 @@ namespace _4DND
                     _selectedMiddleIndex = Math.Max(0, _selectedMiddleIndex - 1);
                 else if (_step == 6)
                     _selectedEndingIndex = Math.Max(0, _selectedEndingIndex - 1);
+                else if (_step == 6)
+                    _selectedMaxDifficultyIndex = Math.Max(0, _selectedMaxDifficultyIndex - 1);
             }
             
             if (kb.IsKeyDown(Keys.Down) && !prevKb.IsKeyDown(Keys.Down))
@@ -294,6 +310,8 @@ namespace _4DND
                     _selectedMiddleIndex = Math.Min(_adventureMiddles.Length - 1, _selectedMiddleIndex + 1);
                 else if (_step == 6)
                     _selectedEndingIndex = Math.Min(_adventureEndings.Length - 1, _selectedEndingIndex + 1);
+                else if (_step == 6)
+                    _selectedMaxDifficultyIndex = Math.Min(_difficultyLabels.Length - 1, _selectedMaxDifficultyIndex + 1);
             }
             
             // Mouse navigation for each step
@@ -440,10 +458,30 @@ namespace _4DND
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             _adventureEnding = _adventureEndings[_selectedEndingIndex];
-                            
+                            _step = 6;
+                            _prevMouse = mouse;
+                            return true;
+                        }
+                    }
+                    y += 42;
+                }
+            }
+
+            // Step 6: Click on max encounter difficulty
+            if (_step == 6)
+            {
+                int y = menuRect2.Y + 110;
+                for (int i = 0; i < _difficultyLabels.Length; i++)
+                {
+                    var itemRect = new Rectangle(menuRect2.X + 40, y, menuRect2.Width - 80, 40);
+                    if (itemRect.Contains(mouse.Position))
+                    {
+                        _selectedMaxDifficultyIndex = i;
+
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        {
                             // Create campaign!
                             outCampaign = CreateFinalCampaign();
-                            
                             _prevMouse = mouse;
                             return true;
                         }
@@ -528,9 +566,13 @@ namespace _4DND
                     else
                     {
                         _adventureEnding = _adventureEndings[_selectedEndingIndex];
-                        outCampaign = CreateFinalCampaign();
-                        return true;
+                        _step = 6;
                     }
+                }
+                else if (_step == 6)
+                {
+                    outCampaign = CreateFinalCampaign();
+                    return true;
                 }
             }
             
@@ -547,6 +589,7 @@ namespace _4DND
             campaign.AdventureMiddle = _adventureMiddle;
             campaign.AdventureEnding = _adventureEnding;
             campaign.CurrentObjective = _adventureHook; // Set initial objective to the hook
+            campaign.MaxEncounterDifficulty = (EncounterDifficulty)_selectedMaxDifficultyIndex;
 
             var rand = new Random();
 
@@ -650,6 +693,9 @@ namespace _4DND
             _adventureHook = _adventureHooks[rand.Next(_adventureHooks.Length - 1)]; // Exclude "Custom"
             _adventureMiddle = _adventureMiddles[rand.Next(_adventureMiddles.Length - 1)];
             _adventureEnding = _adventureEndings[rand.Next(_adventureEndings.Length - 1)];
+            
+            // Random max difficulty (default Deadly for random campaigns)
+            _selectedMaxDifficultyIndex = 3; // Deadly
             
             // Create campaign
             campaign = CreateFinalCampaign();
@@ -781,12 +827,12 @@ namespace _4DND
             string stepName = _step switch
             {
                 0 => Loc.Tr("Campaign Name"),
-                1 => Loc.Tr("Campaign Difficulty"),
-                2 => Loc.Tr("Home Base"),
-                3 => Loc.Tr("Local Region"),
-                4 => Loc.Tr("Adventure Hook"),
-                5 => Loc.Tr("Adventure Middle"),
-                6 => Loc.Tr("Adventure Ending"),
+                1 => Loc.Tr("Home Base"),
+                2 => Loc.Tr("Local Region"),
+                3 => Loc.Tr("Adventure Hook"),
+                4 => Loc.Tr("Adventure Middle"),
+                5 => Loc.Tr("Adventure Ending"),
+                6 => Loc.Tr("Encounter Difficulty"),
                 _ => ""
             };
             string title = Loc.Tr("Create Campaign - {0}", stepName);
@@ -823,6 +869,10 @@ namespace _4DND
             else if (_step == 6)
             {
                 DrawStep6_Ending(spriteBatch, menuRect, ref y);
+            }
+            else if (_step == 6)
+            {
+                DrawStep6_MaxDifficulty(spriteBatch, menuRect, ref y);
             }
             
             // Instructions
@@ -1131,6 +1181,40 @@ namespace _4DND
             
             y += 20;
             sb.DrawString(_font, Loc.Tr("Adventure conclusion info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawStep6_MaxDifficulty(SpriteBatch sb, Rectangle menuRect, ref int y)
+        {
+            string prompt = Loc.Tr("Select the maximum difficulty for the campaign:");
+            sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
+            y += 40;
+            
+            var mouse = Mouse.GetState();
+            for (int i = 0; i < _difficultyLabels.Length; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + 40, y, menuRect.Width - 80, 40);
+                bool isHovered = itemRect.Contains(mouse.Position);
+                
+                if (i == _selectedMaxDifficultyIndex)
+                    sb.Draw(_pixel, itemRect, Color.LightCoral * 0.4f);
+                else if (isHovered)
+                    sb.Draw(_pixel, itemRect, Color.LightCoral * 0.2f);
+                
+                sb.DrawString(_font, _difficultyLabels[i], new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedMaxDifficultyIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White));
+                y += 42;
+            }
+            
+            // Difficulty description
+            y += 10;
+            sb.DrawString(_font, "Select the highest difficulty you want in this campaign.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            sb.DrawString(_font, "Easy: Victory is almost guaranteed. Little resource drain.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            sb.DrawString(_font, "Medium: One or two scary moments; party should emerge victorious.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            sb.DrawString(_font, "Hard: Could go badly; weaker characters might fall.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+            y += 20;
+            sb.DrawString(_font, "Deadly: Could be lethal; survival requires tactics and quick thinking.", new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
 
         private void DrawCustomInput(SpriteBatch sb, Rectangle menuRect, ref int y, string prompt, string value)
