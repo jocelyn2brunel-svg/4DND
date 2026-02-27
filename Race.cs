@@ -99,6 +99,13 @@ public class Race
     /// <summary>Damage Resistance: you have resistance to the damage type associated with your draconic ancestry.</summary>
     public bool HasDamageResistance { get; set; } = false;
 
+    /// <summary>Minimum typical height for this race in feet. 0 = unspecified.</summary>
+    public float HeightMinFeet { get; set; } = 0f;
+    /// <summary>Maximum typical height for this race in feet. 0 = unspecified.</summary>
+    public float HeightMaxFeet { get; set; } = 0f;
+    /// <summary>Average weight for this race in pounds. 0 = unspecified.</summary>
+    public int AverageWeightPounds { get; set; } = 0;
+
     /// <summary>Age at which members of this race are considered adults (no longer young). 0 = unspecified.</summary>
     public int MaturityAge { get; set; } = 0;
     /// <summary>Average maximum lifespan for members of this race in years. 0 = unspecified.</summary>
@@ -224,6 +231,9 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            HeightMinFeet = 4f,
+            HeightMaxFeet = 5f,
+            AverageWeightPounds = 150,
             MaturityAge = 50,
             MaxAge = 350,
             Languages = new List<string> { "Common", "Dwarvish" },
@@ -245,6 +255,9 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            HeightMinFeet = 4f,
+            HeightMaxFeet = 5f,
+            AverageWeightPounds = 150,
             MaturityAge = 50,
             MaxAge = 350,
             Languages = new List<string> { "Common", "Dwarvish" },
