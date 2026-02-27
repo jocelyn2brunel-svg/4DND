@@ -2219,6 +2219,7 @@ public partial class Game1 : Game
                     {
                         _currentCampaign.IsTraveling = false;
                         _currentCampaign.SetTravelMessage(Loc.Tr("Travel cancelled."));
+                        AddToCombatLog(Loc.Tr("Travel cancelled."));
                         clickedOnGameplayUiButton = true;
                     }
 
@@ -2226,6 +2227,7 @@ public partial class Game1 : Game
                     if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
                     {
                         ToggleDoor(hovered.Value.x, hovered.Value.y, hovered.Value.z);
+                        AddToCombatLog(Loc.Tr("Tile clicked: dungeon door toggled at ({0}, {1}, {2}).", hovered.Value.x, hovered.Value.y, hovered.Value.z));
                         clickedOnGameplayUiButton = true;
                     }
                     if (hovered.HasValue && _playerCreature != null && !clickedOnGameplayUiButton)
@@ -2237,7 +2239,8 @@ public partial class Game1 : Game
                         var tileType = _tacticalMap.Get(tx, ty, tz);
                         if (tileType != TileType.Wall && tileType != TileType.Tree && tileType != TileType.Shrub && tileType != TileType.Empty)
                         {
-                            if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
+                            var occupant = _combatManager.GetCreatureAt(tx, ty, tz);
+                            if (occupant == null)
                             {
                                 // Interrupt any in-progress animation BEFORE computing the path,
                                 // so that X,Y,Z reflects the creature's actual (interrupted) position
@@ -2256,6 +2259,7 @@ public partial class Game1 : Game
                                         _playerCreature.TeleportTo(tx, ty, stairs.TargetZ);
                                         _currentViewLevel = stairs.TargetZ;
                                         AddToCombatLog(Loc.Tr("You used the stairs."));
+                                        AddToCombatLog(Loc.Tr("Tile clicked: stairs at ({0}, {1}, {2}) to level {3}.", tx, ty, tz, stairs.TargetZ));
                                         UpdateVision();
                                         clickedOnGameplayUiButton = true;
                                         return;
@@ -2264,14 +2268,27 @@ public partial class Game1 : Game
 
                                 if (path != null)
                                 {
+                                    AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     for (int i = 1; i < path.Count; i++)
                                     {
                                         var step = path[i];
                                         _playerCreature.MoveTo(step.x, step.y, step.z);
                                     }
                                 }
+                                else
+                                {
+                                    AddToCombatLog(Loc.Tr("Tile clicked: no path to ({0}, {1}, {2}).", tx, ty, tz));
+                                }
                                 UpdateVision();
                             }
+                            else
+                            {
+                                AddToCombatLog(Loc.Tr("Tile clicked: blocked by {0} at ({1}, {2}, {3}).", occupant.Name, tx, ty, tz));
+                            }
+                        }
+                        else
+                        {
+                            AddToCombatLog(Loc.Tr("Tile clicked: blocked terrain ({0}) at ({1}, {2}, {3}).", tileType, tx, ty, tz));
                         }
                     }
                 }
