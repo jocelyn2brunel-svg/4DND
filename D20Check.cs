@@ -348,8 +348,27 @@ public static class CharacterD20Extensions
             "Survival" => ("WIS", character.SurvivalProficiency, character.Wisdom),
             _ => ("", false, 10)
         };
-        
+
         return D20CheckFactory.MakeSkillCheck(skillName, abilityScore, proficient, character.ProficiencyBonus, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
+    }
+
+    /// <summary>
+    /// Make an Intelligence (History) check for a character related to the origin of stonework.
+    /// Automatically applies Stonecunning: the character is treated as proficient and adds double
+    /// their proficiency bonus, instead of their normal proficiency bonus (PHB "Stonecunning").
+    /// </summary>
+    public static D20Check MakeStonecunningHistoryCheck(this Character character, int dc, bool hasAdvantage = false, bool hasDisadvantage = false, int circumstantialBonus = 0)
+    {
+        if (character.IsWearingNonProficientArmor)
+            hasDisadvantage = true;
+
+        // Stonecunning: treated as proficient, double proficiency bonus on stonework History checks
+        bool proficient = character.HasStonecunning || character.HistoryProficiency;
+        int proficiencyBonus = character.HasStonecunning
+            ? character.ProficiencyBonus * 2
+            : character.ProficiencyBonus;
+
+        return D20CheckFactory.MakeSkillCheck("History", character.Intelligence, proficient, proficiencyBonus, dc, hasAdvantage, hasDisadvantage, circumstantialBonus);
     }
     
     /// <summary>
