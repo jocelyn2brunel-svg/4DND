@@ -449,7 +449,7 @@ public partial class Game1 : Game
 
         _playerCreature = Creature.FromCharacter(_currentCharacter, 0, 0);
         PlacePlayerAtNearestValidTile();
-        _combatManager.Combatants.Clear();
+        _combatManager.EndCombat();
     }
     
     private void TriggerEncounterSpawn(int targetDistance = 20)
@@ -903,6 +903,7 @@ public partial class Game1 : Game
             else if (index == 2) // Main Menu
             {
                 SaveCurrentProgress();
+                _combatManager.EndCombat();
                 _luteMusic.Stop();
                 _state = AppState.MainMenu;
                 _isMenuOpen = false;
@@ -2229,10 +2230,7 @@ public partial class Game1 : Game
                         ToggleDoor(hovered.Value.x, hovered.Value.y, hovered.Value.z);
                         clickedOnGameplayUiButton = true;
                     }
-                    // If Combat UI is open, only allow movement if Move action is selected
-                    bool allowExplorationMove = !_showCombatUI || _selectedAction == CombatAction.Move || _selectedAction == CombatAction.None;
-
-                    if (hovered.HasValue && _playerCreature != null && allowExplorationMove && !clickedOnGameplayUiButton)
+                    if (hovered.HasValue && _playerCreature != null && !clickedOnGameplayUiButton)
                     {
                         int tx = hovered.Value.x;
                         int ty = hovered.Value.y;
@@ -2810,6 +2808,7 @@ public partial class Game1 : Game
                     if (!_combatManager.InCombat)
                     {
                         AddToCombatLog(Loc.Tr("Combat ended!"));
+                        _selectedAction = CombatAction.Move;
                         if (_playerCreature != null && _currentCharacter != null)
                         {
                             _playerCreature.UpdateCharacter(_currentCharacter);
