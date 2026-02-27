@@ -113,6 +113,7 @@ public class CombatManager
 
     public bool InCombat => _inCombat;
     public List<Creature> Combatants => _combatants;
+    public int CurrentTurnIndex => _currentTurnIndex;
     public Creature? CurrentCombatant
     {
         get
@@ -352,6 +353,35 @@ public class CombatManager
         }
     }
     
+    /// <summary>
+    /// Restores a combat state from saved data.
+    /// </summary>
+    public void RestoreCombat(int round, int turnIndex, List<Creature> creatures)
+    {
+        _combatants.Clear();
+        _combatants.AddRange(creatures);
+        _combatants.Sort((a, b) => b.Initiative.CompareTo(a.Initiative));
+
+        _currentRound = round;
+        _currentTurnIndex = turnIndex;
+        _inCombat = true;
+
+        // Ensure the current combatant has their resources if it's their turn
+        if (CurrentCombatant != null)
+        {
+            var c = CurrentCombatant;
+            if (c.CurrentHP > 0)
+            {
+                c.HasAction = true;
+                c.HasBonusAction = true;
+                c.HasReaction = true;
+                c.MovementRemaining = c.Speed;
+                c.DiagonalStepsTaken = 0;
+                c.HasFreeObjectInteraction = true;
+            }
+        }
+    }
+
     public void EndCombat()
     {
         _inCombat = false;

@@ -267,7 +267,7 @@ public class Game1 : Game
                     int rx = x - dungeonOriginX;
                     int ry = y - dungeonOriginY;
 
-                    if (dungeon.LayoutOverrides.TryGetValue((rx, ry, z), out var dungeonTile))
+                    if (dungeon.TryGetTile(rx, ry, z, out var dungeonTile))
                     {
                         return dungeonTile;
                     }
@@ -296,11 +296,11 @@ public class Game1 : Game
             _font = Content.Load<SpriteFont>("DefaultFont");
             _supportedChars = new HashSet<char>(_font.Characters);
         }
-        catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+        catch (Exception ex)
         {
             _font = null!;
             _supportedChars = new HashSet<char>();
-            System.Console.WriteLine("Warning: DefaultFont not found. Build the Content/Content.mgcb with the MonoGame Pipeline Tool to generate DefaultFont.xnb. Menu text will be hidden.");
+            System.Console.WriteLine("Warning: DefaultFont not found or failed to load. Build the Content/Content.mgcb with the MonoGame Pipeline Tool to generate DefaultFont.xnb. Error: " + ex.Message);
         }
 
         _characterCreation = new CharacterCreation(_font, _pixel);
@@ -2105,6 +2105,7 @@ public class Game1 : Game
                 _currentCampaign = campaigns.FirstOrDefault(c => c.Name == campaignName)!;
                 RestoreVisionExplorationFromCampaign();
                 RestoreGroundItemsFromCampaign();
+                // RestoreTacticalStateFromCampaign(); // Will be called later after creatures are initialized
             }
         }
         catch (Exception ex)
@@ -2120,6 +2121,112 @@ public class Game1 : Game
 
         _currentCampaign.ExploredTiles = _visionSystem.GetExploredTilesSnapshot();
         _currentCampaign.ExploredHexes = _visionSystem.GetExploredHexesSnapshot();
+    }
+
+    private void SyncTacticalStateToCampaign()
+    {
+        if (_currentCampaign == null)
+            return;
+
+        // 1. Sync Party Tactical Positions
+        _currentCampaign.PartyTacticalPositions.Clear();
+        if (_playerCreature != null)
+        {
+            _currentCampaign.PartyTacticalPositions[_playerCreature.Name] = new TacticalPosition { X = _playerCreature.X, Y = _playerCreature.Y, Z = _playerCreature.Z };
+        }
+        _currentCampaign.CurrentViewLevel = _currentViewLevel;
+
+        // 2. Sync Combat State
+        if (_combatManager.InCombat)
+        {
+            _currentCampaign.CurrentCombat = new CombatSaveData
+            {
+                CurrentRound = _combatManager.CurrentRound,
+                CurrentTurnIndex = _combatManager.CurrentTurnIndex,
+                Combatants = _combatManager.Combatants.Select(c => new CreatureSaveData
+                {
+                    Name = c.Name,
+                    Type = c.Type,
+                    X = c.X,
+                    Y = c.Y,
+                    Z = c.Z,
+                    CurrentHP = c.CurrentHP,
+                    MaxHP = c.MaxHP,
+                    Initiative = c.Initiative,
+                    IsPlayer = c.IsPlayer
+                }).ToList()
+            };
+        }
+        else
+        {
+            _currentCampaign.CurrentCombat = null;
+        }
+    }
+
+    private void RestoreTacticalStateFromCampaign()
+    {
+        if (_currentCampaign == null)
+            return;
+
+        // 1. Restore Party Tactical Positions
+        if (_playerCreature != null && _currentCampaign.PartyTacticalPositions.TryGetValue(_playerCreature.Name, out var pos))
+        {
+            _playerCreature.TeleportTo(pos.X, pos.Y, pos.Z);
+            _cameraTarget = new Vector3(pos.X, pos.Y, pos.Z);
+        }
+        _currentViewLevel = _currentCampaign.CurrentViewLevel;
+
+        // 2. Restore Combat State
+        if (_currentCampaign.CurrentCombat != null)
+        {
+            var saved = _currentCampaign.CurrentCombat;
+            var combatants = new List<Creature>();
+
+            foreach (var cData in saved.Combatants)
+            {
+                Creature c;
+                if (cData.IsPlayer)
+                {
+                    // Find existing character to sync
+                    var charData = _characters.FirstOrDefault(ch => ch.Name == cData.Name);
+                    if (charData != null)
+                    {
+                        c = Creature.FromCharacter(charData, cData.X, cData.Y, cData.Z);
+                        // Use saved tactical HP instead of persistent character HP if they differ
+                        c.CurrentHP = cData.CurrentHP;
+                        c.MaxHP = cData.MaxHP;
+                        if (_playerCreature != null && _playerCreature.Name == c.Name)
+                            _playerCreature = c;
+                    }
+                    else
+                    {
+                        // Fallback if character missing
+                        c = Creature.Create(CreatureType.Player, cData.X, cData.Y, cData.Z);
+                        c.Name = cData.Name;
+                    }
+                }
+                else
+                {
+                    c = Creature.Create(cData.Type, cData.X, cData.Y, cData.Z);
+                    c.Name = cData.Name;
+                    c.CurrentHP = cData.CurrentHP;
+                    c.MaxHP = cData.MaxHP;
+                }
+
+                c.Initiative = cData.Initiative;
+                c.IsPlayer = cData.IsPlayer;
+                combatants.Add(c);
+            }
+
+            // Directly inject state into CombatManager
+            _combatManager.RestoreCombat(saved.CurrentRound, saved.CurrentTurnIndex, combatants);
+            _showCombatUI = _hudAlwaysVisible;
+            _selectedAction = CombatAction.Move;
+
+            var active = _combatManager.CurrentCombatant;
+            if (active != null)
+                _cameraTarget = new Vector3(active.X, active.Y, active.Z);
+        }
     }
 
     private void SyncGroundItemsToCampaign()
@@ -2185,6 +2292,9 @@ public class Game1 : Game
             {
                 _playerCreature.UpdateCharacter(_currentCharacter);
             }
+
+            // Tactical state
+            SyncTacticalStateToCampaign();
 
             // Persistence
             SaveCampaign();
@@ -2627,6 +2737,7 @@ public class Game1 : Game
                 {
                     _currentCampaign = _campaigns[_campaignIndex];
                     RestoreVisionExplorationFromCampaign();
+                    RestoreGroundItemsFromCampaign();
                     if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
                     {
                         _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
@@ -2638,6 +2749,7 @@ public class Game1 : Game
                     if (_currentCharacter != null)
                     {
                         CreatePlayerCreatureAtSafeSpawn();
+                        RestoreTacticalStateFromCampaign();
                     }
                     
                     _state = AppState.Playing;
@@ -2705,6 +2817,7 @@ public class Game1 : Game
                             {
                                 _currentCampaign = _campaigns[i];
                                 RestoreVisionExplorationFromCampaign();
+                                RestoreGroundItemsFromCampaign();
                                 if (_currentCharacter != null && !_currentCampaign.PartyMembers.Contains(_currentCharacter.Name))
                                 {
                                     _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
@@ -2716,6 +2829,7 @@ public class Game1 : Game
                                 if (_currentCharacter != null)
                                 {
                                     CreatePlayerCreatureAtSafeSpawn();
+                                    RestoreTacticalStateFromCampaign();
                                 }
                                  
                                 _state = AppState.Playing;
@@ -4588,6 +4702,42 @@ public class Game1 : Game
             buttonRect.X + (buttonRect.Width - labelSize.X * 0.8f) / 2,
             buttonRect.Y + (buttonRect.Height - labelSize.Y * 0.8f) / 2);
         _spriteBatch.DrawString(_font, label, labelPos, Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+    }
+
+    private void DrawTravelProgress(SpriteBatch sb, Viewport vp, Campaign campaign)
+    {
+        if (!campaign.IsTraveling) return;
+
+        var currentPos = new Vector2(campaign.PartyX, campaign.PartyY);
+        var targetPos = new Vector2(campaign.TargetPartyX, campaign.TargetPartyY);
+        float totalDist = Vector2.Distance(campaign.StartPartyPos, targetPos);
+        float currentDist = Vector2.Distance(currentPos, targetPos);
+        float progress = totalDist > 0.1f ? 1f - (currentDist / totalDist) : 1f;
+        progress = MathHelper.Clamp(progress, 0f, 1f);
+
+        var barRect = new Rectangle(vp.Width / 2 - 200, vp.Height - 100, 400, 20);
+        sb.Draw(_pixel, barRect, Color.Black * 0.5f);
+        sb.Draw(_pixel, new Rectangle(barRect.X, barRect.Y, (int)(barRect.Width * progress), barRect.Height), Color.LimeGreen);
+        DrawBorder(sb, _pixel, barRect, Color.White, 1);
+
+        string msg = Loc.Tr("Traveling... {0:P0}", progress);
+        if (_font != null)
+        {
+            var size = _font.MeasureString(msg) * 0.8f;
+            sb.DrawString(_font, msg, new Vector2(vp.Width / 2 - size.X / 2, barRect.Y - 25), Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+        }
+    }
+
+    private void DrawTravelMessage(SpriteBatch sb, Viewport vp, Campaign campaign)
+    {
+        if (string.IsNullOrEmpty(campaign.LastTravelMessage) || _font == null) return;
+
+        var size = _font.MeasureString(campaign.LastTravelMessage) * 0.9f;
+        var pos = new Vector2(vp.Width / 2 - size.X / 2, 100);
+
+        sb.Draw(_pixel, new Rectangle((int)pos.X - 10, (int)pos.Y - 5, (int)size.X + 20, (int)size.Y + 10), Color.Black * 0.7f);
+        DrawBorder(sb, _pixel, new Rectangle((int)pos.X - 10, (int)pos.Y - 5, (int)size.X + 20, (int)size.Y + 10), Color.Orange, 1);
+        sb.DrawString(_font, campaign.LastTravelMessage, pos, Color.Yellow, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
     }
 
     private bool IsMouseOverCombatUi(Point mousePosition, Viewport viewport)

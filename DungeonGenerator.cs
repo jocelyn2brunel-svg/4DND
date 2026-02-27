@@ -286,14 +286,14 @@ namespace _4DND
 
         private void SetTile(int x, int y, int z, TileType type)
         {
-            _dungeon.LayoutOverrides[(x, y, z)] = type;
+            _dungeon.SetTile(x, y, z, type);
         }
 
         private void SetWallIfEmpty(int x, int y, int z)
         {
-            if (!_dungeon.LayoutOverrides.ContainsKey((x, y, z)))
+            if (!_dungeon.LayoutOverrides.ContainsKey($"{x},{y},{z}"))
             {
-                _dungeon.LayoutOverrides[(x, y, z)] = TileType.DungeonWall;
+                _dungeon.SetTile(x, y, z, TileType.DungeonWall);
             }
         }
     }

@@ -50,6 +50,42 @@ namespace _4DND
         public int Z { get; set; }
         public ItemInstance Item { get; set; } = new();
     }
+
+    /// <summary>
+    /// Tactical position on the 5ft-square grid.
+    /// </summary>
+    public class TacticalPosition
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Z { get; set; }
+    }
+
+    /// <summary>
+    /// Minimal data needed to restore a creature's state.
+    /// </summary>
+    public class CreatureSaveData
+    {
+        public string Name { get; set; } = "";
+        public CreatureType Type { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Z { get; set; }
+        public int CurrentHP { get; set; }
+        public int MaxHP { get; set; }
+        public int Initiative { get; set; }
+        public bool IsPlayer { get; set; }
+    }
+
+    /// <summary>
+    /// State of an ongoing combat encounter.
+    /// </summary>
+    public class CombatSaveData
+    {
+        public int CurrentRound { get; set; }
+        public int CurrentTurnIndex { get; set; }
+        public List<CreatureSaveData> Combatants { get; set; } = new();
+    }
     
     /// <summary>
     /// Represents the type of settlement in the campaign world.
@@ -185,6 +221,8 @@ namespace _4DND
         public List<ExploredHexData> ExploredHexes { get; set; } = new();
         public List<GroundItemData> GroundItems { get; set; } = new();
         public List<DungeonData> Dungeons { get; set; } = new();
+        public Dictionary<string, TacticalPosition> PartyTacticalPositions { get; set; } = new();
+        public CombatSaveData? CurrentCombat { get; set; }
 
         // Campaign progress
         public int SessionCount { get; set; }
@@ -202,6 +240,7 @@ namespace _4DND
         public float PartyX { get; set; }
         public float PartyY { get; set; }
         public int CurrentFloor { get; set; } = 0;
+        public int CurrentViewLevel { get; set; } = 0;
 
         // Time tracking
         public double TotalGameMinutes { get; set; } = 8 * 60; // Start at 8:00 AM on Day 1
