@@ -104,6 +104,13 @@ public class Race
     /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
     public List<string> ToolProficiencyChoices { get; set; } = new();
 
+    /// <summary>Traditional male names for this race.</summary>
+    public List<string> MaleNames { get; set; } = new();
+    /// <summary>Traditional female names for this race.</summary>
+    public List<string> FemaleNames { get; set; } = new();
+    /// <summary>Clan or family names for this race.</summary>
+    public List<string> ClanNames { get; set; } = new();
+
     public static readonly Dictionary<string, Race> AllRaces = new()
     {
         // Human
@@ -197,6 +204,9 @@ public class Race
             HasStonecunning = true,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
+            MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
+            FemaleNames = new List<string> { "Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra", "Kristryd", "Ilde", "Liftrasa", "Mardred", "Riswynn", "Sannl", "Torbera", "Torgga", "Vistra" },
+            ClanNames = new List<string> { "Balderk", "Battlehammer", "Brawnanvil", "Dankil", "Fireforge", "Frostbeard", "Gorunn", "Holderhek", "Ironfist", "Loderr", "Lutgehr", "Rumnaheim", "Strakeln", "Torunn", "Ungart" },
             Description = Loc.Tr("Tough and wise (+2 CON, +1 WIS, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
         },
         ["Mountain Dwarf"] = new Race
@@ -213,6 +223,9 @@ public class Race
             HasStonecunning = true,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
+            MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
+            FemaleNames = new List<string> { "Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra", "Kristryd", "Ilde", "Liftrasa", "Mardred", "Riswynn", "Sannl", "Torbera", "Torgga", "Vistra" },
+            ClanNames = new List<string> { "Balderk", "Battlehammer", "Brawnanvil", "Dankil", "Fireforge", "Frostbeard", "Gorunn", "Holderhek", "Ironfist", "Loderr", "Lutgehr", "Rumnaheim", "Strakeln", "Torunn", "Ungart" },
             Description = Loc.Tr("Strong and hardy (+2 STR, +2 CON, Darkvision 60 ft, Dwarven Resilience, Dwarven Combat Training)")
         },
         
