@@ -149,6 +149,9 @@ public class Race
             HasHighElfCantrip = true,
             HasExtraLanguage = true,
             Languages = new List<string> { "Common", "Elvish" },
+            MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
+            FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
+            ClanNames = new List<string> { "Amakiir", "Amastacia", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Na\u00eflo", "Siannodel", "Xiloscient" },
             Description = Loc.Tr("Graceful and intelligent (+2 DEX, +1 INT, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance, Elf Weapon Training, Cantrip, Extra Language)")
         },
         ["Wood Elf"] = new Race
@@ -166,6 +169,9 @@ public class Race
             HasElfWeaponTraining = true,
             HasMaskOfTheWild = true,
             Languages = new List<string> { "Common", "Elvish" },
+            MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
+            FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
+            ClanNames = new List<string> { "Amakiir", "Amastacia", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Na\u00eflo", "Siannodel", "Xiloscient" },
             Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance, Elf Weapon Training, Mask of the Wild)")
         },
         
@@ -186,6 +192,9 @@ public class Race
             HasDrowMagic = true,
             HasDrowWeaponTraining = true,
             Languages = new List<string> { "Common", "Elvish" },
+            MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
+            FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
+            ClanNames = new List<string> { "Amakiir", "Amastacia", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Na\u00eflo", "Siannodel", "Xiloscient" },
             Description = Loc.Tr("Dark elf with superior darkvision (+2 DEX, +1 CHA, Darkvision 120 ft, Sunlight Sensitivity, Keen Senses, Fey Ancestry, Trance, Drow Magic, Drow Weapon Training)")
         },
         
