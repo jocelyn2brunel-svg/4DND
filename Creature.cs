@@ -1770,6 +1770,11 @@ public class Creature
         creature.HasFeyAncestry = raceData.HasFeyAncestry;
         creature.HasTrance = raceData.HasTrance;
 
+        // Dragonborn Damage Resistance: resistance to the damage type of the character's draconic ancestry (PHB "Damage Resistance").
+        var dragonbornResistance = character.DragonbornResistanceDamageType;
+        if (dragonbornResistance != DamageType.None)
+            creature.DamageResistances.Add(dragonbornResistance);
+
         // Armor non-proficiency penalty
         creature.HasArmorNonProficiencyPenalty = character.IsWearingNonProficientArmor;
 

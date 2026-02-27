@@ -98,6 +98,20 @@ public class Character
     public bool HasStoutResilience { get; set; } = false;
     /// <summary>The chosen draconic ancestry type for Dragonborn characters. Determines damage type, breath weapon shape, and saving throw (PHB "Draconic Ancestry" table).</summary>
     public DragonAncestryType DragonAncestry { get; set; } = DragonAncestryType.Black;
+    /// <summary>
+    /// The damage type this Dragonborn character is resistant to, based on their draconic ancestry (PHB "Damage Resistance").
+    /// Returns <see cref="DamageType.None"/> if the character does not have Dragonborn damage resistance.
+    /// </summary>
+    public DamageType DragonbornResistanceDamageType
+    {
+        get
+        {
+            if (!_4DND.Race.GetRace(Race).HasDamageResistance) return DamageType.None;
+            return _4DND.Race.DraconicAncestryTable.TryGetValue(DragonAncestry, out var entry)
+                ? entry.DamageType
+                : DamageType.None;
+        }
+    }
     /// <summary>Languages this character can speak, read, and write.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
