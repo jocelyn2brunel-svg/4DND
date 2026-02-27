@@ -68,6 +68,10 @@ public class Race
     public bool HasNaturalIllusionist { get; set; } = false;
     /// <summary>Speak with Small Beasts: through sounds and gestures, can communicate simple ideas with Small or smaller beasts (Forest Gnome).</summary>
     public bool HasSpeakWithSmallBeasts { get; set; } = false;
+    /// <summary>Artificer's Lore: add twice the proficiency bonus on Intelligence (History) checks related to magic items, alchemical objects, or technological devices (Rock Gnome).</summary>
+    public bool HasArtificersLore { get; set; } = false;
+    /// <summary>Tinker: proficiency with artisan's tools (tinker's tools); can spend 1 hour and 10 gp to construct a Tiny clockwork device (Rock Gnome).</summary>
+    public bool HasTinker { get; set; } = false;
 
     // Dragonborn-specific traits
     /// <summary>Draconic Ancestry: you have draconic ancestry of a chosen dragon type, which determines your breath weapon and damage resistance.</summary>
@@ -268,17 +272,20 @@ public class Race
             Description = Loc.Tr("Draconic heritage (+2 STR, +1 CHA, Draconic Ancestry, Breath Weapon, Damage Resistance)")
         },
         
-        ["Gnome"] = new Race
+        ["Rock Gnome"] = new Race
         {
-            Name = "Gnome",
-            DisplayName = Loc.Tr("Gnome"),
+            Name = "Rock Gnome",
+            DisplayName = Loc.Tr("Gnome (Rock)"),
             Size = CreatureSize.Small,
             IntelligenceBonus = 2,
+            ConstitutionBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 60,
             HasGnomeCunning = true,
+            HasArtificersLore = true,
+            HasTinker = true,
             Languages = new List<string> { "Common", "Gnomish" },
-            Description = Loc.Tr("Small and clever (+2 INT, Darkvision 60 ft, Gnome Cunning)")
+            Description = Loc.Tr("Inventive and hardy (+2 INT, +1 CON, Darkvision 60 ft, Gnome Cunning, Artificer's Lore, Tinker)")
         },
         ["Forest Gnome"] = new Race
         {
