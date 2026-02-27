@@ -1395,6 +1395,46 @@ public class Creature
         };
     }
     
+    public static int GetXPForType(CreatureType type) => type switch
+    {
+        CreatureType.Kobold => 25,
+        CreatureType.Goblin => 50,
+        CreatureType.Skeleton => 50,
+        CreatureType.Zombie => 50,
+        CreatureType.Wolf => 50,
+        CreatureType.Orc => 100,
+        CreatureType.Couatl => 1100,
+        CreatureType.Umber_Hulk => 1800,
+        _ => 0
+    };
+
+    public static List<CreatureType> GetTypesForBiome(BiomeType biome) => biome switch
+    {
+        BiomeType.Desert => new() { CreatureType.Kobold, CreatureType.Orc, CreatureType.Umber_Hulk },
+        BiomeType.Forest => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Umber_Hulk },
+        BiomeType.Plains => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Skeleton, CreatureType.Zombie },
+        BiomeType.Swamp => new() { CreatureType.Kobold, CreatureType.Zombie, CreatureType.Orc, CreatureType.Umber_Hulk },
+        BiomeType.Tundra => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Zombie, CreatureType.Skeleton },
+        BiomeType.Mountain => new() { CreatureType.Orc, CreatureType.Kobold, CreatureType.Wolf, CreatureType.Umber_Hulk, CreatureType.Couatl },
+        BiomeType.SnowMountain => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Skeleton },
+        BiomeType.Coast => new() { CreatureType.Kobold, CreatureType.Goblin, CreatureType.Couatl },
+        BiomeType.Ocean => new() { CreatureType.Couatl }, // Flyers/Swimmers
+        _ => new() { CreatureType.Goblin }
+    };
+
+    public static Creature Create(CreatureType type, int x, int y, int z = 0) => type switch
+    {
+        CreatureType.Goblin => CreateGoblin(x, y, z),
+        CreatureType.Orc => CreateOrc(x, y, z),
+        CreatureType.Skeleton => CreateSkeleton(x, y, z),
+        CreatureType.Zombie => CreateZombie(x, y, z),
+        CreatureType.Wolf => CreateWolf(x, y, z),
+        CreatureType.Kobold => CreateKobold(x, y, z),
+        CreatureType.Umber_Hulk => CreateUmberHulk(x, y, z),
+        CreatureType.Couatl => CreateCouatl(x, y, z),
+        _ => CreateGoblin(x, y, z)
+    };
+
     public static Creature FromCharacter(Character character, int x, int y, int z = 0)
     {
         var raceData = _4DND.Race.GetRace(character.Race);

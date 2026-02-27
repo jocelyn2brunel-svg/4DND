@@ -24,6 +24,7 @@ namespace _4DND
         // Campaign data
         private bool _isRandomMode = false;
         private string _campaignName = "";
+        private CampaignDifficulty _difficulty = CampaignDifficulty.Adventurer;
         private string _homeBaseName = "";
         private SettlementType _homeBaseType = SettlementType.Village;
         private string _regionTerrain = "Forest";
@@ -33,6 +34,7 @@ namespace _4DND
         private int _selectedMaxDifficultyIndex = 3; // Default to Deadly
 
         private int _selectedModeIndex = 0; // 0=Random, 1=Custom
+        private int _selectedDifficultyIndex = 1; // Default to Adventurer
         private int _selectedTypeIndex = 2; // Default to Village
         private int _selectedTerrainIndex = 0;
         
@@ -52,6 +54,11 @@ namespace _4DND
         private readonly string[] _creationModes = new[]
         {
             "Random", "Custom"
+        };
+
+        private readonly string[] _difficultyTypes = new[]
+        {
+            "Apprentice", "Adventurer", "Heroic", "Legendary", "Mythic"
         };
         
         private readonly string[] _settlementTypes = new[]
@@ -127,6 +134,7 @@ namespace _4DND
             _step = -1;
             _isRandomMode = false;
             _campaignName = "";
+            _difficulty = CampaignDifficulty.Adventurer;
             _homeBaseName = "";
             _homeBaseType = SettlementType.Village;
             _regionTerrain = "Forest";
@@ -135,6 +143,7 @@ namespace _4DND
             _adventureEnding = "";
             _selectedMaxDifficultyIndex = 3;
             _selectedModeIndex = 0;
+            _selectedDifficultyIndex = 1;
             _selectedTypeIndex = 2;
             _selectedTerrainIndex = 0;
             _selectedHookIndex = 0;
@@ -272,14 +281,16 @@ namespace _4DND
             if (kb.IsKeyDown(Keys.Up) && !prevKb.IsKeyDown(Keys.Up))
             {
                 if (_step == 1)
-                    _selectedTypeIndex = Math.Max(0, _selectedTypeIndex - 1);
+                    _selectedDifficultyIndex = Math.Max(0, _selectedDifficultyIndex - 1);
                 else if (_step == 2)
-                    _selectedTerrainIndex = Math.Max(0, _selectedTerrainIndex - 1);
+                    _selectedTypeIndex = Math.Max(0, _selectedTypeIndex - 1);
                 else if (_step == 3)
-                    _selectedHookIndex = Math.Max(0, _selectedHookIndex - 1);
+                    _selectedTerrainIndex = Math.Max(0, _selectedTerrainIndex - 1);
                 else if (_step == 4)
-                    _selectedMiddleIndex = Math.Max(0, _selectedMiddleIndex - 1);
+                    _selectedHookIndex = Math.Max(0, _selectedHookIndex - 1);
                 else if (_step == 5)
+                    _selectedMiddleIndex = Math.Max(0, _selectedMiddleIndex - 1);
+                else if (_step == 6)
                     _selectedEndingIndex = Math.Max(0, _selectedEndingIndex - 1);
                 else if (_step == 6)
                     _selectedMaxDifficultyIndex = Math.Max(0, _selectedMaxDifficultyIndex - 1);
@@ -288,14 +299,16 @@ namespace _4DND
             if (kb.IsKeyDown(Keys.Down) && !prevKb.IsKeyDown(Keys.Down))
             {
                 if (_step == 1)
-                    _selectedTypeIndex = Math.Min(_settlementTypes.Length - 1, _selectedTypeIndex + 1);
+                    _selectedDifficultyIndex = Math.Min(_difficultyTypes.Length - 1, _selectedDifficultyIndex + 1);
                 else if (_step == 2)
-                    _selectedTerrainIndex = Math.Min(_terrainTypes.Length - 1, _selectedTerrainIndex + 1);
+                    _selectedTypeIndex = Math.Min(_settlementTypes.Length - 1, _selectedTypeIndex + 1);
                 else if (_step == 3)
-                    _selectedHookIndex = Math.Min(_adventureHooks.Length - 1, _selectedHookIndex + 1);
+                    _selectedTerrainIndex = Math.Min(_terrainTypes.Length - 1, _selectedTerrainIndex + 1);
                 else if (_step == 4)
-                    _selectedMiddleIndex = Math.Min(_adventureMiddles.Length - 1, _selectedMiddleIndex + 1);
+                    _selectedHookIndex = Math.Min(_adventureHooks.Length - 1, _selectedHookIndex + 1);
                 else if (_step == 5)
+                    _selectedMiddleIndex = Math.Min(_adventureMiddles.Length - 1, _selectedMiddleIndex + 1);
+                else if (_step == 6)
                     _selectedEndingIndex = Math.Min(_adventureEndings.Length - 1, _selectedEndingIndex + 1);
                 else if (_step == 6)
                     _selectedMaxDifficultyIndex = Math.Min(_difficultyLabels.Length - 1, _selectedMaxDifficultyIndex + 1);
@@ -316,8 +329,29 @@ namespace _4DND
                 }
             }
             
-            // Step 1: Click on input box or settlement type
+            // Step 1: Click on difficulty type
             if (_step == 1)
+            {
+                int y = menuRect2.Y + 110;
+                for (int i = 0; i < _difficultyTypes.Length; i++)
+                {
+                    var itemRect = new Rectangle(menuRect2.X + 40, y, menuRect2.Width - 80, 40);
+                    if (itemRect.Contains(mouse.Position))
+                    {
+                        _selectedDifficultyIndex = i;
+
+                        if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+                        {
+                            _difficulty = (CampaignDifficulty)i;
+                            _step = 2;
+                        }
+                    }
+                    y += 42;
+                }
+            }
+
+            // Step 2: Click on input box or settlement type
+            if (_step == 2)
             {
                 var inputRect = new Rectangle(menuRect2.X + 20, menuRect2.Y + 80, menuRect2.Width - 40, 40);
                 if (inputRect.Contains(mouse.Position) && mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -339,7 +373,7 @@ namespace _4DND
                             if (!string.IsNullOrEmpty(_homeBaseName))
                             {
                                 _homeBaseType = ParseSettlementType(_settlementTypes[_selectedTypeIndex]);
-                                _step = 2;
+                                _step = 3;
                             }
                         }
                     }
@@ -347,8 +381,8 @@ namespace _4DND
                 }
             }
             
-            // Step 2: Click on terrain type
-            if (_step == 2)
+            // Step 3: Click on terrain type
+            if (_step == 3)
             {
                 int y = menuRect2.Y + 110;
                 for (int i = 0; i < _terrainTypes.Length; i++)
@@ -361,15 +395,15 @@ namespace _4DND
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             _regionTerrain = _terrainTypes[_selectedTerrainIndex];
-                            _step = 3;
+                            _step = 4;
                         }
                     }
                     y += 42;
                 }
             }
             
-            // Step 3: Click on adventure hook
-            if (_step == 3)
+            // Step 4: Click on adventure hook
+            if (_step == 4)
             {
                 int y = menuRect2.Y + 110;
                 for (int i = 0; i < _adventureHooks.Length; i++)
@@ -382,15 +416,15 @@ namespace _4DND
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             _adventureHook = _adventureHooks[_selectedHookIndex];
-                            _step = 4;
+                            _step = 5;
                         }
                     }
                     y += 42;
                 }
             }
 
-            // Step 4: Click on adventure middle
-            if (_step == 4)
+            // Step 5: Click on adventure middle
+            if (_step == 5)
             {
                 int y = menuRect2.Y + 110;
                 for (int i = 0; i < _adventureMiddles.Length; i++)
@@ -403,15 +437,15 @@ namespace _4DND
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             _adventureMiddle = _adventureMiddles[_selectedMiddleIndex];
-                            _step = 5;
+                            _step = 6;
                         }
                     }
                     y += 42;
                 }
             }
 
-            // Step 5: Click on adventure ending
-            if (_step == 5)
+            // Step 6: Click on adventure ending
+            if (_step == 6)
             {
                 int y = menuRect2.Y + 110;
                 for (int i = 0; i < _adventureEndings.Length; i++)
@@ -474,6 +508,11 @@ namespace _4DND
                 }
                 else if (_step == 1)
                 {
+                    _difficulty = (CampaignDifficulty)_selectedDifficultyIndex;
+                    _step = 2;
+                }
+                else if (_step == 2)
+                {
                     // Start typing home base name if not set, else proceed
                     if (string.IsNullOrEmpty(_homeBaseName))
                     {
@@ -483,15 +522,15 @@ namespace _4DND
                     else
                     {
                         _homeBaseType = ParseSettlementType(_settlementTypes[_selectedTypeIndex]);
-                        _step = 2;
+                        _step = 3;
                     }
                 }
-                else if (_step == 2)
+                else if (_step == 3)
                 {
                     _regionTerrain = _terrainTypes[_selectedTerrainIndex];
-                    _step = 3;
+                    _step = 4;
                 }
-                else if (_step == 3)
+                else if (_step == 4)
                 {
                     if (_selectedHookIndex == _adventureHooks.Length - 1)
                     {
@@ -501,10 +540,10 @@ namespace _4DND
                     else
                     {
                         _adventureHook = _adventureHooks[_selectedHookIndex];
-                        _step = 4;
+                        _step = 5;
                     }
                 }
-                else if (_step == 4)
+                else if (_step == 5)
                 {
                     if (_selectedMiddleIndex == _adventureMiddles.Length - 1)
                     {
@@ -514,10 +553,10 @@ namespace _4DND
                     else
                     {
                         _adventureMiddle = _adventureMiddles[_selectedMiddleIndex];
-                        _step = 5;
+                        _step = 6;
                     }
                 }
-                else if (_step == 5)
+                else if (_step == 6)
                 {
                     if (_selectedEndingIndex == _adventureEndings.Length - 1)
                     {
@@ -544,6 +583,7 @@ namespace _4DND
         private Campaign CreateFinalCampaign()
         {
             var campaign = Campaign.CreateStartingCampaign(_campaignName, _homeBaseName, _homeBaseType);
+            campaign.Difficulty = _difficulty;
             campaign.LocalRegion.Terrain = _regionTerrain;
             campaign.AdventureHook = _adventureHook;
             campaign.AdventureMiddle = _adventureMiddle;
@@ -645,6 +685,10 @@ namespace _4DND
             // Random terrain
             _regionTerrain = _terrainTypes[rand.Next(_terrainTypes.Length)];
             
+            // Random difficulty
+            _selectedDifficultyIndex = rand.Next(_difficultyTypes.Length);
+            _difficulty = (CampaignDifficulty)_selectedDifficultyIndex;
+
             // Random adventure parts
             _adventureHook = _adventureHooks[rand.Next(_adventureHooks.Length - 1)]; // Exclude "Custom"
             _adventureMiddle = _adventureMiddles[rand.Next(_adventureMiddles.Length - 1)];
@@ -669,12 +713,12 @@ namespace _4DND
                 else if (_typingField == "homebase" && !string.IsNullOrEmpty(_homeBaseName))
                 {
                     _homeBaseType = ParseSettlementType(_settlementTypes[_selectedTypeIndex]);
-                    _step = 2;
+                    _step = 3;
                 }
                 else if (_typingField == "hook" && !string.IsNullOrEmpty(_adventureHook))
-                    _step = 4;
-                else if (_typingField == "middle" && !string.IsNullOrEmpty(_adventureMiddle))
                     _step = 5;
+                else if (_typingField == "middle" && !string.IsNullOrEmpty(_adventureMiddle))
+                    _step = 6;
                 else if (_typingField == "ending" && !string.IsNullOrEmpty(_adventureEnding))
                 {
                     // Created through separate logic or by calling CreateFinalCampaign later
@@ -804,23 +848,27 @@ namespace _4DND
             }
             else if (_step == 1)
             {
-                DrawStep1_HomeBase(spriteBatch, menuRect, ref y);
+                DrawStep1_Difficulty(spriteBatch, menuRect, ref y);
             }
             else if (_step == 2)
             {
-                DrawStep2_Region(spriteBatch, menuRect, ref y);
+                DrawStep2_HomeBase(spriteBatch, menuRect, ref y);
             }
             else if (_step == 3)
             {
-                DrawStep3_Hook(spriteBatch, menuRect, ref y);
+                DrawStep3_Region(spriteBatch, menuRect, ref y);
             }
             else if (_step == 4)
             {
-                DrawStep4_Middle(spriteBatch, menuRect, ref y);
+                DrawStep4_Hook(spriteBatch, menuRect, ref y);
             }
             else if (_step == 5)
             {
-                DrawStep5_Ending(spriteBatch, menuRect, ref y);
+                DrawStep5_Middle(spriteBatch, menuRect, ref y);
+            }
+            else if (_step == 6)
+            {
+                DrawStep6_Ending(spriteBatch, menuRect, ref y);
             }
             else if (_step == 6)
             {
@@ -937,7 +985,41 @@ namespace _4DND
             sb.DrawString(_font, Loc.Tr("Example campaigns"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
         
-        private void DrawStep1_HomeBase(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep1_Difficulty(SpriteBatch sb, Rectangle menuRect, ref int y)
+        {
+            string prompt = Loc.Tr("Select campaign difficulty:");
+            sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
+            y += 40;
+
+            var mouse = Mouse.GetState();
+            for (int i = 0; i < _difficultyTypes.Length; i++)
+            {
+                var itemRect = new Rectangle(menuRect.X + 40, y, menuRect.Width - 80, 40);
+                bool isHovered = itemRect.Contains(mouse.Position);
+
+                if (i == _selectedDifficultyIndex)
+                    sb.Draw(_pixel, itemRect, Color.LightBlue * 0.4f);
+                else if (isHovered)
+                    sb.Draw(_pixel, itemRect, Color.LightBlue * 0.2f);
+
+                sb.DrawString(_font, Loc.Tr(_difficultyTypes[i]), new Vector2(itemRect.X + 10, itemRect.Y + 10), i == _selectedDifficultyIndex ? Color.Yellow : (isHovered ? Color.LightYellow : Color.White));
+                y += 42;
+            }
+
+            y += 20;
+            string desc = _selectedDifficultyIndex switch
+            {
+                0 => Loc.Tr("Apprentice: Easy encounters, great for learning."),
+                1 => Loc.Tr("Adventurer: Standard D&D challenge."),
+                2 => Loc.Tr("Heroic: Hard encounters, requires tactical thinking."),
+                3 => Loc.Tr("Legendary: Deadly encounters, survival is not guaranteed."),
+                4 => Loc.Tr("Mythic: Beyond deadly, only for the most experienced heroes."),
+                _ => ""
+            };
+            sb.DrawString(_font, desc, new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+        }
+
+        private void DrawStep2_HomeBase(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             string prompt = Loc.Tr("Name your home base:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
@@ -983,7 +1065,7 @@ namespace _4DND
             }
         }
         
-        private void DrawStep2_Region(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep3_Region(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             string prompt = Loc.Tr("Describe the local region terrain:");
             sb.DrawString(_font, prompt, new Vector2(menuRect.X + 20, y), Color.White);
@@ -1008,7 +1090,7 @@ namespace _4DND
             sb.DrawString(_font, Loc.Tr("Region terrain info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         }
         
-        private void DrawStep3_Hook(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep4_Hook(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "hook")
             {
@@ -1039,7 +1121,7 @@ namespace _4DND
             sb.DrawString(_font, Loc.Tr("Adventure hook info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         }
 
-        private void DrawStep4_Middle(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep5_Middle(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "middle")
             {
@@ -1070,7 +1152,7 @@ namespace _4DND
             sb.DrawString(_font, Loc.Tr("Middle development info"), new Vector2(menuRect.X + 20, y), Color.LightGray, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         }
 
-        private void DrawStep5_Ending(SpriteBatch sb, Rectangle menuRect, ref int y)
+        private void DrawStep6_Ending(SpriteBatch sb, Rectangle menuRect, ref int y)
         {
             if (_isTyping && _typingField == "ending")
             {

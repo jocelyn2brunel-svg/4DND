@@ -15,7 +15,9 @@ namespace _4DND
         /// <summary>Could go badly; weaker characters might fall, slim chance of death.</summary>
         Hard,
         /// <summary>Could be lethal; survival requires tactics and quick thinking.</summary>
-        Deadly
+        Deadly,
+        /// <summary>Beyond deadly; for the most experienced and well-equipped heroes.</summary>
+        Mythic
     }
 
     /// <summary>
@@ -40,6 +42,7 @@ namespace _4DND
         public int MediumThreshold { get; init; }
         public int HardThreshold { get; init; }
         public int DeadlyThreshold { get; init; }
+        public int MythicThreshold { get; init; }
     }
 
     /// <summary>
@@ -258,7 +261,7 @@ namespace _4DND
         /// Base values: 1 = ×1, 2 = ×1.5, 3–6 = ×2, 7–10 = ×2.5, 11–14 = ×3, 15+ = ×4.
         /// For a small party (≤2 PCs), use one step higher; for a large party (≥6 PCs), use one step lower.
         /// </summary>
-        private static float GetMonsterCountMultiplier(int monsterCount, int partySize)
+        public static float GetMonsterCountMultiplier(int monsterCount, int partySize)
         {
             // Base multiplier index (0–5) from the DMG table
             int baseIndex = monsterCount switch
@@ -297,6 +300,11 @@ namespace _4DND
         public static int GetEncounterXPThreshold(int level, EncounterDifficulty difficulty)
         {
             int index = Math.Clamp(level, 1, 20) - 1;
+            if (difficulty == EncounterDifficulty.Mythic)
+            {
+                // Mythic is 1.5x Deadly budget
+                return (int)(EncounterXPThresholds[index, 3] * 1.5f);
+            }
             return EncounterXPThresholds[index, (int)difficulty];
         }
 
@@ -319,7 +327,7 @@ namespace _4DND
             IEnumerable<int> monsterXPRewards)
         {
             // 1. Compute cumulative party thresholds
-            int easyThreshold = 0, mediumThreshold = 0, hardThreshold = 0, deadlyThreshold = 0;
+            int easyThreshold = 0, mediumThreshold = 0, hardThreshold = 0, deadlyThreshold = 0, mythicThreshold = 0;
             int partySize = 0;
             foreach (int level in partyLevels)
             {
@@ -328,6 +336,7 @@ namespace _4DND
                 mediumThreshold += EncounterXPThresholds[idx, 1];
                 hardThreshold += EncounterXPThresholds[idx, 2];
                 deadlyThreshold += EncounterXPThresholds[idx, 3];
+                mythicThreshold += (int)(EncounterXPThresholds[idx, 3] * 1.5f);
                 partySize++;
             }
 
@@ -348,7 +357,9 @@ namespace _4DND
 
             // 4. Determine difficulty
             EncounterDifficulty difficulty;
-            if (adjustedXP >= deadlyThreshold)
+            if (adjustedXP >= mythicThreshold)
+                difficulty = EncounterDifficulty.Mythic;
+            else if (adjustedXP >= deadlyThreshold)
                 difficulty = EncounterDifficulty.Deadly;
             else if (adjustedXP >= hardThreshold)
                 difficulty = EncounterDifficulty.Hard;
@@ -367,6 +378,7 @@ namespace _4DND
                 MediumThreshold = mediumThreshold,
                 HardThreshold = hardThreshold,
                 DeadlyThreshold = deadlyThreshold,
+                MythicThreshold = mythicThreshold,
             };
         }
     }
