@@ -56,6 +56,8 @@ public class Race
     public bool HasBrave { get; set; } = false;
     /// <summary>Halfling Nimbleness: you can move through the space of any creature that is of a size larger than yours.</summary>
     public bool HasHalflingNimbleness { get; set; } = false;
+    /// <summary>Naturally Stealthy: you can attempt to hide even when obscured only by a creature at least one size larger than you (Lightfoot Halfling).</summary>
+    public bool HasNaturallyStealthy { get; set; } = false;
 
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
@@ -185,8 +187,9 @@ public class Race
             HasLucky = true,
             HasBrave = true,
             HasHalflingNimbleness = true,
+            HasNaturallyStealthy = true,
             Languages = new List<string> { "Common", "Halfling" },
-            Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA, Lucky, Brave, Halfling Nimbleness)")
+            Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA, Lucky, Brave, Halfling Nimbleness, Naturally Stealthy)")
         },
         ["Stout Halfling"] = new Race
         {
