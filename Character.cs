@@ -86,6 +86,12 @@ public class Character
     public bool HasFeyAncestry { get; set; } = false;
     /// <summary>Trance: this character does not need to sleep; they meditate for 4 hours a day to gain the benefits of 8 hours of sleep (PHB "Elf Traits").</summary>
     public bool HasTrance { get; set; } = false;
+    /// <summary>Lucky: when you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll.</summary>
+    public bool HasLucky { get; set; } = false;
+    /// <summary>Brave: you have advantage on saving throws against being frightened.</summary>
+    public bool HasBrave { get; set; } = false;
+    /// <summary>Halfling Nimbleness: you can move through the space of any creature that is of a size larger than yours.</summary>
+    public bool HasHalflingNimbleness { get; set; } = false;
     /// <summary>Languages this character can speak, read, and write.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiencies this character has (from class, race, or background).</summary>
@@ -275,6 +281,9 @@ public class Character
         HasStonecunning = raceData.HasStonecunning;
         HasFeyAncestry = raceData.HasFeyAncestry;
         HasTrance = raceData.HasTrance;
+        HasLucky = raceData.HasLucky;
+        HasBrave = raceData.HasBrave;
+        HasHalflingNimbleness = raceData.HasHalflingNimbleness;
         if (raceData.HasKeenSenses)
             PerceptionProficiency = true;
     }

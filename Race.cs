@@ -49,6 +49,14 @@ public class Race
     /// <summary>Drow Weapon Training: proficiency with rapiers, shortswords, and hand crossbows (Drow).</summary>
     public bool HasDrowWeaponTraining { get; set; } = false;
 
+    // Halfling-specific traits
+    /// <summary>Lucky: when you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll.</summary>
+    public bool HasLucky { get; set; } = false;
+    /// <summary>Brave: you have advantage on saving throws against being frightened.</summary>
+    public bool HasBrave { get; set; } = false;
+    /// <summary>Halfling Nimbleness: you can move through the space of any creature that is of a size larger than yours.</summary>
+    public bool HasHalflingNimbleness { get; set; } = false;
+
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
@@ -174,7 +182,11 @@ public class Race
             CharismaBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 0,
-            Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA)")
+            HasLucky = true,
+            HasBrave = true,
+            HasHalflingNimbleness = true,
+            Languages = new List<string> { "Common", "Halfling" },
+            Description = Loc.Tr("Nimble and charming (+2 DEX, +1 CHA, Lucky, Brave, Halfling Nimbleness)")
         },
         ["Stout Halfling"] = new Race
         {
@@ -185,7 +197,12 @@ public class Race
             ConstitutionBonus = 1,
             BaseSpeed = 25,
             DarkvisionRange = 0,
-            Description = Loc.Tr("Nimble and resilient (+2 DEX, +1 CON)")
+            HasLucky = true,
+            HasBrave = true,
+            HasHalflingNimbleness = true,
+            HasDwarvenResilience = true,
+            Languages = new List<string> { "Common", "Halfling" },
+            Description = Loc.Tr("Nimble and resilient (+2 DEX, +1 CON, Lucky, Brave, Halfling Nimbleness, Stout Resilience)")
         },
         
         ["Half-Orc"] = new Race
