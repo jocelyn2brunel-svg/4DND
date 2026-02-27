@@ -2593,7 +2593,7 @@ public partial class Game1 : Game
                     if (_selectedAction == CombatAction.Move)
                     {
                         // Simple: click to move
-                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton && !currentCombatant.IsMoving())
                         {
                             var hovered = GetHoveredTile();
                             if (hovered.HasValue)
