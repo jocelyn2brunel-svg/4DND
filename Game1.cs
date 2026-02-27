@@ -133,6 +133,8 @@ public partial class Game1 : Game
 
     // AI Turn management
     private float _aiDelayTimer = 0f;
+    private float _aiAnimationStuckTimer = 0f;
+    private bool _aiDidSomethingThisTurn = false;
     private enum AiPhase { Start, Move, Action, BonusAction, End }
     private AiPhase _currentAiPhase = AiPhase.Start;
 
@@ -2623,6 +2625,22 @@ public partial class Game1 : Game
                 {
                     // Delay logic for AI turns to improve readability
                     bool isAnimating = currentCombatant.IsMoving();
+
+                    // Safety timeout: force-snap visual position if animation is stuck for too long
+                    if (isAnimating)
+                    {
+                        _aiAnimationStuckTimer += totalSeconds;
+                        if (_aiAnimationStuckTimer > 3.0f)
+                        {
+                            currentCombatant.TeleportTo(currentCombatant.X, currentCombatant.Y, currentCombatant.Z);
+                            isAnimating = false;
+                        }
+                    }
+                    else
+                    {
+                        _aiAnimationStuckTimer = 0f;
+                    }
+
                     if (!isAnimating && _aiDelayTimer <= 0)
                     {
                         var playerCreature = _combatManager.Combatants.FirstOrDefault(c => c.IsPlayer);
@@ -2637,6 +2655,7 @@ public partial class Game1 : Game
                             switch (_currentAiPhase)
                             {
                                 case AiPhase.Start:
+                                    _aiDidSomethingThisTurn = false;
                                     _currentAiPhase = AiPhase.Move;
                                     break;
 
@@ -2650,7 +2669,8 @@ public partial class Game1 : Game
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
                                             UpdateVision();
-                                            _aiDelayTimer = 2.0f; // Pause after moving
+                                            _aiDelayTimer = 0.8f; // Pause after moving
+                                            _aiDidSomethingThisTurn = true;
                                         }
                                     }
                                     _currentAiPhase = AiPhase.Action;
@@ -2687,7 +2707,8 @@ public partial class Game1 : Game
                                                 AddTooltip(playerCreature, Loc.Tr("Missed!"), Color.LightGray);
 
                                             _diceRollAnimation.Start(result.AttackRoll);
-                                            _aiDelayTimer = 2.0f; // Pause after attacking
+                                            _aiDelayTimer = 1.2f; // Pause after attacking
+                                            _aiDidSomethingThisTurn = true;
                                         }
                                     }
                                     _currentAiPhase = AiPhase.BonusAction;
@@ -2706,7 +2727,8 @@ public partial class Game1 : Game
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
                                             UpdateVision();
-                                            _aiDelayTimer = 2.0f; // Pause after retreat
+                                            _aiDelayTimer = 0.8f; // Pause after retreat
+                                            _aiDidSomethingThisTurn = true;
                                         }
                                         currentCombatant.MovementRemaining = 0;
                                     }
@@ -2723,7 +2745,7 @@ public partial class Game1 : Game
                                         AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
 
                                     _currentAiPhase = AiPhase.Start;
-                                    _aiDelayTimer = 1.0f; // Short pause between turns
+                                    _aiDelayTimer = _aiDidSomethingThisTurn ? 0.5f : 0f;
                                     break;
                             }
                         }
