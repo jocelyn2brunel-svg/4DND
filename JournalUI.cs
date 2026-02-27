@@ -221,8 +221,11 @@ public class JournalUI
         if (_font == null || text == null) return text ?? "";
         var chars = text.ToCharArray();
         for (int i = 0; i < chars.Length; i++)
+        {
+            if (chars[i] == '\n' || chars[i] == '\r') continue;
             if (!_supportedChars.Contains(chars[i]))
                 chars[i] = '?';
+        }
         return new string(chars);
     }
 }

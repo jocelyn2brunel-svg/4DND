@@ -693,6 +693,12 @@ public class Game1 : Game
 
         foreach (char c in text)
         {
+            if (c == '\n' || c == '\r')
+            {
+                sanitized.Append(c);
+                continue;
+            }
+
             if (supportedChars.Contains(c))
             {
                 sanitized.Append(c);
@@ -4254,6 +4260,7 @@ public class Game1 : Game
         char[] chars = text.ToCharArray();
         for (int i = 0; i < chars.Length; i++)
         {
+            if (chars[i] == '\n' || chars[i] == '\r') continue;
             if (!_supportedChars.Contains(chars[i]))
                 chars[i] = '?';
         }
