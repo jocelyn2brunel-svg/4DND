@@ -9,7 +9,7 @@ namespace _4DND;
 public class CharacterCreation
 {
     private string _createName = string.Empty;
-    private int _createStep = 0; // 0: name, 1: race, 2: class, 3: tool proficiency (dwarves), 4: skills, 5: abilities, 6: final review
+    private int _createStep = 0; // 0: race, 1: name, 2: class, 3: tool proficiency (dwarves), 4: skills, 5: abilities, 6: final review
     private List<string> _races = Race.GetAllRaceNames();
     private readonly string[] _classes = new[] { "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard" };
     private int _raceIndex = 0;
@@ -29,6 +29,12 @@ public class CharacterCreation
     // Scrolling for race list
     private int _raceScrollOffset = 0;
     private const int MAX_VISIBLE_RACES = 8;
+
+    // Gender and Name list
+    private int _genderIndex = 0; // 0: Male, 1: Female
+    private List<string> _availableNames = new();
+    private int _nameScrollOffset = 0;
+    private const int MAX_VISIBLE_NAMES = 10;
     
     // Scrolling for class list
     private int _classScrollOffset = 0;
@@ -94,12 +100,16 @@ public class CharacterCreation
         _skillIndex = 0;
         _rolledAbilities = new int[6];
         _raceScrollOffset = 0;
+        _genderIndex = 0;
+        _nameScrollOffset = 0;
+        _availableNames.Clear();
         _classScrollOffset = 0;
         _isRolling = false;
         _rollTimer = 0;
         _selectedClassSkills.Clear();
         _useStartingWealth = false;
         _rolledStartingWealth = 0;
+        UpdateAvailableNames();
     }
 
     public bool Update(GameTime gameTime, GraphicsDevice graphics, KeyboardState kb, KeyboardState prevKb, out Character? createdCharacter)
@@ -189,58 +199,8 @@ public class CharacterCreation
             }
         }
 
-        // Step 0: Name input
+        // Step 0: Race selection
         if (_createStep == 0)
-        {
-            var nameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, menuWidthC - paddingC * 2, 50);
-            var randomNameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 100, 240, 40);
-            
-            // Click to focus
-            if (IsMouseClicked(mouse, _prevMouse, nameRect))
-            {
-                // Already focused on this step
-            }
-
-            if (randomNameRect.Contains(mouse.Position))
-                _tooltipText = "Generate a random fantasy name";
-
-            if (IsMouseClicked(mouse, _prevMouse, randomNameRect))
-            {
-                _createName = GenerateRandomName();
-            }
-            
-            foreach (var k in kb.GetPressedKeys())
-            {
-                if (!prevKb.IsKeyDown(k))
-                {
-                    if (k == Keys.Back && _createName.Length > 0)
-                        _createName = _createName[..^1];
-                    else if (k == Keys.Space)
-                        _createName += ' ';
-                    else if (k >= Keys.A && k <= Keys.Z)
-                    {
-                        bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
-                        if (OperatingSystem.IsWindows())
-                        {
-                            shift = shift || Console.CapsLock;
-                        }
-                        char c = (char)('a' + (k - Keys.A));
-                        _createName += shift ? char.ToUpper(c) : c;
-                    }
-                    else if (k >= Keys.D0 && k <= Keys.D9)
-                    {
-                        char c = (char)('0' + (k - Keys.D0));
-                        _createName += c;
-                    }
-                    else if (k == Keys.OemMinus)
-                        _createName += '-';
-                    else if (k == Keys.OemPeriod)
-                        _createName += '.';
-                }
-            }
-        }
-        // Step 1: Race selection
-        else if (_createStep == 1)
         {
             var racesRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, 460, MAX_VISIBLE_RACES * 42 + 10);
             int visibleCount = Math.Min(MAX_VISIBLE_RACES, _races.Count - _raceScrollOffset);
@@ -269,6 +229,7 @@ public class CharacterCreation
                 if (IsMouseClicked(mouse, _prevMouse, item))
                 {
                     _raceIndex = raceIdx;
+                    UpdateAvailableNames();
                 }
             }
             
@@ -284,6 +245,104 @@ public class CharacterCreation
                 var downArrow = new Rectangle(racesRect.X + racesRect.Width - 30, racesRect.Y + racesRect.Height - 25, 25, 25);
                 if (IsMouseClicked(mouse, _prevMouse, downArrow))
                     _raceScrollOffset++;
+            }
+        }
+        // Step 1: Name & Gender input
+        else if (_createStep == 1)
+        {
+            var nameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 40, 480, 50);
+            var randomNameRect = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 100, 240, 40);
+
+            // Gender buttons
+            var maleBtn = new Rectangle(menuRectC.X + paddingC, menuRectC.Y + titleH + 155, 115, 35);
+            var femaleBtn = new Rectangle(menuRectC.X + paddingC + 125, menuRectC.Y + titleH + 155, 115, 35);
+
+            if (IsMouseClicked(mouse, _prevMouse, maleBtn))
+            {
+                _genderIndex = 0;
+                UpdateAvailableNames();
+            }
+            if (IsMouseClicked(mouse, _prevMouse, femaleBtn))
+            {
+                _genderIndex = 1;
+                UpdateAvailableNames();
+            }
+
+            if (randomNameRect.Contains(mouse.Position))
+                _tooltipText = "Generate a random fantasy name";
+
+            if (IsMouseClicked(mouse, _prevMouse, randomNameRect))
+            {
+                _createName = GenerateRandomName();
+            }
+
+            // Names list
+            var namesRect = new Rectangle(menuRectC.X + paddingC + 500, menuRectC.Y + titleH + 40, 460, MAX_VISIBLE_NAMES * 36 + 10);
+            int visibleNamesCount = Math.Min(MAX_VISIBLE_NAMES, _availableNames.Count - _nameScrollOffset);
+
+            // Mouse wheel scrolling for names
+            var nameScrollDelta = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+            if (namesRect.Contains(mouse.Position) && nameScrollDelta != 0)
+            {
+                if (nameScrollDelta > 0 && _nameScrollOffset > 0)
+                    _nameScrollOffset--;
+                else if (nameScrollDelta < 0 && _nameScrollOffset < _availableNames.Count - MAX_VISIBLE_NAMES)
+                    _nameScrollOffset++;
+            }
+
+            for (int i = 0; i < visibleNamesCount; i++)
+            {
+                int nameIdx = _nameScrollOffset + i;
+                var item = new Rectangle(namesRect.X + 4, namesRect.Y + i * 36 + 4, 452, 32);
+
+                if (IsMouseClicked(mouse, _prevMouse, item))
+                {
+                    _createName = _availableNames[nameIdx];
+                }
+            }
+
+            // Name list scroll arrows
+            if (_nameScrollOffset > 0)
+            {
+                var upArrow = new Rectangle(namesRect.X + namesRect.Width - 30, namesRect.Y, 25, 25);
+                if (IsMouseClicked(mouse, _prevMouse, upArrow))
+                    _nameScrollOffset--;
+            }
+            if (_nameScrollOffset < _availableNames.Count - MAX_VISIBLE_NAMES)
+            {
+                var downArrow = new Rectangle(namesRect.X + namesRect.Width - 30, namesRect.Y + namesRect.Height - 25, 25, 25);
+                if (IsMouseClicked(mouse, _prevMouse, downArrow))
+                    _nameScrollOffset++;
+            }
+
+            foreach (var k in kb.GetPressedKeys())
+            {
+                if (!prevKb.IsKeyDown(k))
+                {
+                    if (k == Keys.Back && _createName.Length > 0)
+                        _createName = _createName[..^1];
+                    else if (k == Keys.Space)
+                        _createName += ' ';
+                    else if (k >= Keys.A && k <= Keys.Z)
+                    {
+                        bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
+                        if (OperatingSystem.IsWindows())
+                        {
+                            shift = shift || Console.CapsLock;
+                        }
+                        char c = (char)('a' + (k - Keys.A));
+                        _createName += shift ? char.ToUpper(c) : c;
+                    }
+                    else if (k >= Keys.D0 && k <= Keys.D9)
+                    {
+                        char c = (char)('0' + (k - Keys.D0));
+                        _createName += c;
+                    }
+                    else if (k == Keys.OemMinus)
+                        _createName += '-';
+                    else if (k == Keys.OemPeriod)
+                        _createName += '.';
+                }
             }
         }
         // Step 2: Class selection
@@ -424,10 +483,10 @@ public class CharacterCreation
             switch (_createStep)
             {
                 case 0:
-                    DrawNameStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
+                    DrawRaceStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 1:
-                    DrawRaceStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
+                    DrawNameStep(spriteBatch, gameTime, menuRectC, paddingC, titleH, mouse);
                     break;
                 case 2:
                     DrawClassStep(spriteBatch, menuRectC, paddingC, titleH, mouse);
@@ -474,7 +533,7 @@ public class CharacterCreation
         spriteBatch.Draw(_pixel, fillRect, Color.LightGreen);
         
         // Step labels
-        string[] stepLabels = { Loc.Tr("Name"), Loc.Tr("Race"), Loc.Tr("Class"), Loc.Tr("Tools"), Loc.Tr("Skills"), Loc.Tr("Abilities"), Loc.Tr("Review") };
+        string[] stepLabels = { Loc.Tr("Race"), Loc.Tr("Name"), Loc.Tr("Class"), Loc.Tr("Tools"), Loc.Tr("Skills"), Loc.Tr("Abilities"), Loc.Tr("Review") };
         for (int i = 0; i < 7; i++)
         {
             int stepX = barX + (barWidth * i / 6);
@@ -491,13 +550,17 @@ public class CharacterCreation
 
     private void DrawNameStep(SpriteBatch spriteBatch, GameTime gameTime, Rectangle menuRect, int padding, int titleH, MouseState mouse)
     {
-        var instructionText = Loc.Tr("Enter your character's name:");
+        var instructionText = Loc.Tr("Enter your character's name and choose gender:");
         spriteBatch.DrawString(_font, instructionText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 10), Color.White, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
         
-        var nameRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 40, menuRect.Width - padding * 2, 50);
+        // Left side: Name input and gender selection
+        var nameRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 40, 480, 50);
         var nameColor = nameRect.Contains(mouse.Position) ? Color.White : Color.LightGray;
         spriteBatch.Draw(_pixel, nameRect, nameColor);
         DrawBorder(spriteBatch, nameRect, 2, Color.Gold * 0.4f);
+
+        var displayName = string.IsNullOrEmpty(_createName) ? Loc.Tr("Type your character's name...") : _createName + (((int)(gameTime.TotalGameTime.TotalSeconds * 2) % 2) == 0 ? "|" : "");
+        spriteBatch.DrawString(_font, displayName, new Vector2(nameRect.X + 12, nameRect.Y + 12), string.IsNullOrEmpty(_createName) ? Color.Gray : Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
 
         var randomNameRect = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 100, 240, 40);
         var randomNameColor = randomNameRect.Contains(mouse.Position) ? Color.MediumPurple : Color.DarkSlateBlue;
@@ -507,13 +570,54 @@ public class CharacterCreation
         var randomNameText = "[D6] " + Loc.Tr("Random name");
         var randomNameTextSize = _font.MeasureString(randomNameText);
         spriteBatch.DrawString(_font, randomNameText, new Vector2(randomNameRect.X + (randomNameRect.Width - randomNameTextSize.X * 0.65f) / 2, randomNameRect.Y + (randomNameRect.Height - randomNameTextSize.Y * 0.65f) / 2), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+
+        // Gender selection
+        var maleBtn = new Rectangle(menuRect.X + padding, menuRect.Y + titleH + 155, 115, 35);
+        var femaleBtn = new Rectangle(menuRect.X + padding + 125, menuRect.Y + titleH + 155, 115, 35);
         
-        var displayName = string.IsNullOrEmpty(_createName) ? Loc.Tr("Type your character's name...") : _createName + (((int)(gameTime.TotalGameTime.TotalSeconds * 2) % 2) == 0 ? "|" : "");
-        spriteBatch.DrawString(_font, displayName, new Vector2(nameRect.X + 12, nameRect.Y + 12), string.IsNullOrEmpty(_createName) ? Color.Gray : Color.Black, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
-        
+        spriteBatch.Draw(_pixel, maleBtn, _genderIndex == 0 ? Color.Gold : (maleBtn.Contains(mouse.Position) ? Color.LightGray : Color.DarkGray));
+        DrawBorder(spriteBatch, maleBtn, 1, Color.White * 0.5f);
+        var maleText = Loc.Tr("Male");
+        var maleTextSize = _font.MeasureString(maleText);
+        spriteBatch.DrawString(_font, maleText, new Vector2(maleBtn.X + (maleBtn.Width - maleTextSize.X * 0.6f) / 2, maleBtn.Y + (maleBtn.Height - maleTextSize.Y * 0.6f) / 2), _genderIndex == 0 ? Color.Black : Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
+        spriteBatch.Draw(_pixel, femaleBtn, _genderIndex == 1 ? Color.Gold : (femaleBtn.Contains(mouse.Position) ? Color.LightGray : Color.DarkGray));
+        DrawBorder(spriteBatch, femaleBtn, 1, Color.White * 0.5f);
+        var femaleText = Loc.Tr("Female");
+        var femaleTextSize = _font.MeasureString(femaleText);
+        spriteBatch.DrawString(_font, femaleText, new Vector2(femaleBtn.X + (femaleBtn.Width - femaleTextSize.X * 0.6f) / 2, femaleBtn.Y + (femaleBtn.Height - femaleTextSize.Y * 0.6f) / 2), _genderIndex == 1 ? Color.Black : Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+
         // Tips
         var tipText = Loc.Tr("Name Tip");
-        spriteBatch.DrawString(_font, tipText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 150), Color.LightBlue, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+        spriteBatch.DrawString(_font, tipText, new Vector2(menuRect.X + padding, menuRect.Y + titleH + 210), Color.LightBlue, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+
+        // Right side: Names list
+        var listTitle = Loc.Tr("Suggested Names:");
+        spriteBatch.DrawString(_font, listTitle, new Vector2(menuRect.X + padding + 500, menuRect.Y + titleH + 10), Color.Gold, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);
+
+        var namesRect = new Rectangle(menuRect.X + padding + 500, menuRect.Y + titleH + 40, 460, MAX_VISIBLE_NAMES * 36 + 10);
+        spriteBatch.Draw(_pixel, namesRect, Color.Gray * 0.7f);
+        DrawBorder(spriteBatch, namesRect, 2, Color.Gold * 0.4f);
+
+        int visibleNamesCount = Math.Min(MAX_VISIBLE_NAMES, _availableNames.Count - _nameScrollOffset);
+        for (int i = 0; i < visibleNamesCount; i++)
+        {
+            int nameIdx = _nameScrollOffset + i;
+            var item = new Rectangle(namesRect.X + 4, namesRect.Y + i * 36 + 4, 452, 32);
+
+            bool isHovered = item.Contains(mouse.Position);
+            bool isSelected = _createName == _availableNames[nameIdx];
+
+            Color itemColor = isSelected ? Color.Gold * 0.8f : (isHovered ? Color.LightGray * 0.8f : Color.DarkGray);
+            spriteBatch.Draw(_pixel, item, itemColor);
+
+            if (isSelected)
+                DrawBorder(spriteBatch, item, 2, Color.Gold);
+
+            spriteBatch.DrawString(_font, _availableNames[nameIdx], new Vector2(item.X + 10, item.Y + 4), isSelected ? Color.Black : Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+        }
+
+        DrawScrollArrows(spriteBatch, namesRect, _nameScrollOffset, _availableNames.Count, MAX_VISIBLE_NAMES, mouse);
     }
 
     private void DrawRaceStep(SpriteBatch spriteBatch, Rectangle menuRect, int padding, int titleH, MouseState mouse)
@@ -1279,8 +1383,8 @@ public class CharacterCreation
 
         return _createStep switch
         {
-            0 => !string.IsNullOrWhiteSpace(_createName),
-            1 => true,
+            0 => true, // Race selection always has a default
+            1 => !string.IsNullOrWhiteSpace(_createName),
             2 => true,
             3 => true,
             4 => false,
@@ -1294,14 +1398,14 @@ public class CharacterCreation
     {
         return _createStep switch
         {
-            0 => "Proceed to race selection",
-            1 => "Proceed to class selection",
-            2 => "Proceed to tool proficiency",
-            3 => "Proceed to skill selection",
-            4 => "Choose class skills then roll ability scores",
-            5 => "Review your character",
-            6 => "Finalize and create character",
-            _ => "Next"
+            0 => Loc.Tr("Proceed to name and gender selection"),
+            1 => Loc.Tr("Proceed to class selection"),
+            2 => Loc.Tr("Proceed to tool proficiency"),
+            3 => Loc.Tr("Proceed to skill selection"),
+            4 => Loc.Tr("Choose class skills then roll ability scores"),
+            5 => Loc.Tr("Review your character"),
+            6 => Loc.Tr("Finalize and create character"),
+            _ => Loc.Tr("Next")
         };
     }
 
@@ -1384,9 +1488,30 @@ public class CharacterCreation
 
     private string GenerateRandomName()
     {
+        if (_availableNames.Count > 0)
+        {
+            return _availableNames[_random.Next(_availableNames.Count)];
+        }
+
         var prefix = _namePrefixes[_random.Next(_namePrefixes.Length)];
         var suffix = _nameSuffixes[_random.Next(_nameSuffixes.Length)];
         return prefix + suffix;
+    }
+
+    private void UpdateAvailableNames()
+    {
+        _availableNames.Clear();
+        var selectedRace = Race.GetRace(_races[_raceIndex]);
+        if (_genderIndex == 0) // Male
+        {
+            _availableNames.AddRange(selectedRace.MaleNames);
+        }
+        else // Female
+        {
+            _availableNames.AddRange(selectedRace.FemaleNames);
+        }
+        _availableNames.AddRange(selectedRace.ClanNames);
+        _nameScrollOffset = 0;
     }
 
     private Character CreateTempCharacterForPreview()
