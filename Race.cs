@@ -42,6 +42,8 @@ public class Race
     public bool HasHighElfCantrip { get; set; } = false;
     /// <summary>Extra Language: can speak, read, and write one extra language of their choice (High Elf).</summary>
     public bool HasExtraLanguage { get; set; } = false;
+    /// <summary>Mask of the Wild: can attempt to hide even when only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena (Wood Elf).</summary>
+    public bool HasMaskOfTheWild { get; set; } = false;
 
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
@@ -98,8 +100,10 @@ public class Race
             HasKeenSenses = true,
             HasFeyAncestry = true,
             HasTrance = true,
+            HasElfWeaponTraining = true,
+            HasMaskOfTheWild = true,
             Languages = new List<string> { "Common", "Elvish" },
-            Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance)")
+            Description = Loc.Tr("Swift and wise (+2 DEX, +1 WIS, 35 ft speed, Darkvision 60 ft, Keen Senses, Fey Ancestry, Trance, Elf Weapon Training, Mask of the Wild)")
         },
         
         ["Drow"] = new Race
