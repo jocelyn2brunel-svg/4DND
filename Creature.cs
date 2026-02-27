@@ -1410,15 +1410,17 @@ public class Creature
 
     public static List<CreatureType> GetTypesForBiome(BiomeType biome) => biome switch
     {
+        BiomeType.Arctic => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Skeleton, CreatureType.Zombie },
+        BiomeType.Coastal => new() { CreatureType.Kobold, CreatureType.Goblin, CreatureType.Couatl },
         BiomeType.Desert => new() { CreatureType.Kobold, CreatureType.Orc, CreatureType.Umber_Hulk },
         BiomeType.Forest => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Umber_Hulk },
-        BiomeType.Plains => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Skeleton, CreatureType.Zombie },
-        BiomeType.Swamp => new() { CreatureType.Kobold, CreatureType.Zombie, CreatureType.Orc, CreatureType.Umber_Hulk },
-        BiomeType.Tundra => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Zombie, CreatureType.Skeleton },
+        BiomeType.Grassland => new() { CreatureType.Goblin, CreatureType.Orc, CreatureType.Wolf, CreatureType.Kobold, CreatureType.Skeleton, CreatureType.Zombie },
+        BiomeType.Hill => new() { CreatureType.Orc, CreatureType.Kobold, CreatureType.Wolf, CreatureType.Goblin },
         BiomeType.Mountain => new() { CreatureType.Orc, CreatureType.Kobold, CreatureType.Wolf, CreatureType.Umber_Hulk, CreatureType.Couatl },
-        BiomeType.SnowMountain => new() { CreatureType.Wolf, CreatureType.Orc, CreatureType.Skeleton },
-        BiomeType.Coast => new() { CreatureType.Kobold, CreatureType.Goblin, CreatureType.Couatl },
-        BiomeType.Ocean => new() { CreatureType.Couatl }, // Flyers/Swimmers
+        BiomeType.Swamp => new() { CreatureType.Kobold, CreatureType.Zombie, CreatureType.Orc, CreatureType.Umber_Hulk },
+        BiomeType.Underdark => new() { CreatureType.Umber_Hulk, CreatureType.Goblin, CreatureType.Skeleton, CreatureType.Zombie, CreatureType.Kobold },
+        BiomeType.Underwater => new() { CreatureType.Couatl }, // Flyers/Swimmers
+        BiomeType.Urban => new() { CreatureType.Goblin, CreatureType.Skeleton, CreatureType.Zombie, CreatureType.Kobold },
         _ => new() { CreatureType.Goblin }
     };
 

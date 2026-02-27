@@ -266,13 +266,12 @@ public class Game1 : Game
             }
         }
 
-        if (z != 0) return TileType.Empty;
-
         // 2. Standard procedural world tiles
         int seed = _currentCampaign?.Seed ?? 0;
         float offsetX = _currentCampaign?.PartyX ?? 0;
         float offsetY = _currentCampaign?.PartyY ?? 0;
-        return WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY);
+        int floor = _currentCampaign?.CurrentFloor ?? 0;
+        return WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY, floor, _currentCampaign);
     }
 
     protected override void LoadContent()
@@ -443,7 +442,7 @@ public class Game1 : Game
         // 1. Determine current biome
         float milesX = ((float)_playerCreature.X / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyX;
         float milesY = ((float)_playerCreature.Y / Campaign.TacticalUnitsPerMile) + _currentCampaign.PartyY;
-        BiomeType biome = WorldGenerator.GetBiome(milesX, milesY, _currentCampaign.Seed);
+        BiomeType biome = WorldGenerator.GetBiome(milesX, milesY, _currentCampaign.Seed, _currentCampaign.CurrentFloor, _currentCampaign);
 
         // 2. Determine party levels (all player creatures present)
         var playerCreatures = _combatManager.Combatants.Where(c => c.IsPlayer && c.IsAlive()).ToList();
@@ -4113,7 +4112,7 @@ public class Game1 : Game
         _showCampaignMap = false;
         PlayCampaignMapCloseSfx();
 
-        if (_campaignMapViewer.TravelOccurred || _campaignMapViewer.PartyPositionChanged)
+        if (_campaignMapViewer.TravelOccurred || _campaignMapViewer.PartyPositionChanged || _campaignMapViewer.FloorChanged)
         {
             _tacticalMap.Clear();
             PlacePlayerAtNearestValidTile();
