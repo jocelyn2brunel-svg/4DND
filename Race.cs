@@ -99,6 +99,11 @@ public class Race
     /// <summary>Damage Resistance: you have resistance to the damage type associated with your draconic ancestry.</summary>
     public bool HasDamageResistance { get; set; } = false;
 
+    /// <summary>Age at which members of this race are considered adults (no longer young). 0 = unspecified.</summary>
+    public int MaturityAge { get; set; } = 0;
+    /// <summary>Average maximum lifespan for members of this race in years. 0 = unspecified.</summary>
+    public int MaxAge { get; set; } = 0;
+
     /// <summary>Languages this race speaks, reads, and writes.</summary>
     public List<string> Languages { get; set; } = new();
     /// <summary>Tool proficiency options to choose from (player picks one). Empty means no choice.</summary>
@@ -128,6 +133,8 @@ public class Race
             BaseSpeed = 30,
             DarkvisionRange = 0,
             HasExtraLanguage = true,
+            MaturityAge = 18,
+            MaxAge = 100,
             Languages = new List<string> { "Common" },
             Description = Loc.Tr("Versatile and adaptable (+1 to all abilities)")
         },
@@ -148,6 +155,8 @@ public class Race
             HasElfWeaponTraining = true,
             HasHighElfCantrip = true,
             HasExtraLanguage = true,
+            MaturityAge = 100,
+            MaxAge = 750,
             Languages = new List<string> { "Common", "Elvish" },
             MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
             FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
@@ -168,6 +177,8 @@ public class Race
             HasTrance = true,
             HasElfWeaponTraining = true,
             HasMaskOfTheWild = true,
+            MaturityAge = 100,
+            MaxAge = 750,
             Languages = new List<string> { "Common", "Elvish" },
             MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
             FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
@@ -191,6 +202,8 @@ public class Race
             HasTrance = true,
             HasDrowMagic = true,
             HasDrowWeaponTraining = true,
+            MaturityAge = 100,
+            MaxAge = 750,
             Languages = new List<string> { "Common", "Elvish" },
             MaleNames = new List<string> { "Adran", "Aelar", "Aramil", "Arannis", "Aust", "Beiro", "Berrian", "Carric", "Enialis", "Erdan", "Erevan", "Galinndan", "Hadarai", "Heian", "Himo", "Immeral", "Ivellios", "Laucian", "Mindartis", "Paelias", "Peren", "Quarion", "Riardon", "Rolen", "Soveliss", "Thamior", "Tharivol", "Theren", "Varis" },
             FemaleNames = new List<string> { "Adrie", "Althaea", "Anastrianna", "Andraste", "Antinua", "Bethrynna", "Birel", "Caelynn", "Drusilia", "Enna", "Felosial", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Lia", "Meriele", "Mialee", "Naivara", "Quelenna", "Quillathe", "Sariel", "Shanairra", "Shava", "Silaqui", "Theirastra", "Thia", "Vadania", "Valanthe", "Xanaphia" },
@@ -211,6 +224,8 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            MaturityAge = 50,
+            MaxAge = 350,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
             MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
@@ -230,6 +245,8 @@ public class Race
             HasDwarvenResilience = true,
             HasDwarvenCombatTraining = true,
             HasStonecunning = true,
+            MaturityAge = 50,
+            MaxAge = 350,
             Languages = new List<string> { "Common", "Dwarvish" },
             ToolProficiencyChoices = new List<string> { "Smith's tools", "Brewer's supplies", "Mason's tools" },
             MaleNames = new List<string> { "Adrik", "Alberich", "Baern", "Barendd", "Brottor", "Bruenor", "Dain", "Darrak", "Delg", "Eberk", "Einkil", "Fargrim", "Flint", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Oskar", "Rangrim", "Rurik", "Taklinn", "Thoradin", "Thorin", "Tordek", "Traubon", "Travok", "Ulfgar", "Veit", "Vondal" },
@@ -252,6 +269,8 @@ public class Race
             HasBrave = true,
             HasHalflingNimbleness = true,
             HasNaturallyStealthy = true,
+            MaturityAge = 20,
+            MaxAge = 150,
             Languages = new List<string> { "Common", "Halfling" },
             MaleNames = new List<string> { "Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby" },
             FemaleNames = new List<string> { "Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym", "Vani", "Verna" },
@@ -271,6 +290,8 @@ public class Race
             HasBrave = true,
             HasHalflingNimbleness = true,
             HasStoutResilience = true,
+            MaturityAge = 20,
+            MaxAge = 150,
             Languages = new List<string> { "Common", "Halfling" },
             MaleNames = new List<string> { "Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby" },
             FemaleNames = new List<string> { "Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym", "Vani", "Verna" },
@@ -290,6 +311,8 @@ public class Race
             HasMenacing = true,
             HasRelentlessEndurance = true,
             HasSavageAttacks = true,
+            MaturityAge = 14,
+            MaxAge = 75,
             Languages = new List<string> { "Common", "Orc" },
             Description = Loc.Tr("Strong and tough (+2 STR, +1 CON, Darkvision 60 ft, Menacing, Relentless Endurance, Savage Attacks)")
         },
@@ -305,6 +328,8 @@ public class Race
             DarkvisionRange = 60,
             HasHellishResistance = true,
             HasInfernalLegacy = true,
+            MaturityAge = 18,
+            MaxAge = 100,
             Languages = new List<string> { "Common", "Infernal" },
             Description = Loc.Tr("Infernal heritage (+2 CHA, +1 INT, Darkvision 60 ft, Hellish Resistance, Infernal Legacy)")
         },
@@ -321,6 +346,8 @@ public class Race
             HasDraconicAncestry = true,
             HasBreathWeapon = true,
             HasDamageResistance = true,
+            MaturityAge = 15,
+            MaxAge = 80,
             Languages = new List<string> { "Common", "Draconic" },
             MaleNames = new List<string> { "Arjhan", "Balasar", "Bharash", "Donaar", "Ghesh", "Heskan", "Kriv", "Medrash", "Mehen", "Nadarr", "Pandjed", "Patrin", "Rhogar", "Shamash", "Shedinn", "Tarhun", "Torinn" },
             FemaleNames = new List<string> { "Akra", "Biri", "Daar", "Farideh", "Harann", "Havilar", "Jheri", "Kava", "Korinn", "Mishann", "Nala", "Perra", "Raiann", "Sora", "Surina", "Thava", "Uadjit" },
@@ -340,6 +367,8 @@ public class Race
             HasGnomeCunning = true,
             HasArtificersLore = true,
             HasTinker = true,
+            MaturityAge = 40,
+            MaxAge = 500,
             Languages = new List<string> { "Common", "Gnomish" },
             Description = Loc.Tr("Inventive and hardy (+2 INT, +1 CON, Darkvision 60 ft, Gnome Cunning, Artificer's Lore, Tinker)")
         },
@@ -355,6 +384,8 @@ public class Race
             HasGnomeCunning = true,
             HasNaturalIllusionist = true,
             HasSpeakWithSmallBeasts = true,
+            MaturityAge = 40,
+            MaxAge = 500,
             Languages = new List<string> { "Common", "Gnomish" },
             Description = Loc.Tr("Stealthy and illusionist (+2 INT, +1 DEX, Darkvision 60 ft, Gnome Cunning, Natural Illusionist, Speak with Small Beasts)")
         },
@@ -370,6 +401,8 @@ public class Race
             HasFeyAncestry = true,
             HasSkillVersatility = true,
             HasExtraLanguage = true,
+            MaturityAge = 20,
+            MaxAge = 180,
             Languages = new List<string> { "Common", "Elvish" },
             Description = Loc.Tr("Versatile and charismatic (+2 CHA, +1 to two other abilities, Darkvision 60 ft, Fey Ancestry, Skill Versatility, Extra Language)")
         }
