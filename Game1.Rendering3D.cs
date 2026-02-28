@@ -566,33 +566,26 @@ public partial class Game1
         const float halfTile = 0.5f;
         const float wallHeight = 1.0f;
         const float capThickness = 0.05f;
+        // Small offset to lift wall base above the ground tile plane, preventing Z-fighting.
+        const float wallBaseOffset = 0.001f;
+
+        // Only emit geometry for canonical edges owned by this tile (North, East).
+        // South of (x,y) is the same edge as North of (x,y-1), and West of (x,y)
+        // is the same edge as East of (x-1,y). Drawing both produces duplicate
+        // overlapping triangles that cause Z-fighting.
 
         if (_wallEdges.HasWall(x, y, z, WallSide.North))
         {
-            Vector3 start = new Vector3(x - halfTile, y + halfTile, z);
-            Vector3 end = new Vector3(x + halfTile, y + halfTile, z);
+            Vector3 start = new Vector3(x - halfTile, y + halfTile, z + wallBaseOffset);
+            Vector3 end = new Vector3(x + halfTile, y + halfTile, z + wallBaseOffset);
             AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Backward);
-            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
-        }
-        if (_wallEdges.HasWall(x, y, z, WallSide.South))
-        {
-            Vector3 start = new Vector3(x + halfTile, y - halfTile, z);
-            Vector3 end = new Vector3(x - halfTile, y - halfTile, z);
-            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Forward);
             AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
         }
         if (_wallEdges.HasWall(x, y, z, WallSide.East))
         {
-            Vector3 start = new Vector3(x + halfTile, y + halfTile, z);
-            Vector3 end = new Vector3(x + halfTile, y - halfTile, z);
+            Vector3 start = new Vector3(x + halfTile, y + halfTile, z + wallBaseOffset);
+            Vector3 end = new Vector3(x + halfTile, y - halfTile, z + wallBaseOffset);
             AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Right);
-            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
-        }
-        if (_wallEdges.HasWall(x, y, z, WallSide.West))
-        {
-            Vector3 start = new Vector3(x - halfTile, y - halfTile, z);
-            Vector3 end = new Vector3(x - halfTile, y + halfTile, z);
-            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Left);
             AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
         }
     }
@@ -643,11 +636,13 @@ public partial class Game1
 
         const float halfTile = 0.5f;
         const float wallHeight = 1.0f;
+        const float wallBaseOffset = 0.001f;
+        float baseZ = z + wallBaseOffset;
 
-        if (north) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y + halfTile, z), new Vector3(x + halfTile, y + halfTile, z), wallHeight, color, Vector3.Backward);
-        if (south) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y - halfTile, z), new Vector3(x - halfTile, y - halfTile, z), wallHeight, color, Vector3.Forward);
-        if (east) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y + halfTile, z), new Vector3(x + halfTile, y - halfTile, z), wallHeight, color, Vector3.Right);
-        if (west) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y - halfTile, z), new Vector3(x - halfTile, y + halfTile, z), wallHeight, color, Vector3.Left);
+        if (north) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y + halfTile, baseZ), new Vector3(x + halfTile, y + halfTile, baseZ), wallHeight, color, Vector3.Backward);
+        if (south) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y - halfTile, baseZ), new Vector3(x - halfTile, y - halfTile, baseZ), wallHeight, color, Vector3.Forward);
+        if (east) AddVerticalPlaneVertices(vertices, new Vector3(x + halfTile, y + halfTile, baseZ), new Vector3(x + halfTile, y - halfTile, baseZ), wallHeight, color, Vector3.Right);
+        if (west) AddVerticalPlaneVertices(vertices, new Vector3(x - halfTile, y - halfTile, baseZ), new Vector3(x - halfTile, y + halfTile, baseZ), wallHeight, color, Vector3.Left);
 
         // Also draw a small "cap" on top of the wall edges to make them look solid from above
         // This helps the "separation" look
