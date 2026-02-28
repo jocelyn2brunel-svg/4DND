@@ -809,23 +809,28 @@ public partial class Game1
         {
             if (creature.Z > _currentViewLevel) continue;
 
-            bool isVisible = _visionSystem.IsVisible(creature.X, creature.Y, creature.Z);
+            // Use the rounded visual position so the outline follows the creature during movement animation
+            int outlineX = (int)MathF.Round(creature.VisualX);
+            int outlineY = (int)MathF.Round(creature.VisualY);
+            int outlineZ = (int)MathF.Round(creature.VisualZ);
+
+            bool isVisible = _visionSystem.IsVisible(outlineX, outlineY, outlineZ);
             if (_combatManager.InCombat && _showVisionOverlay && _playerCreature != null)
             {
-                Color fogTint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, isVisible, _playerCreature);
+                Color fogTint = _visionSystem.GetFogOfWarTint(outlineX, outlineY, outlineZ, isVisible, _playerCreature);
                 if (fogTint == Color.Black) continue;
             }
 
             Color outlineColor = GetCreatureFactionOutlineColor(creature);
             if (_showVisionOverlay && _playerCreature != null)
             {
-                Color tint = _visionSystem.GetFogOfWarTint(creature.X, creature.Y, creature.Z, true, _playerCreature);
+                Color tint = _visionSystem.GetFogOfWarTint(outlineX, outlineY, outlineZ, true, _playerCreature);
                 outlineColor = ApplyVisionTint(outlineColor, tint);
                 if (outlineColor == Color.Transparent) continue;
             }
 
             var (w, h) = SizeHelper.GetSpaceInSquares(creature.Size);
-            Draw3DTileOutline(creature.X, creature.Y, creature.Z, outlineColor, w, h);
+            Draw3DTileOutline(outlineX, outlineY, outlineZ, outlineColor, w, h);
         }
     }
 

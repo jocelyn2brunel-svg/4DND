@@ -1097,7 +1097,7 @@ public partial class Game1 : Game
                 _characterIndex = Math.Max(0, _characterIndex - 1);
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
                 _characterIndex = Math.Min(_characters.Count, _characterIndex + 1);
-            
+
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
             {
                 if (IsExistingCharacterIndex(_characterIndex))
@@ -1110,7 +1110,7 @@ public partial class Game1 : Game
                         {
                             CreatePlayerCreatureAtSafeSpawn();
                         }
-                        
+
                         // TODO: Go to multiplayer lobby
                         _state = AppState.Playing;
                         UpdateVision();
@@ -1160,7 +1160,7 @@ public partial class Game1 : Game
             {
                 var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), listWidth - padding * 2, itemHeight);
                 var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
-                
+
                 if (deleteRect.Contains(mouse.Position))
                 {
                     if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -1180,7 +1180,7 @@ public partial class Game1 : Game
                     if (itemRect.Contains(mouse.Position))
                     {
                         _characterIndex = i;
-                        
+
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             if (IsExistingCharacterIndex(i))
@@ -1193,7 +1193,7 @@ public partial class Game1 : Game
                                     {
                                         CreatePlayerCreatureAtSafeSpawn();
                                     }
-                                    
+
                                     // TODO: Go to multiplayer lobby
                                     _state = AppState.Playing;
                                     UpdateVision();
@@ -1226,7 +1226,7 @@ public partial class Game1 : Game
         if (_state == AppState.CharacterCreate)
         {
             bool continueCreation = _characterCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Character? newCharacter);
-            
+
             if (!continueCreation)
             {
                 LoadCharacters();
@@ -1258,7 +1258,7 @@ public partial class Game1 : Game
             base.Update(gameTime);
             return;
         }
-        
+
         // CAMPAIGN SELECT
         if (_state == AppState.CampaignSelect)
         {
@@ -1289,7 +1289,7 @@ public partial class Game1 : Game
                 _campaignIndex = Math.Max(0, _campaignIndex - 1);
             if (kb.IsKeyDown(Keys.Down) && !_prevKb.IsKeyDown(Keys.Down))
                 _campaignIndex = Math.Min(_campaigns.Count, _campaignIndex + 1);
-            
+
             if (kb.IsKeyDown(Keys.Enter) && !_prevKb.IsKeyDown(Keys.Enter))
             {
                 if (_campaignIndex >= 0 && _campaignIndex < _campaigns.Count)
@@ -1305,14 +1305,14 @@ public partial class Game1 : Game
                         _currentCampaign.LastPlayedDate = DateTime.Now;
                         SaveCampaigns();
                     }
-                    
+
                     // Initialize player creature from the selected character
                     if (_currentCharacter != null)
                     {
                         CreatePlayerCreatureAtSafeSpawn();
                         RestoreTacticalStateFromCampaign();
                     }
-                    
+
                     _state = AppState.Playing;
                     UpdateVision();
                 }
@@ -1351,7 +1351,7 @@ public partial class Game1 : Game
             {
                 var itemRect = new Rectangle(menuRect.X + padding, menuRect.Y + headerHeight + padding + i * (itemHeight + padding), menuWidth - padding * 2, itemHeight);
                 var deleteRect = new Rectangle(itemRect.X + itemRect.Width - 70, itemRect.Y + (itemRect.Height - 30) / 2, 60, 30);
-                
+
                 if (deleteRect.Contains(mouse.Position))
                 {
                     if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -1371,7 +1371,7 @@ public partial class Game1 : Game
                     if (itemRect.Contains(mouse.Position))
                     {
                         _campaignIndex = i;
-                        
+
                         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
                         {
                             if (i < _campaigns.Count)
@@ -1385,14 +1385,14 @@ public partial class Game1 : Game
                                     _currentCampaign.LastPlayedDate = DateTime.Now;
                                     SaveCampaigns();
                                 }
-                                
+
                                 // Initialize player creature from the selected character
                                 if (_currentCharacter != null)
                                 {
                                     CreatePlayerCreatureAtSafeSpawn();
                                     RestoreTacticalStateFromCampaign();
                                 }
-                                 
+
                                 _state = AppState.Playing;
                                 UpdateVision();
                             }
@@ -1412,12 +1412,12 @@ public partial class Game1 : Game
             base.Update(gameTime);
             return;
         }
-        
+
         // CAMPAIGN CREATION
         if (_state == AppState.CampaignCreate)
         {
             bool continueCampaign = _campaignCreation.Update(gameTime, GraphicsDevice, kb, _prevKb, out Campaign newCampaign);
-            
+
             if (!continueCampaign)
             {
                 LoadCampaigns();
@@ -1434,13 +1434,13 @@ public partial class Game1 : Game
                     _currentCampaign.PartyMembers.Add(_currentCharacter.Name);
                 }
                 SaveCampaign();
-                
+
                 // Initialize player creature from the selected character
                 if (_currentCharacter != null)
                 {
                     CreatePlayerCreatureAtSafeSpawn();
                 }
-                
+
                 _state = AppState.Playing;
                 UpdateVision();
             }
@@ -1545,7 +1545,7 @@ public partial class Game1 : Game
             base.Update(gameTime);
             return;
         }
-        
+
         if (_state == AppState.Playing)
         {
             float dtPlaying = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1553,60 +1553,64 @@ public partial class Game1 : Game
             // Handle travel even when map is closed
             if (!_showCampaignMap && !_combatManager.InCombat)
             {
-                _currentCampaign.UpdateTravel(dtPlaying, CampaignMapViewer.TimeScale, _characters, _visionSystem);
-
-                float totalTacticalX = _currentCampaign.PartyX * Campaign.TacticalUnitsPerMile;
-                float totalTacticalY = _currentCampaign.PartyY * Campaign.TacticalUnitsPerMile;
-                int intX = (int)Math.Floor(totalTacticalX);
-                int intY = (int)Math.Floor(totalTacticalY);
-
-                if (_currentCampaign.IsTraveling)
+                if (_currentCampaign != null)
                 {
-                    _scrollOffset = new Vector3(totalTacticalX - intX, totalTacticalY - intY, 0);
+                    _currentCampaign.UpdateTravel(dtPlaying, CampaignMapViewer.TimeScale, _characters, _visionSystem);
 
-                    // Simulate walking bobbing for player
-                    float walkSpeed = 10f;
-                    float bob = MathF.Abs(MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds * walkSpeed)) * 0.2f;
-                    _playerCreature.VisualZ = _playerCreature.Z + bob;
+                    float totalTacticalX = _currentCampaign.PartyX * Campaign.TacticalUnitsPerMile;
+                    float totalTacticalY = _currentCampaign.PartyY * Campaign.TacticalUnitsPerMile;
+                    int intX = (int)Math.Floor(totalTacticalX);
+                    int intY = (int)Math.Floor(totalTacticalY);
 
-                    // Trigger footsteps based on distance
-                    if (Math.Abs(totalTacticalX - _lastTotalTacticalX) > 0.5f || Math.Abs(totalTacticalY - _lastTotalTacticalY) > 0.5f)
+                    if (_currentCampaign.IsTraveling)
                     {
-                         _footstepSfx.PlayStep(_tacticalMap.Get(_playerCreature.X, _playerCreature.Y, _playerCreature.Z));
-                         _lastTotalTacticalX = totalTacticalX;
-                         _lastTotalTacticalY = totalTacticalY;
+                        _scrollOffset = new Vector3(totalTacticalX - intX, totalTacticalY - intY, 0);
+
+                        // Simulate walking bobbing for player
+                        float walkSpeed = 10f;
+                        float bob = MathF.Abs(MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds * walkSpeed)) * 0.2f;
+                        _playerCreature.VisualZ = _playerCreature.Z + bob;
+
+                        // Trigger footsteps based on distance
+                        if (Math.Abs(totalTacticalX - _lastTotalTacticalX) > 0.5f || Math.Abs(totalTacticalY - _lastTotalTacticalY) > 0.5f)
+                        {
+                            _footstepSfx.PlayStep(_tacticalMap.Get(_playerCreature.X, _playerCreature.Y, _playerCreature.Z));
+                            _lastTotalTacticalX = totalTacticalX;
+                            _lastTotalTacticalY = totalTacticalY;
+                        }
                     }
-                }
-                else
-                {
-                    _scrollOffset = Vector3.Zero;
-                    _playerCreature.VisualZ = _playerCreature.Z;
-                }
+                    else
+                    {
+                        _scrollOffset = Vector3.Zero;
+                        if (_playerCreature != null)
+                            _playerCreature.VisualZ = _playerCreature.Z;
+                    }
 
-                if (intX != _lastIntPartyX || intY != _lastIntPartyY)
-                {
-                    _tacticalMap.Clear();
-                    _urbanDoorStates.Clear(); // Clear transient urban door states when moving far
-                    _lastIntPartyX = intX;
-                    _lastIntPartyY = intY;
-                    PlacePlayerAtNearestValidTile();
-                    _playerCreature.InterruptMovement();
-                    _cameraTarget = Vector3.Zero;
-                    UpdateVision();
-                    _currentCampaign.PartyPositionChanged = false;
-                }
+                    if (intX != _lastIntPartyX || intY != _lastIntPartyY)
+                    {
+                        _tacticalMap.Clear();
+                        _urbanDoorStates.Clear();
+                        _lastIntPartyX = intX;
+                        _lastIntPartyY = intY;
+                        PlacePlayerAtNearestValidTile();
+                        _playerCreature?.InterruptMovement();
+                        _cameraTarget = Vector3.Zero;
+                        UpdateVision();
+                        _currentCampaign.PartyPositionChanged = false;
+                    }
 
-                if (_currentCampaign.EncounterRequested)
-                {
-                    _currentCampaign.EncounterRequested = false;
-                    TriggerEncounterSpawn();
-                    StartCombatWithNearbyEnemies();
-                }
+                    if (_currentCampaign.EncounterRequested)
+                    {
+                        _currentCampaign.EncounterRequested = false;
+                        TriggerEncounterSpawn();
+                        StartCombatWithNearbyEnemies();
+                    }
 
-                if (_currentCampaign.TravelMessageTimer > 0)
-                {
-                    _currentCampaign.TravelMessageTimer -= dtPlaying;
-                    if (_currentCampaign.TravelMessageTimer <= 0) _currentCampaign.LastTravelMessage = "";
+                    if (_currentCampaign.TravelMessageTimer > 0)
+                    {
+                        _currentCampaign.TravelMessageTimer -= dtPlaying;
+                        if (_currentCampaign.TravelMessageTimer <= 0) _currentCampaign.LastTravelMessage = "";
+                    }
                 }
             }
             else
@@ -1699,13 +1703,13 @@ public partial class Game1 : Game
             bool rightClickedThisFrame = mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released;
             bool clickedOnGameplayUiButton = false;
 
-        if (_showDoorContextMenu && mouseClickedThisFrame)
-        {
-            if (HandleDoorContextMenu(mouse.Position))
-                clickedOnGameplayUiButton = true;
-            else
-                _showDoorContextMenu = false;
-        }
+            if (_showDoorContextMenu && mouseClickedThisFrame)
+            {
+                if (HandleDoorContextMenu(mouse.Position))
+                    clickedOnGameplayUiButton = true;
+                else
+                    _showDoorContextMenu = false;
+            }
 
             // Update movement animation for all creatures
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -1789,7 +1793,7 @@ public partial class Game1 : Game
                     }
                 }
             }
-            
+
             if (kb.IsKeyDown(Keys.C) && !_prevKb.IsKeyDown(Keys.C))
             {
                 _showCharacterSheet = !_showCharacterSheet;
@@ -2038,9 +2042,9 @@ public partial class Game1 : Game
                                 if (_combatManager.Hide(currentCombatant, isBonusAction: true, visionSystem: _visionSystem))
                                 {
                                     if (currentCombatant.IsHidden)
-                                    AddTooltip(currentCombatant, Loc.Tr("Hidden!"), Color.LimeGreen);
+                                        AddTooltip(currentCombatant, Loc.Tr("Hidden!"), Color.LimeGreen);
                                     else
-                                    AddTooltip(currentCombatant, Loc.Tr("Missed!"), Color.LightGray);
+                                        AddTooltip(currentCombatant, Loc.Tr("Missed!"), Color.LightGray);
                                 }
                                 FlushTurnMessages();
                             }
@@ -2050,7 +2054,7 @@ public partial class Game1 : Game
                     }
                 }
             }
-            
+
             // Toggle campaign map with M
             if (kb.IsKeyDown(Keys.M) && !_prevKb.IsKeyDown(Keys.M))
             {
@@ -2059,7 +2063,7 @@ public partial class Game1 : Game
                 else
                     OpenCampaignMap();
             }
-            
+
             // Change view level with PageUp/PageDown
             if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
             {
@@ -2071,15 +2075,15 @@ public partial class Game1 : Game
                 _currentViewLevel = Math.Max(0, _currentViewLevel - 1);
                 AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
             }
-            
-            
+
+
             // Toggle vision overlay with V
             if (kb.IsKeyDown(Keys.V) && !_prevKb.IsKeyDown(Keys.V))
             {
                 _showVisionOverlay = !_showVisionOverlay;
             }
-            
-            
+
+
             // Toggle HUD visibility preference with Tab
             if (kb.IsKeyDown(Keys.Tab) && !_prevKb.IsKeyDown(Keys.Tab))
             {
@@ -2359,7 +2363,7 @@ public partial class Game1 : Game
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
-                                    
+
                                     // Update vision after movement
                                     UpdateVision();
                                 }
@@ -2380,16 +2384,16 @@ public partial class Game1 : Game
                     }
                 }
             }
-            
+
             // Combat controls
             if (_combatManager.InCombat && _showCombatUI)
             {
                 var currentCombatant = _combatManager.CurrentCombatant;
-                
+
                 if (currentCombatant != null && currentCombatant.IsPlayer)
                 {
                     // Player's turn
-                    
+
                     // Handle attack action
                     if (_selectedAction == CombatAction.Attack)
                     {
@@ -2717,7 +2721,7 @@ public partial class Game1 : Game
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog(Loc.Tr("{0} moved to ({1}, {2}, {3}) [{4}ft, {5}ft remaining]", currentCombatant.Name, currentCombatant.X, currentCombatant.Y, currentCombatant.Z, distanceInFeet, currentCombatant.MovementRemaining));
                                         _selectedAction = CombatAction.Move;
-                                        
+
                                         // Update vision after movement
                                         UpdateVision();
                                     }
@@ -2864,8 +2868,7 @@ public partial class Game1 : Game
                             _currentAiPhase = AiPhase.Start;
                         }
                     }
-                }
-                    
+
                     // Check if combat ended
                     if (!_combatManager.InCombat)
                     {
@@ -2880,76 +2883,77 @@ public partial class Game1 : Game
                 }
             }
 
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
-            Exit();
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+                Exit();
 
-        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        if (kb.IsKeyDown(Keys.Q) && !_prevKb.IsKeyDown(Keys.Q)) _targetYaw -= MathHelper.ToRadians(45f);
-        if (kb.IsKeyDown(Keys.E) && !_prevKb.IsKeyDown(Keys.E)) _targetYaw += MathHelper.ToRadians(45f);
-        _cameraYaw = MathHelper.Lerp(_cameraYaw, _targetYaw, RotationSpeed * dt);
+            if (kb.IsKeyDown(Keys.Q) && !_prevKb.IsKeyDown(Keys.Q)) _targetYaw -= MathHelper.ToRadians(45f);
+            if (kb.IsKeyDown(Keys.E) && !_prevKb.IsKeyDown(Keys.E)) _targetYaw += MathHelper.ToRadians(45f);
+            _cameraYaw = MathHelper.Lerp(_cameraYaw, _targetYaw, RotationSpeed * dt);
 
-        float moveSpeed = 10f * dt;
-        Vector3 moveDir = Vector3.Zero;
-        if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)) moveDir.Y -= 1;
-        if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down)) moveDir.Y += 1;
-        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)) moveDir.X += 1;
-        if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right)) moveDir.X -= 1;
-        if (moveDir != Vector3.Zero) { moveDir.Normalize(); _cameraTarget += Vector3.Transform(moveDir, Matrix.CreateRotationZ(_cameraYaw)) * moveSpeed; }
+            float moveSpeed = 10f * dt;
+            Vector3 moveDir = Vector3.Zero;
+            if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)) moveDir.Y -= 1;
+            if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down)) moveDir.Y += 1;
+            if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)) moveDir.X += 1;
+            if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right)) moveDir.X -= 1;
+            if (moveDir != Vector3.Zero) { moveDir.Normalize(); _cameraTarget += Vector3.Transform(moveDir, Matrix.CreateRotationZ(_cameraYaw)) * moveSpeed; }
 
-        int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
-        if (scrollDelta != 0) { _cameraDistance = MathHelper.Clamp(_cameraDistance - scrollDelta * 0.01f, 5f, 50f); _prevScrollValue = mouse.ScrollWheelValue; }
-        
-        // Update vision before potential early returns in combat AI turns
-        if (_visionNeedsUpdate)
-        {
-            RecalculateVision();
-        }
-        // Keep the character sheet data in sync with the in-game creature state.
-        // Persistence still happens at combat end, but this prevents temporary HP mismatches in UI.
-        if (_playerCreature != null && _currentCharacter != null)
-        {
-            _playerCreature.UpdateCharacter(_currentCharacter);
-        }
+            int scrollDelta = mouse.ScrollWheelValue - _prevScrollValue;
+            if (scrollDelta != 0) { _cameraDistance = MathHelper.Clamp(_cameraDistance - scrollDelta * 0.01f, 5f, 50f); _prevScrollValue = mouse.ScrollWheelValue; }
 
-        UpdateHPTooltips();
-
-        // Advance game time and update torches (AppState.Playing)
-        if (_state == AppState.Playing && _currentCampaign != null)
-        {
-            // 1. Advance game time if nothing else is advancing it
-            // (Travel and Map-Waiting advance it themselves)
-            bool isTraveling = _currentCampaign.IsTraveling;
-            bool isAnyMemberBusy = _characters.Exists(c => _currentCampaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
-            bool isWaitingOnMap = _showCampaignMap && isAnyMemberBusy;
-
-            if (!isTraveling && !isWaitingOnMap)
+            // Update vision before potential early returns in combat AI turns
+            if (_visionNeedsUpdate)
             {
-                _currentCampaign.TotalGameMinutes += totalSeconds / 60.0;
+                RecalculateVision();
+            }
+            // Keep the character sheet data in sync with the in-game creature state.
+            // Persistence still happens at combat end, but this prevents temporary HP mismatches in UI.
+            if (_playerCreature != null && _currentCharacter != null)
+            {
+                _playerCreature.UpdateCharacter(_currentCharacter);
             }
 
-            // 2. Unified torch duration update based on TotalGameMinutes delta
-            double deltaMinutes = _currentCampaign.TotalGameMinutes - _lastTotalGameMinutes;
-            if (deltaMinutes > 0)
+            UpdateHPTooltips();
+
+            // Advance game time and update torches (AppState.Playing)
+            if (_state == AppState.Playing && _currentCampaign != null)
             {
-                _torchTimerAccumulator += deltaMinutes;
-                if (_torchTimerAccumulator >= 1.0)
+                // 1. Advance game time if nothing else is advancing it
+                // (Travel and Map-Waiting advance it themselves)
+                bool isTraveling = _currentCampaign.IsTraveling;
+                bool isAnyMemberBusy = _characters.Exists(c => _currentCampaign.PartyMembers.Contains(c.Name) && c.CurrentDonDoffProcess is { IsActive: true });
+                bool isWaitingOnMap = _showCampaignMap && isAnyMemberBusy;
+
+                if (!isTraveling && !isWaitingOnMap)
                 {
-                    int minutesToConsume = (int)Math.Floor(_torchTimerAccumulator);
-                    UpdateTorchDurations(minutesToConsume);
-                    _torchTimerAccumulator -= minutesToConsume;
+                    _currentCampaign.TotalGameMinutes += totalSeconds / 60.0;
                 }
+
+                // 2. Unified torch duration update based on TotalGameMinutes delta
+                double deltaMinutes = _currentCampaign.TotalGameMinutes - _lastTotalGameMinutes;
+                if (deltaMinutes > 0)
+                {
+                    _torchTimerAccumulator += deltaMinutes;
+                    if (_torchTimerAccumulator >= 1.0)
+                    {
+                        int minutesToConsume = (int)Math.Floor(_torchTimerAccumulator);
+                        UpdateTorchDurations(minutesToConsume);
+                        _torchTimerAccumulator -= minutesToConsume;
+                    }
+                }
+                _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
             }
-            _lastTotalGameMinutes = _currentCampaign.TotalGameMinutes;
+
+            // Ensure every combat manager event is reflected in the combat log,
+            // even if it was emitted outside the usual action flow.
+            FlushTurnMessages();
+
+            _prevKb = kb;
+            _prevMouse = mouse;
+            base.Update(gameTime);
         }
-
-        // Ensure every combat manager event is reflected in the combat log,
-        // even if it was emitted outside the usual action flow.
-        FlushTurnMessages();
-
-        _prevKb = kb;
-        _prevMouse = mouse;
-        base.Update(gameTime);
     }
 
     private void CloseCampaignMap()
