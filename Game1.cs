@@ -1786,6 +1786,31 @@ public partial class Game1 : Game
                     creature.DequeueStep();
                     _combatManager.OnStepFinished(creature, finishedStep);
                     _activeMovementSteps.Remove(creature);
+
+                    // Immediately start the next queued step in the same frame
+                    // to avoid a 1-frame pause between tiles (causes jerky movement)
+                    if (creature.IsAlive() && creature.HasQueuedSteps())
+                    {
+                        var nextStep = creature.PeekNextStep();
+                        if (nextStep != null)
+                        {
+                            _combatManager.OnStepStarting(creature, nextStep, _visionSystem);
+
+                            bool canContinue = creature.IsAlive()
+                                && !creature.Conditions.HasCondition(Condition.Incapacitated)
+                                && !creature.Conditions.HasCondition(Condition.Unconscious);
+
+                            if (canContinue && creature.GetRemainingWaypoints().Count == 0)
+                            {
+                                _activeMovementSteps[creature] = nextStep;
+                                creature.MoveTo(nextStep.X, nextStep.Y, nextStep.Z);
+                            }
+                            else if (!canContinue)
+                            {
+                                creature.InterruptMovement();
+                            }
+                        }
+                    }
                 }
 
                 // Camera follow active unit during movement
