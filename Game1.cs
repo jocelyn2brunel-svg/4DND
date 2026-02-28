@@ -2726,8 +2726,8 @@ public partial class Game1 : Game
                                 case AiPhase.Move:
                                     if (currentCombatant.MovementRemaining > 0 && !inMeleeRange)
                                     {
-                                        var moveTarget = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
-                                        if (moveTarget.HasValue && _combatManager.GetCreatureAt(moveTarget.Value.x, moveTarget.Value.y, moveTarget.Value.z) == null)
+                                        var moveTarget = _combatManager.GetMoveDestinationTowards(currentCombatant, playerCreature);
+                                        if (moveTarget.HasValue)
                                         {
                                             _combatManager.Move(currentCombatant, moveTarget.Value.x, moveTarget.Value.y, moveTarget.Value.z, _visionSystem);
                                             FlushTurnMessages();

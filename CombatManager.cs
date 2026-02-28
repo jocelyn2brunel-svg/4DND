@@ -1090,987 +1090,153 @@ public class CombatManager
         return (step.X, step.Y, step.Z);
     }
 
-    private List<TacticalMapNode>? FindPathToAdjacent(Creature creature, Creature target)
-    {
-        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
-        var openSet = new PriorityQueue<TacticalMapNode, int>();
-        openSet.Enqueue(start, HeuristicToAdjacent(start, target));
-
-        var closedSet = new HashSet<TacticalMapNode>();
-        var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
-        var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
-        var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
-        var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
-        var fScore = new Dictionary<TacticalMapNode, int> { [start] = HeuristicToAdjacent(start, target) };
-
-        int iterations = 0;
-        const int maxIterations = 10000;
-
-        while (openSet.Count > 0 && iterations++ < maxIterations)
-        {
-            var current = openSet.Dequeue();
-
-            if (!closedSet.Add(current))
-                continue;
-
-            if (IsAdjacentToTarget(current, target) && CanOccupySpace(creature.Size, current.X, current.Y, current.Z, creature))
-                return ReconstructPath(cameFrom, current);
-
-            foreach (var neighbor in GetNeighbors(creature, current))
-            {
-                bool isDiag = IsDiagonalStep(current, neighbor);
-                int currentDiagParity = diagParity[current];
-                int newDiagParity = isDiag ? 1 - currentDiagParity : currentDiagParity;
-
-                int tentativeTurns = turnCount[current] + GetTurnPenalty(cameFrom, current, neighbor);
-                int tentativeG = gScore[current] + GetMoveCost(creature, current, neighbor, currentDiagParity);
-                int currentBestG = gScore.GetValueOrDefault(neighbor, int.MaxValue);
-                int currentBestTurns = turnCount.GetValueOrDefault(neighbor, int.MaxValue);
-
-                if (tentativeG > currentBestG)
-                    continue;
-                if (tentativeG == currentBestG && tentativeTurns >= currentBestTurns)
-                    continue;
-
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeG;
-                turnCount[neighbor] = tentativeTurns;
-                diagParity[neighbor] = newDiagParity;
-                int tentativeF = tentativeG + HeuristicToAdjacent(neighbor, target);
-                fScore[neighbor] = tentativeF;
-                openSet.Enqueue(neighbor, tentativeF);
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsAdjacentToTarget(TacticalMapNode node, Creature target)
-    {
-        int dx = Abs(node.X - target.X);
-        int dy = Abs(node.Y - target.Y);
-        int dz = Abs(node.Z - target.Z);
-        return Max(Max(dx, dy), dz) == 1;
-    }
-
-    private static int HeuristicToAdjacent(TacticalMapNode node, Creature target)
-    {
-        int dx = Abs(node.X - target.X);
-        int dy = Abs(node.Y - target.Y);
-        int dz = Abs(node.Z - target.Z);
-        int chebyshev = Max(Max(dx, dy), dz);
-        return Max(chebyshev - 1, 0) * 5;
-    }
-
     /// <summary>
-    /// Returns the best single step that moves <paramref name="creature"/> away from
-    /// <paramref name="target"/>, picking the adjacent tile that maximises Chebyshev distance.
-    /// Returns null if the creature is cornered and cannot increase distance.
+    /// Returns the farthest tile along the path towards the target that the creature
+    /// can reach within its remaining movement budget. Unlike <see cref="GetNextStepTowards"/>
+    /// which returns only the immediate next step, this allows the AI to use its full movement.
     /// </summary>
-    public (int x, int y, int z)? GetNextStepAwayFrom(Creature creature, Creature target)
+    public (int x, int y, int z)? GetMoveDestinationTowards(Creature creature, Creature target)
     {
-        (int x, int y, int z)? best = null;
-        int bestDist = CalculateDistance(creature.X, creature.Y, creature.Z, target.X, target.Y, target.Z);
+        var bestPath = FindPathToAdjacent(creature, target);
 
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0)
-                    continue;
-
-                int nx = creature.X + dx;
-                int ny = creature.Y + dy;
-                int nz = creature.Z;
-
-                if (!CanOccupySpace(creature.Size, nx, ny, nz, creature))
-                    continue;
-
-                int dist = CalculateDistance(nx, ny, nz, target.X, target.Y, target.Z);
-                if (dist > bestDist)
-                {
-                    bestDist = dist;
-                    best = (nx, ny, nz);
-                }
-            }
-        }
-
-        return best;
-    }
-
-    private List<TacticalMapNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
-    {
-        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
-        var goal = new TacticalMapNode(targetX, targetY, targetZ);
-
-        // Guard against unreachable goals in the infinite grid (e.g., hovering/clicking a wall).
-        // Without this check, the search may expand indefinitely trying to reach an unoccupiable tile.
-        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ, creature))
+        if (bestPath == null || bestPath.Count < 2)
             return null;
 
-        if (start == goal)
-            return new List<TacticalMapNode> { start };
+        int movementBudget = creature.MovementRemaining;
+        int movementSpent = 0;
+        int diagonalCount = creature.DiagonalStepsTaken;
+        int lastReachable = 0;
 
-        var openSet = new PriorityQueue<TacticalMapNode, int>();
-        openSet.Enqueue(start, Heuristic(start, goal));
-
-        var closedSet = new HashSet<TacticalMapNode>();
-        var cameFrom = new Dictionary<TacticalMapNode, TacticalMapNode>();
-        var gScore = new Dictionary<TacticalMapNode, int> { [start] = 0 };
-        var turnCount = new Dictionary<TacticalMapNode, int> { [start] = 0 };
-        var diagParity = new Dictionary<TacticalMapNode, int> { [start] = creature.DiagonalStepsTaken % 2 };
-        var fScore = new Dictionary<TacticalMapNode, int> { [start] = Heuristic(start, goal) };
-
-        int iterations = 0;
-        const int maxIterations = 10000;
-
-        while (openSet.Count > 0 && iterations++ < maxIterations)
+        for (int i = 1; i < bestPath.Count; i++)
         {
-            var current = openSet.Dequeue();
-            if (current == goal)
-                return ReconstructPath(cameFrom, current);
+            int stepCost = GetMoveCost(creature, bestPath[i - 1], bestPath[i], diagonalCount);
+            if (movementSpent + stepCost > movementBudget)
+                break;
 
-            if (!closedSet.Add(current))
-                continue;
+            movementSpent += stepCost;
+            if (IsDiagonalStep(bestPath[i - 1], bestPath[i]))
+                diagonalCount++;
+            lastReachable = i;
+        }
 
-            foreach (var neighbor in GetNeighbors(creature, current))
+        if (lastReachable == 0)
+            return null;
+
+        var dest = bestPath[lastReachable];
+        return (dest.X, dest.Y, dest.Z);
+    }
+
+    /// <summary>
+    /// Commands the creature to move away from a target position.
+    /// In combat, it enqueues steps that are executed sequentially in the game loop.
+    /// </summary>
+    public void MoveAway(Creature creature, int targetX, int targetY, int targetZ, VisionSystem? visionSystem = null, bool ignoreCost = false)
+    {
+        var path = FindPath(creature, targetX, targetY, targetZ);
+        if (path == null)
+            return;
+
+        int movementSpent = 0;
+        int remaining = ignoreCost ? int.MaxValue : creature.MovementRemaining;
+        int diagonalCount = creature.DiagonalStepsTaken;
+
+        for (int i = path.Count - 1; i > 0; i--)
+        {
+            int stepCost = GetMoveCost(creature, path[i], path[i - 1], diagonalCount);
+
+            if (movementSpent + stepCost > remaining)
+                break;
+
+            bool isDiagonal = IsDiagonalStep(path[i], path[i - 1]);
+            creature.EnqueueStep(path[i - 1].X, path[i - 1].Y, path[i - 1].Z, stepCost, isDiagonal);
+
+            movementSpent += stepCost;
+            if (isDiagonal)
+                diagonalCount++;
+        }
+    }
+
+    /// <summary>
+    /// Called after a creature has visually moved to a new tile.
+    /// Updates logical position, deducts movement cost, and triggers tile effects.
+    /// Also handles movement interruptions (falling, obstacles, etc.).
+    /// </summary>
+    public void OnMoveFinished(Creature mover, MovementStep step, VisionSystem? visionSystem = null)
+    {
+        mover.X = step.X;
+        mover.Y = step.Y;
+        mover.Z = step.Z;
+
+        if (mover.MovementRemaining >= step.Cost)
+            mover.MovementRemaining -= step.Cost;
+        else
+            mover.MovementRemaining = 0;
+
+        if (step.IsDiagonal)
+            mover.DiagonalStepsTaken++;
+
+        // Ball bearings check
+        if (TacticalMap != null && TacticalMap.Get(mover.X, mover.Y, mover.Z) == TileType.BallBearings)
+        {
+            if (!CheckBallBearingsSave(mover))
             {
-                bool isDiag = IsDiagonalStep(current, neighbor);
-                int currentDiagParity = diagParity[current];
-                int newDiagParity = isDiag ? 1 - currentDiagParity : currentDiagParity;
-
-                int tentativeTurns = turnCount[current] + GetTurnPenalty(cameFrom, current, neighbor);
-                int tentativeG = gScore[current] + GetMoveCost(creature, current, neighbor, currentDiagParity);
-                int currentBestG = gScore.GetValueOrDefault(neighbor, int.MaxValue);
-                int currentBestTurns = turnCount.GetValueOrDefault(neighbor, int.MaxValue);
-
-                if (tentativeG > currentBestG)
-                    continue;
-                if (tentativeG == currentBestG && tentativeTurns >= currentBestTurns)
-                    continue;
-
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeG;
-                turnCount[neighbor] = tentativeTurns;
-                diagParity[neighbor] = newDiagParity;
-                int tentativeF = tentativeG + Heuristic(neighbor, goal);
-                fScore[neighbor] = tentativeF;
-                openSet.Enqueue(neighbor, tentativeF);
+                mover.InterruptMovement();
             }
         }
 
-        return null;
+        // Squeezing check
+        mover.IsSqueezingThrough = WouldRequireSqueeze(mover, mover.X, mover.Y, mover.Z);
+
+        // Fall check: if the creature's speed is 0 due to conditions (grapple, paralysis, etc.),
+        // non-hovering flyers will fall (PHB "Flying Movement").
+        CheckFlyingFall(mover);
     }
 
-    private IEnumerable<TacticalMapNode> GetNeighbors(Creature creature, TacticalMapNode node)
+    /// <summary>
+    /// Checks whether a creature can see a target considering obstacles, range, and effects
+    /// like blindness or invisibility.
+    /// </summary>
+    public bool CanSee(Creature creature, Creature target, VisionSystem? visionSystem)
     {
-        // Flying creatures and climbing/swimming creatures can all move in the vertical axis.
-        // CanOccupySpace filters out Empty (air) tiles for non-flyers, so only accessible
-        // tiles at a different Z level (e.g. Climbable) are ever yielded for non-flyers.
-        int minDz = -1;
-        int maxDz = 1;
+        if (target.Conditions.HasCondition(Condition.Invisible))
+            return false; // Targets you cannot see
 
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                for (int dz = minDz; dz <= maxDz; dz++)
-                {
-                    if (dx == 0 && dy == 0 && dz == 0)
-                        continue;
+        if (creature.IsBlinded())
+            return false; // You cannot see when you are blinded
 
-                    int nx = node.X + dx;
-                    int ny = node.Y + dy;
-                    int nz = node.Z + dz;
+        // Check line of sight: no intervening obstacles
+        if (visionSystem != null)
+            return visionSystem.CanSee(creature, target);
 
-                    // A tile is a valid neighbor if the creature can either occupy it (land there)
-                    // or at least pass through it (transit). The pathfinder uses this for routing;
-                    // CanMove / FindPath still enforce that the final destination must be occupiable.
-                    bool canOccupy = CanOccupySpace(creature.Size, nx, ny, nz, creature);
-                    bool canTransit = !canOccupy && CanPassThrough(creature, nx, ny, nz);
-                    if (!canOccupy && !canTransit)
-                        continue;
-                    if (!IsDiagonalMoveAllowed(node.X, node.Y, node.Z, nx, ny, nz))
-                        continue;
-
-                    yield return new TacticalMapNode(nx, ny, nz);
-                }
-            }
-        }
-    }
-
-    private static int GetTurnPenalty(Dictionary<TacticalMapNode, TacticalMapNode> cameFrom, TacticalMapNode current, TacticalMapNode neighbor)
-    {
-        if (!cameFrom.TryGetValue(current, out var previous))
-            return 0;
-
-        int dx1 = current.X - previous.X;
-        int dy1 = current.Y - previous.Y;
-        int dz1 = current.Z - previous.Z;
-
-        int dx2 = neighbor.X - current.X;
-        int dy2 = neighbor.Y - current.Y;
-        int dz2 = neighbor.Z - current.Z;
-
-        return (dx1 == dx2 && dy1 == dy2 && dz1 == dz2) ? 0 : 1;
-    }
-
-    private static int Heuristic(TacticalMapNode a, TacticalMapNode b)
-    {
-        return Max(Max(Abs(b.X - a.X), Abs(b.Y - a.Y)), Abs(b.Z - a.Z)) * 5;
-    }
-
-    private static bool IsDiagonalStep(TacticalMapNode from, TacticalMapNode to)
-    {
-        int axes = 0;
-        if (to.X != from.X) axes++;
-        if (to.Y != from.Y) axes++;
-        if (to.Z != from.Z) axes++;
-        return axes > 1;
-    }
-
-    private int GetMoveCost(Creature creature, TacticalMapNode from, TacticalMapNode to, int diagonalStepsTaken)
-    {
-        // Alternating diagonal rule (DMG variant): odd diagonals cost 5 ft, even diagonals cost 10 ft.
-        // diagonalStepsTaken tracks how many diagonals have been taken so far this turn.
-        bool isDiagonal = IsDiagonalStep(from, to);
-        int baseCost = isDiagonal && diagonalStepsTaken % 2 == 1 ? 10 : 5;
-        // Keep the original step cost so every "1 extra foot per foot" condition adds additively:
-        // prone + difficult terrain = 5 + 5 + 5 = 15 ft (3×), not 5 → 10 → 20 ft (4×).
-        int stepCost = baseCost;
-
-        if (TacticalMap != null)
-        {
-            var tileType = TacticalMap.Get(to.X, to.Y, to.Z);
-            if (tileType == TileType.DifficultTerrain || tileType == TileType.Mud || tileType == TileType.Snow || tileType == TileType.Ice)
-                baseCost += stepCost;
-            // Swimming without a swim speed costs 1 extra foot per foot (PHB "Climbing, Swimming, and Crawling")
-            else if (tileType == TileType.Water && creature.SwimSpeed == 0)
-                baseCost += stepCost;
-            // Climbing without a climb speed costs 1 extra foot per foot
-            else if (tileType == TileType.Climbable && creature.ClimbSpeed == 0)
-                baseCost += stepCost;
-        }
-
-        // Prone creatures must crawl: 1 extra foot per foot (PHB "Climbing, Swimming, and Crawling").
-        // Stacks additively with terrain costs (e.g. prone + difficult terrain = 3× base).
-        if (creature.Conditions.HasCondition(Condition.Prone))
-            baseCost += stepCost;
-
-        // Another creature's space counts as difficult terrain (PHB "Moving Around Other Creatures").
-        // Apply only when transiting through the space, not when squeezing (already doubled below).
-        var occupant = GetCreatureAt(to.X, to.Y, to.Z);
-        if (occupant != null && occupant != creature && !WouldRequireSqueeze(creature, to.X, to.Y, to.Z))
-            baseCost *= 2;
-
-        // If squeezing is required, double the movement cost
-        if (WouldRequireSqueeze(creature, to.X, to.Y, to.Z))
-            baseCost *= 2;
-
-        return baseCost;
-    }
-
-    private static List<TacticalMapNode> ReconstructPath(Dictionary<TacticalMapNode, TacticalMapNode> cameFrom, TacticalMapNode current)
-    {
-        var path = new List<TacticalMapNode> { current };
-        while (cameFrom.TryGetValue(current, out var prev))
-        {
-            current = prev;
-            path.Add(current);
-        }
-
-        path.Reverse();
-        return path;
-    }
-
-    private int CalculatePathCost(Creature creature, List<TacticalMapNode> path)
-    {
-        int cost = 0;
-        int diagonalParity = creature.DiagonalStepsTaken % 2;
-        for (int i = 1; i < path.Count; i++)
-        {
-            bool isDiag = IsDiagonalStep(path[i - 1], path[i]);
-            cost += GetMoveCost(creature, path[i - 1], path[i], diagonalParity);
-            if (isDiag) diagonalParity = 1 - diagonalParity;
-        }
-        return cost;
-    }
-
-    public bool IsPathBlocked(int x1, int y1, int z1, int x2, int y2, int z2)
-    {
-        if (TacticalMap == null) return false;
-
-        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
-        if (dist == 0) return false;
-
-        for (int i = 1; i <= dist; i++)
-        {
-            float t = (float)i / dist;
-            int cx = (int)Math.Round(x1 + (x2 - x1) * t);
-            int cy = (int)Math.Round(y1 + (y2 - y1) * t);
-            int cz = (int)Math.Round(z1 + (z2 - z1) * t);
-
-            var tile = TacticalMap.Get(cx, cy, cz);
-            // Path blocking for ranged attacks/visibility usually ignores flight.
-            // We'll use a simplified check here.
-            if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub || tile == TileType.DungeonWall)
-                return true;
-
-            if (IsDungeonDoor(tile))
-            {
-                var door = DoorStateProvider?.Invoke(cx, cy, cz);
-                if (door == null || !door.IsOpen) return true;
-            }
-
-            float tPrev = (float)(i - 1) / dist;
-            int px = (int)Math.Round(x1 + (x2 - x1) * tPrev);
-            int py = (int)Math.Round(y1 + (y2 - y1) * tPrev);
-            int pz = (int)Math.Round(z1 + (z2 - z1) * tPrev);
-
-            if (!IsDiagonalMoveAllowed(px, py, pz, cx, cy, cz))
-                return true;
-        }
-
-        return false;
-    }
-
-    private int CalculateMovementCost(int x1, int y1, int z1, int x2, int y2, int z2)
-    {
-        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
-        if (dist == 0) return 0;
-
-        int totalCost = 0;
-        int diagonalParity = 0;
-        for (int i = 1; i <= dist; i++)
-        {
-            float tPrev = (float)(i - 1) / dist;
-            float tCurr = (float)i / dist;
-            var from = new TacticalMapNode(
-                (int)Math.Round(x1 + (x2 - x1) * tPrev),
-                (int)Math.Round(y1 + (y2 - y1) * tPrev),
-                (int)Math.Round(z1 + (z2 - z1) * tPrev));
-            var to = new TacticalMapNode(
-                (int)Math.Round(x1 + (x2 - x1) * tCurr),
-                (int)Math.Round(y1 + (y2 - y1) * tCurr),
-                (int)Math.Round(z1 + (z2 - z1) * tCurr));
-
-            bool isDiag = IsDiagonalStep(from, to);
-            int stepCost = isDiag && diagonalParity == 1 ? 10 : 5;
-            if (isDiag) diagonalParity = 1 - diagonalParity;
-
-            if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
-                stepCost += stepCost;
-
-            totalCost += stepCost;
-        }
-
-        return totalCost;
-    }
-
-    private bool IsDiagonalMoveAllowed(int x1, int y1, int z1, int x2, int y2, int z2)
-    {
-        if (TacticalMap == null) return true;
-
-        int dx = x2 - x1;
-        int dy = y2 - y1;
-        int dz = z2 - z1;
-
-        // 2D diagonals check
-        if (Abs(dx) == 1 && Abs(dy) == 1 && dz == 0)
-        {
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) || IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1))
-                return false;
-        }
-        if (Abs(dx) == 1 && Abs(dz) == 1 && dy == 0)
-        {
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
-                return false;
-        }
-        if (Abs(dy) == 1 && Abs(dz) == 1 && dx == 0)
-        {
-            if (IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1) || IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
-                return false;
-        }
-
-        // 3D diagonal check (all 3 axes change)
-        if (Abs(dx) == 1 && Abs(dy) == 1 && Abs(dz) == 1)
-        {
-            // If any adjacent square that shares a face with the path is a blocking tile, block it
-            if (IsBlockingTile(TacticalMap.Get(x1 + dx, y1, z1), x1 + dx, y1, z1) ||
-                IsBlockingTile(TacticalMap.Get(x1, y1 + dy, z1), x1, y1 + dy, z1) ||
-                IsBlockingTile(TacticalMap.Get(x1, y1, z1 + dz), x1, y1, z1 + dz))
-                return false;
-        }
-
-        return true;
-    }
-    
-    private bool IsBlockingTile(TileType tile, int x, int y, int z)
-    {
-        if (tile == TileType.Wall || tile == TileType.Tree || tile == TileType.Shrub || tile == TileType.DungeonWall)
+        // Fallback: creatures in the same space are considered visible to each other
+        if (creature.X == target.X && creature.Y == target.Y && creature.Z == target.Z)
             return true;
 
-        if (IsDungeonDoor(tile))
-        {
-            var door = DoorStateProvider?.Invoke(x, y, z);
-            return door == null || !door.IsOpen;
-        }
-
         return false;
     }
 
-    public int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
-    {
-        // Chebyshev distance (5e grid rules: diagonals cost same as straight)
-        return Max(Max(Abs(x2 - x1), Abs(y2 - y1)), Abs(z2 - z1));
-    }
-    
-    public AttackResult MakeAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
-    {
-        var result = new AttackResult
-        {
-            Attacker = attacker,
-            Target = target
-        };
-        
-        // Check if attacker has an action available
-        if (_inCombat && !attacker.HasAction)
-        {
-            result.IsHit = false;
-            return result;
-        }
-
-        // Loading: can fire only one piece of ammunition per turn, regardless of the number of
-        // attacks you can normally make (PHB "Loading")
-        if (attacker.IsLoadingWeapon && attacker.HasFiredLoadingWeaponThisTurn)
-        {
-            result.IsHit = false;
-            TurnMessages.Add(Loc.Tr("{0} cannot fire again — the {1} needs to be reloaded.", attacker.Name, attacker.AttackName));
-            return result;
-        }
-        if (target.Cover == CoverType.Total)
-        {
-            result.IsHit = false;
-            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
-            return result;
-        }
-
-        // Range validation (PHB "Ranged Attacks" and "Melee Attacks").
-        // Checked before consuming the action so an out-of-range click does not waste the turn.
-        bool beyondNormalRange = false;
-        if (attacker.IsMeleeAttack)
-        {
-            if (!IsInMeleeRange(attacker, target))
-            {
-                result.IsHit = false;
-                TurnMessages.Add(Loc.Tr("{0} cannot reach the target — must be within 5 ft. for a melee attack.", attacker.Name));
-                return result;
-            }
-        }
-        else
-        {
-            int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
-            int normalRange = attacker.NormalRange;
-            int longRange   = attacker.LongRange > 0 ? attacker.LongRange : normalRange * 3;
-
-            if (normalRange > 0 && distanceFeet > longRange)
-            {
-                result.IsHit = false;
-                TurnMessages.Add(Loc.Tr("{0}: target is out of range ({1} ft. away, max {2} ft.).", attacker.Name, distanceFeet, longRange));
-                return result;
-            }
-
-            beyondNormalRange = normalRange > 0 && distanceFeet > normalRange;
-        }
-
-        // Consume the action
-        if (_inCombat)
-            attacker.HasAction = false;
-
-        if (attacker.IsLoadingWeapon)
-            attacker.HasFiredLoadingWeaponThisTurn = true;
-        bool attackerCanSee = true;
-        if (visionSystem != null)
-        {
-            attackerCanSee = visionSystem.CanSee(attacker, target);
-        }
-        else
-        {
-            attackerCanSee = !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
-        }
-        
-        // Determine advantage/disadvantage
-        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
-                           target.Conditions.HasCondition(Condition.Paralyzed) ||
-                           target.Conditions.HasCondition(Condition.Unconscious) ||
-                           target.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls against have advantage
-                           target.IsSqueezingThrough ||  // Attack rolls against a squeezing creature have advantage
-                           attacker.IsHidden ||           // Unseen attacker (hidden via stealth): attack rolls have advantage
-                           attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition): PHB "Unseen Attackers and Targets"
-        bool hasDisadvantage = !attackerCanSee || attacker.IsSqueezingThrough;
-
-        // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
-        attacker.IsHidden = false;
-
-        // Help action: a friendly creature distracted this target, granting advantage on this attack.
-        if (target.IsBeingHelped)
-        {
-            hasAdvantage = true;
-            target.IsBeingHelped = false; // Benefit consumed by this attack
-        }
-
-        // Dodge: attacker has disadvantage if the dodging target can see the attacker
-        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
-        {
-            bool targetCanSeeAttacker = visionSystem != null
-                ? visionSystem.CanSee(target, attacker)
-                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
-            if (targetCanSeeAttacker)
-                hasDisadvantage = true;
-        }
-
-        // Check for sunlight sensitivity (circumstantial disadvantage)
-        if (visionSystem != null && attacker.HasSunlightSensitivity)
-        {
-            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (lightLevel == LightType.Bright)
-                hasDisadvantage = true;
-        }
-
-        // Pack Tactics: advantage if a non-incapacitated ally is within 5 ft. of the target
-        if (attacker.HasPackTactics)
-        {
-            bool allyNearTarget = _combatants.Any(c =>
-                c != attacker &&
-                c.IsPlayer == attacker.IsPlayer &&
-                c.IsAlive() &&
-                !c.Conditions.HasCondition(Condition.Incapacitated) &&
-                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
-            if (allyNearTarget) hasAdvantage = true;
-        }
-
-        var attackCheck = D20CheckFactory.MakeAttackRoll(
-            attacker.AttackName,
-            attacker.AttackBonus,
-            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
-            hasAdvantage,
-            hasDisadvantage,
-            circumstantialBonus: 0
-        );
-
-        // Store roll information in result
-        result.AttackRoll = attackCheck.DieRoll;
-        result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit = attackCheck.Total;
-        result.HasAdvantage = attackCheck.HasAdvantage;
-        result.HasDisadvantage = attackCheck.HasDisadvantage;
-        result.IsCritical = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
-        result.IsHit = attackCheck.Success;
-        result.IsNonProficient = attacker.HasWeaponNonProficiencyPenalty;
-
-        // Roll damage if hit
-        if (result.IsHit)
-        {
-            int damageBonus = attacker.DamageBonus;
-
-            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength (PHB "Rage").
-            // Finesse weapons using DEX do not benefit.
-            if (attacker.IsRaging && attacker.IsMeleeAttack && attacker.IsStrengthBasedAttack)
-            {
-                damageBonus += attacker.RageDamageBonus;
-            }
-
-            result.Damage = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
-            result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
-
-            attacker.HasAttackedThisRound = true;
-        }
-
-        return result;
-    }
-
     /// <summary>
-    /// Makes the Two-Weapon Fighting bonus action attack.
-    /// The attacker must hold a light melee weapon in each hand; the bonus attack uses
-    /// <see cref="Creature.HasBonusAction"/> instead of the main action, and the ability
-    /// modifier is <em>not</em> added to the damage roll (unless it is negative).
-    /// Barbarian rage damage still applies.
+    /// Rolls a D20 for an attack, ability check, or saving throw with optional advantage or disadvantage.
     /// </summary>
-    public AttackResult MakeBonusActionAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    public int RollD20(float advantageMultiplier = 1.0f, float disadvantageMultiplier = 1.0f)
     {
-        var result = new AttackResult
-        {
-            Attacker = attacker,
-            Target = target
-        };
-
-        if (_inCombat && !attacker.HasBonusAction)
-        {
-            result.IsHit = false;
-            return result;
-        }
-
-        // Total cover: cannot be targeted directly (PHB "Cover")
-        if (target.Cover == CoverType.Total)
-        {
-            result.IsHit = false;
-            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
-            return result;
-        }
-
-        // TWF is a melee attack — validate range before consuming the bonus action
-        if (!IsInMeleeRange(attacker, target))
-        {
-            result.IsHit = false;
-            TurnMessages.Add(Loc.Tr("{0} cannot reach the target — must be within 5 ft. for a two-weapon fighting attack.", attacker.Name));
-            return result;
-        }
-
-        if (_inCombat)
-            attacker.HasBonusAction = false;
-
-        bool attackerCanSee = visionSystem != null
-            ? visionSystem.CanSee(attacker, target)
-            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
-
-        bool hasAdvantage = target.Conditions.HasCondition(Condition.Prone) ||
-                            target.Conditions.HasCondition(Condition.Paralyzed) ||
-                            target.Conditions.HasCondition(Condition.Unconscious) ||
-                            target.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls against have advantage
-                            target.IsSqueezingThrough ||
-                            attacker.IsHidden ||
-                            attacker.Conditions.HasCondition(Condition.Invisible);
-        bool hasDisadvantage = !attackerCanSee ||
-                               attacker.IsSqueezingThrough ||
-                               attacker.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls have disadvantage
-
-        attacker.IsHidden = false;
-
-        // Help action: a friendly creature distracted this target, granting advantage on this attack.
-        if (target.IsBeingHelped)
-        {
-            hasAdvantage = true;
-            target.IsBeingHelped = false;
-        }
-
-        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
-        {
-            bool targetCanSeeAttacker = visionSystem != null
-                ? visionSystem.CanSee(target, attacker)
-                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
-            if (targetCanSeeAttacker)
-                hasDisadvantage = true;
-        }
-
-        if (visionSystem != null && attacker.HasSunlightSensitivity)
-        {
-            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (lightLevel == LightType.Bright)
-                hasDisadvantage = true;
-        }
-
-        if (attacker.HasPackTactics)
-        {
-            bool allyNearTarget = _combatants.Any(c =>
-                c != attacker &&
-                c.IsPlayer == attacker.IsPlayer &&
-                c.IsAlive() &&
-                !c.Conditions.HasCondition(Condition.Incapacitated) &&
-                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
-            if (allyNearTarget) hasAdvantage = true;
-        }
-
-        // Make attack roll using D20Check system
-        var attackCheck = D20CheckFactory.MakeAttackRoll(
-            attacker.AttackName,
-            attacker.AttackBonus,
-            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
-            hasAdvantage,
-            hasDisadvantage,
-            circumstantialBonus: 0
-        );
-
-        result.AttackRoll       = attackCheck.DieRoll;
-        result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit       = attackCheck.Total;
-        result.HasAdvantage     = attackCheck.HasAdvantage;
-        result.HasDisadvantage  = attackCheck.HasDisadvantage;
-        result.IsCritical       = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
-        result.IsHit            = attackCheck.Success;
-        result.IsNonProficient  = attacker.HasWeaponNonProficiencyPenalty;
-
-        if (result.IsHit)
-        {
-            // TWF: don't add ability modifier to damage unless it is negative (PHB "Two-Weapon Fighting")
-            int damageBonus = Math.Min(0, attacker.DamageBonus);
-
-            // Barbarian Rage bonus damage: applies to melee weapon attacks using Strength (PHB "Rage").
-            // Finesse weapons using DEX do not benefit.
-            if (attacker.IsRaging && attacker.IsMeleeAttack && attacker.IsStrengthBasedAttack)
-                damageBonus += attacker.RageDamageBonus;
-
-            result.Damage     = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
-            result.DamageType = attacker.CurrentDamageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
-            attacker.HasAttackedThisRound = true;
-        }
-
-        return result;
+        float roll = _random.Next(1, 21);
+        roll += advantageMultiplier * (RollD20Baseline() - 10);
+        roll -= disadvantageMultiplier * (RollD20Baseline() - 10);
+        return (int)Clamp(roll, 1, 20);
     }
 
-    /// <summary>
-    /// Makes a ranged weapon attack
-    /// <para><b>Range:</b> Cannot attack beyond long range. Attack rolls have disadvantage
-    /// when the target is beyond normal range but within long range.</para>
-    /// <para><b>Ranged Attacks in Close Combat:</b> Attack rolls have disadvantage if the
-    /// attacker is within 5 feet of a hostile creature that can see them and isn't incapacitated.</para>
-    /// </summary>
-    /// <param name="attacker">The attacking creature.</param>
-    /// <param name="target">The target creature.</param>
-    /// <param name="visionSystem">Optional vision system for line-of-sight checks.</param>
-    public AttackResult MakeRangedAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    private float RollD20Baseline()
     {
-        var result = new AttackResult
-        {
-            Attacker = attacker,
-            Target = target
-        };
-
-        if (_inCombat && !attacker.HasAction)
-        {
-            result.IsHit = false;
-            return result;
-        }
-
-        int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
-        int normalRange = attacker.NormalRange;
-        int longRange = attacker.LongRange > 0 ? attacker.LongRange : normalRange;
-
-        // Cannot attack beyond long range
-        if (normalRange > 0 && distanceFeet > longRange)
-        {
-            result.IsHit = false;
-            TurnMessages.Add($"{attacker.Name} cannot attack {target.Name} — target is beyond long range ({distanceFeet} ft. / max {longRange} ft.).");
-            return result;
-        }
-
-        // Total cover: cannot be targeted
-        if (target.Cover == CoverType.Total)
-        {
-            result.IsHit = false;
-            TurnMessages.Add($"{target.Name} has total cover and cannot be targeted.");
-            return result;
-        }
-
-        // Net has no effect on Huge or larger creatures (PHB "Special Weapons: Net")
-        if (attacker.IsNetAttack && target.Size >= CreatureSize.Huge)
-        {
-            result.IsHit = false;
-            TurnMessages.Add(Loc.Tr("The net has no effect on {0} — only Large or smaller creatures can be restrained by a net.", target.Name));
-            return result;
-        }
-
-        if (_inCombat)
-            attacker.HasAction = false;
-
-        bool attackerCanSee = visionSystem != null
-            ? visionSystem.CanSee(attacker, target)
-            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
-
-        bool hasAdvantage    = attacker.IsHidden ||
-                               target.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls against have advantage
-        bool hasDisadvantage = !attackerCanSee ||
-                               attacker.Conditions.HasCondition(Condition.Restrained);  // Restrained: attack rolls have disadvantage
-
-        attacker.IsHidden = false;
-
-        // Help action: a friendly creature distracted this target, granting advantage on this attack.
-        if (target.IsBeingHelped)
-        {
-            hasAdvantage = true;
-            target.IsBeingHelped = false;
-        }
-
-        // Beyond normal range: attack roll has disadvantage (PHB "Range")
-        if (normalRange > 0 && distanceFeet > normalRange)
-            hasDisadvantage = true;
-
-        // Ranged attacks in close combat: disadvantage if a hostile within 5 ft. can see the attacker
-        // and isn't incapacitated (PHB "Ranged Attacks in Close Combat")
-        bool hostileAdjacent = _combatants.Any(c =>
-            c != attacker &&
-            c.IsPlayer != attacker.IsPlayer &&
-            c.IsAlive() &&
-            !c.Conditions.HasCondition(Condition.Incapacitated) &&
-            CalculateDistance(c.X, c.Y, c.Z, attacker.X, attacker.Y, attacker.Z) <= 1 &&
-            (visionSystem != null
-                ? visionSystem.CanSee(c, attacker)
-                : !c.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible)));
-
-        if (hostileAdjacent)
-            hasDisadvantage = true;
-
-        if (visionSystem != null && attacker.HasSunlightSensitivity)
-        {
-            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (lightLevel == LightType.Bright)
-                hasDisadvantage = true;
-        }
-
-        if (attacker.HasPackTactics)
-        {
-            bool allyNearTarget = _combatants.Any(c =>
-                c != attacker &&
-                c.IsPlayer == attacker.IsPlayer &&
-                c.IsAlive() &&
-                !c.Conditions.HasCondition(Condition.Incapacitated) &&
-                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
-            if (allyNearTarget) hasAdvantage = true;
-        }
-
-        // Armor non-proficiency: disadvantage on attack rolls involving DEX for ranged (PHB "Armor Proficiency")
-        if (attacker.HasArmorNonProficiencyPenalty)
-            hasDisadvantage = true;
-
-        var attackCheck = D20CheckFactory.MakeAttackRoll(
-            attacker.AttackName,
-            attacker.AttackBonus,
-            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
-            hasAdvantage,
-            hasDisadvantage,
-            circumstantialBonus: 0);
-
-        result.AttackRoll       = attackCheck.DieRoll;
-        result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit       = attackCheck.Total;
-        result.HasAdvantage     = attackCheck.HasAdvantage;
-        result.HasDisadvantage  = attackCheck.HasDisadvantage;
-        result.IsCritical       = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
-        result.IsHit            = attackCheck.Success;
-
-        if (result.IsHit)
-        {
-            if (attacker.IsNetAttack)
-            {
-                // Net: no damage dealt; apply Restrained condition (PHB "Special Weapons: Net")
-                target.Conditions = target.Conditions.AddCondition(Condition.Restrained);
-                result.TargetRestrained = true;
-            }
-            else
-            {
-                result.Damage     = RollDamage(attacker.DamageDice, attacker.DamageBonus, result.IsCritical);
-                result.DamageType = attacker.CurrentDamageType;
-                target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
-            }
-            attacker.HasAttackedThisRound = true;
-        }
-
-        return result;
+        // Roll a D20 with a Gaussian distribution, bell curve around 10.5
+        // Most rolls will be around the middle, fewer at the extremes
+        double u1 = _random.NextDouble();
+        double u2 = _random.NextDouble();
+        double gaussianRoll = Sqrt(-2.0 * Log(u1)) * Cos(2.0 * PI * u2);
+        double adjustedRoll = 10.5 + gaussianRoll * 4; // Adjust mean to 10.5, stretch to fit 1-20
+        return (float)Clamp(adjustedRoll, 1, 20);
     }
 
-    /// <summary>
-    /// Makes a spell attack roll (ranged spell attack) following D&amp;D 5e rules.
-    /// Uses the provided spell attack bonus and damage dice instead of the creature's weapon stats.
-    /// </summary>
-    public AttackResult MakeSpellAttack(Creature attacker, Creature target, int spellAttackBonus, string damageDice, DamageType damageType = DamageType.Force, VisionSystem? visionSystem = null)
-    {
-        var result = new AttackResult
-        {
-            Attacker = attacker,
-            Target = target
-        };
-
-        if (_inCombat && !attacker.HasAction)
-        {
-            result.IsHit = false;
-            return result;
-        }
-
-        // Range validation for spell attacks.
-        if (attacker.NormalRange > 0)
-        {
-            int distanceFeet = CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) * 5;
-            if (distanceFeet > attacker.NormalRange)
-            {
-                result.IsHit = false;
-                TurnMessages.Add(Loc.Tr("{0}: target is out of spell range ({1} ft. away, max {2} ft.).", attacker.Name, distanceFeet, attacker.NormalRange));
-                return result;
-            }
-        }
-
-        if (_inCombat)
-            attacker.HasAction = false;
-
-        bool attackerCanSee = visionSystem != null
-            ? visionSystem.CanSee(attacker, target)
-            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
-
-        bool hasAdvantage = attacker.IsHidden;
-        bool hasDisadvantage = !attackerCanSee;
-
-        attacker.IsHidden = false;
-
-        // Help action: a friendly creature distracted this target, granting advantage on this attack.
-        if (target.IsBeingHelped)
-        {
-            hasAdvantage = true;
-            target.IsBeingHelped = false; // Benefit consumed by this attack
-        }
-
-        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
-        {
-            bool targetCanSeeAttacker = visionSystem != null
-                ? visionSystem.CanSee(target, attacker)
-                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
-            if (targetCanSeeAttacker)
-                hasDisadvantage = true;
-        }
-
-        if (visionSystem != null && attacker.HasSunlightSensitivity)
-        {
-            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
-            if (lightLevel == LightType.Bright)
-                hasDisadvantage = true;
-        }
-
-        var attackCheck = D20CheckFactory.MakeAttackRoll(
-            "Spell Attack",
-            spellAttackBonus,
-            target.ArmorClass,
-            hasAdvantage,
-            hasDisadvantage,
-            circumstantialBonus: 0
-        );
-
-        result.AttackRoll = attackCheck.DieRoll;
-        result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit = attackCheck.Total;
-        result.HasAdvantage = attackCheck.HasAdvantage;
-        result.HasDisadvantage = attackCheck.HasDisadvantage;
-        result.IsCritical = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
-        result.IsHit = attackCheck.Success;
-
-        if (result.IsHit)
-        {
-            result.Damage = RollDamage(damageDice, 0, result.IsCritical);
-            result.DamageType = damageType;
-            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
-            attacker.HasAttackedThisRound = true;
-        }
-
-        return result;
-    }
-
-    public int RollD20()
-    {
-        return _random.Next(1, 21);
-    }
-    
     /// <summary>
     /// Rolls weapon damage, applying critical hit rules (PHB "Critical Hits").
     /// On a critical hit all damage dice — including any extra dice from features such as
@@ -2239,26 +1405,24 @@ public class CombatManager
 
         // Check if any square occupied by the attacker is within reach of any square occupied by the target
         for (int ax = 0; ax < attackerWidth; ax++)
+        for (int ay = 0; ay < attackerHeight; ay++)
         {
-            for (int ay = 0; ay < attackerHeight; ay++)
+            int attackerTileX = attacker.X + ax;
+            int attackerTileY = attacker.Y + ay;
+
+            for (int tx = 0; tx < targetWidth; tx++)
+            for (int ty = 0; ty < targetHeight; ty++)
             {
-                int attackerTileX = attacker.X + ax;
-                int attackerTileY = attacker.Y + ay;
+                int targetTileX = target.X + tx;
+                int targetTileY = target.Y + ty;
 
-                for (int tx = 0; tx < targetWidth; tx++)
-                for (int ty = 0; ty < targetHeight; ty++)
+                int dx = Math.Abs(attackerTileX - targetTileX);
+                int dy = Math.Abs(attackerTileY - targetTileY);
+                int dz = Math.Abs(attacker.Z - target.Z);
+
+                if (dx <= reach && dy <= reach && dz <= reach && (dx + dy + dz) > 0)
                 {
-                    int targetTileX = target.X + tx;
-                    int targetTileY = target.Y + ty;
-
-                    int dx = Math.Abs(attackerTileX - targetTileX);
-                    int dy = Math.Abs(attackerTileY - targetTileY);
-                    int dz = Math.Abs(attacker.Z - target.Z);
-
-                    if (dx <= reach && dy <= reach && dz <= reach && (dx + dy + dz) > 0)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
         }
