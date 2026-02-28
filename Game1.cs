@@ -518,7 +518,7 @@ public partial class Game1 : Game
 
         if (spawnedCount > 0)
         {
-            Update Vision();
+            UpdateVision();
         }
         else
         {
