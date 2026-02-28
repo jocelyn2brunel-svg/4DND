@@ -651,14 +651,14 @@ public class CombatManager
     /// <item>You can move through a hostile creature's space only if the hostile creature
     ///       is at least two sizes larger or smaller than you.</item>
     /// <item>In all cases the occupied space counts as difficult terrain.</item>
+    /// </list>
     /// </para>
     /// </summary>
     private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
 
     private bool IsTileBlocked(TileType type, int x, int y, int z, bool canFly)
     {
-        // Solid natural obstacles that fill an entire cell
-        if (type == TileType.Wall || type == TileType.Tree || type == TileType.Shrub)
+        if (type == TileType.Tree || type == TileType.Shrub)
             return true;
 
         if (type == TileType.Empty && !canFly)
@@ -2007,7 +2007,7 @@ public class CombatManager
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             "Alchemist's Fire (flask)",
-            attackBonus,
+            thrower.GetAbilityModifier(thrower.Dexterity), // Correction ici
             target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
             hasAdvantage,
             hasDisadvantage,
@@ -2024,6 +2024,9 @@ public class CombatManager
 
         if (result.IsHit)
         {
+            result.Damage = RollDamage("1d4", 0, result.IsCritical);
+            result.DamageType = DamageType.Fire;
+            target.TakeDamage(result.Damage, DamageType.Fire, result.IsCritical);
             target.Conditions = target.Conditions.AddCondition(Condition.Burning);
             thrower.HasAttackedThisRound = true;
             TurnMessages.Add(Loc.Tr("{0} is set ablaze by alchemist's fire!", target.Name));
