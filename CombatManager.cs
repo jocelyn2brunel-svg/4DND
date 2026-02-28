@@ -801,6 +801,33 @@ public class CombatManager
     }
     
     /// <summary>
+    /// Attempts to move the creature to the target position, returning true if the move was valid.
+    /// Combines CanMove + Move into a single pathfinding call to avoid redundant A* searches.
+    /// </summary>
+    public bool TryMove(Creature creature, int targetX, int targetY, int targetZ, VisionSystem? visionSystem = null, bool ignoreCost = false)
+    {
+        if (!ignoreCost && creature.MovementRemaining <= 0)
+            return false;
+
+        if (!CanOccupySpace(creature.Size, targetX, targetY, targetZ, creature))
+            return false;
+
+        var path = FindPath(creature, targetX, targetY, targetZ);
+        if (path == null)
+            return false;
+
+        if (!ignoreCost)
+        {
+            int totalCost = CalculatePathCost(creature, path);
+            if (totalCost > creature.MovementRemaining)
+                return false;
+        }
+
+        EnqueuePathSteps(creature, path, ignoreCost);
+        return true;
+    }
+
+    /// <summary>
     /// Commands the creature to move towards a target position.
     /// In combat, it enqueues steps that are executed sequentially in the game loop.
     /// </summary>
@@ -810,6 +837,11 @@ public class CombatManager
         if (path == null)
             return;
 
+        EnqueuePathSteps(creature, path, ignoreCost);
+    }
+
+    private void EnqueuePathSteps(Creature creature, List<TacticalMapNode> path, bool ignoreCost)
+    {
         int movementSpent = 0;
         int remaining = ignoreCost ? int.MaxValue : creature.MovementRemaining;
         int diagonalCount = creature.DiagonalStepsTaken;
@@ -1737,7 +1769,7 @@ public class CombatManager
             if (cleared)
                 TurnMessages.Add($"{creature.Name} clears the obstacle! (Athletics {roll}+{athleticsBonus}={total} vs DC 10)");
             else
-                TurnMessages.Add($"{creature.Name} hits the obstacle! (Athletics {roll}+{athleticsBonus}={total} vs DC 10)");
+                TurnMessages.Add($"{creature.Name} hits the obstacle! (Athletes {roll}+{athleticsBonus}={total} vs DC 10)");
         }
 
         // Difficult terrain landing: DC 10 Dexterity (Acrobatics) or land prone (PHB p.182)
@@ -1770,7 +1802,7 @@ public class CombatManager
     }
 
     /// <summary>
-    /// Takes the Help action: distracts a nearby enemy so that the next ally attack against it
+ /// Takes the Help action: distracts a nearby enemy so that the next ally attack against it
     /// has advantage. The target must be within 5 feet (1 tile) of the helper.
     /// </summary>
     /// <returns>True if the action was successfully taken; false if the required resource is unavailable or the target is out of range.</returns>

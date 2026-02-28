@@ -2369,8 +2369,6 @@ public partial class Game1 : Game
                                 _playerCreature.VisualZ = _playerCreature.Z;
                                 _activeMovementSteps.Remove(_playerCreature);
 
-                                var path = _combatManager.GetPath(_playerCreature, tx, ty, tz);
-
                                 // Check if destination is stairs
                                 if (tileType == TileType.DungeonStairsUp || tileType == TileType.DungeonStairsDown)
                                 {
@@ -2389,16 +2387,16 @@ public partial class Game1 : Game
                                     }
                                 }
 
-                                if (path != null)
+                                // Single TryMove call handles pathfinding + step enqueuing
+                                if (!clickedOnGameplayUiButton && _combatManager.TryMove(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true))
                                 {
-                                    AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
-                                    _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
+                                    AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}).", tx, ty, tz));
                                     KickStartMovement(_playerCreature);
 
                                     // Update vision after movement
                                     UpdateVision();
                                 }
-                                else
+                                else if (!clickedOnGameplayUiButton)
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: no path to ({0}, {1}, {2}).", tx, ty, tz));
                                 }
@@ -2729,24 +2727,22 @@ public partial class Game1 : Game
                                 // Check if tile is empty and within movement range
                                 if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                                 {
-                                    bool canMove = _combatManager.CanMove(currentCombatant, tx, ty, tz);
+                                    // Interrupt any in-progress animation before computing the path
+                                    currentCombatant.InterruptMovement();
+                                    // Snap visual position to logical position so the new path starts cleanly
+                                    currentCombatant.VisualX = currentCombatant.X;
+                                    currentCombatant.VisualY = currentCombatant.Y;
+                                    currentCombatant.VisualZ = currentCombatant.Z;
+                                    _activeMovementSteps.Remove(currentCombatant);
 
-                                    if (canMove)
+                                    int prevX = currentCombatant.X;
+                                    int prevY = currentCombatant.Y;
+                                    int prevZ = currentCombatant.Z;
+                                    int prevMove = currentCombatant.MovementRemaining;
+
+                                    // Single TryMove call: validates reachability and enqueues steps in one pathfinding pass
+                                    if (_combatManager.TryMove(currentCombatant, tx, ty, tz, _visionSystem))
                                     {
-                                        // Interrupt any in-progress animation before computing the path
-                                        currentCombatant.InterruptMovement();
-                                        // Snap visual position to logical position so the new path starts cleanly
-                                        currentCombatant.VisualX = currentCombatant.X;
-                                        currentCombatant.VisualY = currentCombatant.Y;
-                                        currentCombatant.VisualZ = currentCombatant.Z;
-                                        _activeMovementSteps.Remove(currentCombatant);
-
-                                        int prevX = currentCombatant.X;
-                                        int prevY = currentCombatant.Y;
-                                        int prevZ = currentCombatant.Z;
-                                        int prevMove = currentCombatant.MovementRemaining;
-
-                                        _combatManager.Move(currentCombatant, tx, ty, tz, _visionSystem);
                                         KickStartMovement(currentCombatant);
                                         FlushTurnMessages();
 
