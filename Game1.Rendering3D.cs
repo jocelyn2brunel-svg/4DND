@@ -14,6 +14,11 @@ namespace _4DND;
 
 public partial class Game1
 {
+    // Cached reachable positions for the movement perimeter overlay
+    private HashSet<(int x, int y)>? _cachedReachableTiles;
+    private int _cachedReachableViewLevel;
+    private (int x, int y, int z, int movementRemaining) _cachedReachableKey;
+
     private void Initialize3DRendering()
     {
         _basicEffect = new BasicEffect(GraphicsDevice) { VertexColorEnabled = true, LightingEnabled = true };
@@ -843,10 +848,18 @@ public partial class Game1
         if (currentCombatant == null || !currentCombatant.IsPlayer)
             return;
 
-        var reachableTiles = _combatManager.GetReachablePositions(currentCombatant)
-            .Where(t => t.z == _currentViewLevel)
-            .Select(t => (t.x, t.y))
-            .ToHashSet();
+        var key = (currentCombatant.X, currentCombatant.Y, currentCombatant.Z, currentCombatant.MovementRemaining);
+        if (_cachedReachableTiles == null || _cachedReachableKey != key || _cachedReachableViewLevel != _currentViewLevel)
+        {
+            _cachedReachableTiles = _combatManager.GetReachablePositions(currentCombatant)
+                .Where(t => t.z == _currentViewLevel)
+                .Select(t => (t.x, t.y))
+                .ToHashSet();
+            _cachedReachableKey = key;
+            _cachedReachableViewLevel = _currentViewLevel;
+        }
+
+        var reachableTiles = _cachedReachableTiles;
 
         if (reachableTiles.Count == 0)
             return;
