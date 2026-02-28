@@ -296,15 +296,9 @@ namespace _4DND
 
                 if (z < buildingFloors)
                 {
-                    // Walls
-                    if (bx == 0 || bx == buildingWidth - 1 || by == 0 || by == buildingHeight - 1)
-                    {
-                        // Door on one side
-                        if (by == 0 && bx == buildingWidth / 2 && z == 0)
-                            return TileType.DungeonDoorWooden;
-
-                        return TileType.Wall;
-                    }
+                    // Door on one side (still a tile - doors occupy a cell)
+                    if (by == 0 && bx == buildingWidth / 2 && z == 0)
+                        return TileType.DungeonDoorWooden;
 
                     // Stairs
                     if (bx == 1 && by == 1)
@@ -316,13 +310,76 @@ namespace _4DND
                         if (z > 0) return TileType.DungeonStairsDown;
                     }
 
+                    // All interior and perimeter tiles are now walkable floor
                     return TileType.Floor;
                 }
-                // Roof?
                 return TileType.Empty;
             }
 
             return TileType.Floor;
+        }
+
+        /// <summary>
+        /// Compute urban wall edges for a given tile position. Call this alongside GetTileType
+        /// to populate wall edges for procedurally generated urban buildings.
+        /// </summary>
+        public static void AddUrbanWallEdges(int x, int y, int z, int seed, float worldOffsetX, float worldOffsetY, Campaign? campaign, WallEdgeSystem wallEdges)
+        {
+            float absX = (float)x + worldOffsetX * Campaign.TacticalUnitsPerMile;
+            float absY = (float)y + worldOffsetY * Campaign.TacticalUnitsPerMile;
+            float milesX = (absX / Campaign.TacticalUnitsPerMile);
+            float milesY = (absY / Campaign.TacticalUnitsPerMile);
+
+            var loc = GetUrbanLocation(milesX, milesY, campaign);
+            if (loc == null) return;
+
+            const int lotSize = 16;
+            int lotX = (int)Math.Floor(absX / lotSize);
+            int lotY = (int)Math.Floor(absY / lotSize);
+            int localX = (int)Math.Floor(absX) % lotSize;
+            if (localX < 0) localX += lotSize;
+            int localY = (int)Math.Floor(absY) % lotSize;
+            if (localY < 0) localY += lotSize;
+
+            float lotHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode());
+            float densityThreshold = loc.Type switch
+            {
+                SettlementType.Metropolis => 0.8f,
+                SettlementType.City => 0.6f,
+                SettlementType.Town => 0.4f,
+                SettlementType.Village => 0.2f,
+                _ => 0.1f
+            };
+            if (lotHash > densityThreshold) return;
+
+            float distHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode() ^ 999);
+            int buildingWidth = 6, buildingHeight = 6, buildingFloors = 1;
+            if (distHash <= 0.25f) { buildingWidth = 6; buildingHeight = 6; buildingFloors = 1; }
+            else if (distHash <= 0.50f) { buildingWidth = 6; buildingHeight = 6; buildingFloors = 3; }
+            else if (distHash <= 0.75f) { buildingWidth = 10; buildingHeight = 10; buildingFloors = 1; }
+            else { buildingWidth = 10; buildingHeight = 10; buildingFloors = 4; }
+
+            int marginX = (lotSize - buildingWidth) / 2;
+            int marginY = (lotSize - buildingHeight) / 2;
+
+            if (localX >= marginX && localX < marginX + buildingWidth &&
+                localY >= marginY && localY < marginY + buildingHeight)
+            {
+                int bx = localX - marginX;
+                int by = localY - marginY;
+
+                if (z < buildingFloors)
+                {
+                    // Skip the door position
+                    if (by == 0 && bx == buildingWidth / 2 && z == 0) return;
+
+                    // Add wall edges on the building perimeter
+                    if (by == 0) wallEdges.SetWall(x, y, z, WallSide.South);
+                    if (by == buildingHeight - 1) wallEdges.SetWall(x, y, z, WallSide.North);
+                    if (bx == 0) wallEdges.SetWall(x, y, z, WallSide.West);
+                    if (bx == buildingWidth - 1) wallEdges.SetWall(x, y, z, WallSide.East);
+                }
+            }
         }
 
         private static float GetNoise(float x, float y, int seed, float scale, int octaves)

@@ -209,8 +209,9 @@ public partial class Game1
                 Color color = GetTileColor(type, x, y, 0, zLevel);
                 if (color.A == 0) continue;
 
-                if (type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type))
+                if (IsDungeonDoor(type))
                 {
+                    // Doors still render as thin wall-like structures on their tile
                     AddThinWallVertices(_reusableWallVertices, x, y, 0, color);
                 }
                 else if (type == TileType.Tree || type == TileType.Shrub)
@@ -228,6 +229,9 @@ public partial class Game1
                         AddDifficultTerrainLines(_reusableLineVertices, x, y, 0);
                     }
                 }
+
+                // Draw wall edges for this tile
+                AddWallEdgeVertices(_reusableWallVertices, x, y, 0, zLevel);
             }
         }
 
@@ -254,7 +258,7 @@ public partial class Game1
                     Color color = GetTileColor(type, cx, cy, cz, zLevel);
                     if (color.A == 0) continue;
 
-                    if (type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type))
+                    if (IsDungeonDoor(type))
                     {
                         AddThinWallVertices(_reusableWallVertices, cx, cy, cz, color);
                     }
@@ -277,6 +281,9 @@ public partial class Game1
                             AddBallBearingsOverlay(_reusableLineVertices, cx, cy, cz);
                         }
                     }
+
+                    // Draw wall edges for this tile
+                    AddWallEdgeVertices(_reusableWallVertices, cx, cy, cz, zLevel);
                 }
             }
         }
@@ -386,7 +393,7 @@ public partial class Game1
         };
 
         // Deterministic tile-level variation to mimic texture diversity and reduce visible tiling.
-        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock || type == TileType.Tree || type == TileType.Shrub || type == TileType.DungeonFloor || type == TileType.DungeonWall)
+        if (type == TileType.Grass || type == TileType.Floor || type == TileType.Sand || type == TileType.Snow || type == TileType.Rock || type == TileType.Tree || type == TileType.Shrub || type == TileType.DungeonFloor)
         {
             float dryness = Hash01(x, y, z, 11);
             float moisture = Hash01(x, y, z, 23);
@@ -538,13 +545,97 @@ public partial class Game1
         }
     }
 
-    private bool IsWallLike(TileType type) => type == TileType.Wall || type == TileType.DungeonWall || IsDungeonDoor(type);
+    private bool IsWallLike(TileType type) => IsDungeonDoor(type);
     private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
+
+    /// <summary>
+    /// Draw wall edge geometry for all edges of a given tile that have walls in the WallEdgeSystem.
+    /// </summary>
+    private void AddWallEdgeVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, int zLevel)
+    {
+        Color wallColor = new Color(90, 90, 95);
+        if (z < zLevel && z != 0) wallColor *= 0.3f;
+        if (_showVisionOverlay && _playerCreature != null)
+        {
+            bool isVisible = _visionSystem.IsVisible(x, y, z);
+            Color tint = _visionSystem.GetFogOfWarTint(x, y, z, isVisible, _playerCreature);
+            wallColor = ApplyVisionTint(wallColor, tint);
+        }
+        if (wallColor.A == 0) return;
+
+        const float halfTile = 0.5f;
+        const float wallHeight = 1.0f;
+        const float capThickness = 0.05f;
+
+        if (_wallEdges.HasWall(x, y, z, WallSide.North))
+        {
+            Vector3 start = new Vector3(x - halfTile, y + halfTile, z);
+            Vector3 end = new Vector3(x + halfTile, y + halfTile, z);
+            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Backward);
+            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
+        }
+        if (_wallEdges.HasWall(x, y, z, WallSide.South))
+        {
+            Vector3 start = new Vector3(x + halfTile, y - halfTile, z);
+            Vector3 end = new Vector3(x - halfTile, y - halfTile, z);
+            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Forward);
+            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
+        }
+        if (_wallEdges.HasWall(x, y, z, WallSide.East))
+        {
+            Vector3 start = new Vector3(x + halfTile, y + halfTile, z);
+            Vector3 end = new Vector3(x + halfTile, y - halfTile, z);
+            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Right);
+            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
+        }
+        if (_wallEdges.HasWall(x, y, z, WallSide.West))
+        {
+            Vector3 start = new Vector3(x - halfTile, y - halfTile, z);
+            Vector3 end = new Vector3(x - halfTile, y + halfTile, z);
+            AddVerticalPlaneVertices(vertices, start, end, wallHeight, wallColor, Vector3.Left);
+            AddEdgeCapSegment(vertices, start, end, capThickness, wallHeight, wallColor);
+        }
+    }
+
+    /// <summary>
+    /// Draw a thin cap on top of a wall edge segment.
+    /// </summary>
+    private void AddEdgeCapSegment(List<VertexPositionNormalColor> vertices, Vector3 p1, Vector3 p2, float thickness, float wallHeight, Color color)
+    {
+        float topZ = p1.Z + wallHeight;
+        Vector3 dir = Vector3.Normalize(p2 - p1);
+        Vector3 side = Vector3.Cross(dir, Vector3.UnitZ) * thickness;
+
+        Vector3 v1 = new Vector3(p1.X, p1.Y, topZ);
+        Vector3 v2 = new Vector3(p2.X, p2.Y, topZ);
+        Vector3 v3 = v1 - side;
+        Vector3 v4 = v2 - side;
+
+        vertices.Add(new VertexPositionNormalColor(v1, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v3, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v3, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v4, Vector3.Up, color));
+
+        // Also draw cap on the other side
+        Vector3 v5 = v1 + side;
+        Vector3 v6 = v2 + side;
+
+        vertices.Add(new VertexPositionNormalColor(v1, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v5, Vector3.Up, color));
+
+        vertices.Add(new VertexPositionNormalColor(v2, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v6, Vector3.Up, color));
+        vertices.Add(new VertexPositionNormalColor(v5, Vector3.Up, color));
+    }
 
     private void AddThinWallVertices(List<VertexPositionNormalColor> vertices, int x, int y, int z, Color color)
     {
+        // Used for dungeon doors which still occupy a tile.
         // Check neighbors to see which edges need a vertical plane
-        // A plane is drawn if the neighbor is NOT a wall
         bool north = !IsWallLike(_tacticalMap.Get(x, y + 1, z));
         bool south = !IsWallLike(_tacticalMap.Get(x, y - 1, z));
         bool east = !IsWallLike(_tacticalMap.Get(x + 1, y, z));

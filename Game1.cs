@@ -18,6 +18,7 @@ public partial class Game1 : Game
     private SpriteBatch _spriteBatch = null!;
 
     private InfiniteGrid3D<TileType> _tacticalMap = null!;
+    private WallEdgeSystem _wallEdges = new();
     private Texture2D _pixel = null!;
 
     // 3D Camera system
@@ -278,6 +279,8 @@ public partial class Game1 : Game
 
                     if (dungeon.TryGetTile(rx, ry, z, out var dungeonTile))
                     {
+                        // Load dungeon wall edges (offset to tactical coordinates)
+                        LoadDungeonWallEdges(dungeon, dungeonOriginX, dungeonOriginY);
                         return dungeonTile;
                     }
                 }
@@ -290,9 +293,32 @@ public partial class Game1 : Game
         float offsetX = _currentCampaign != null ? (float)Math.Floor(_currentCampaign.PartyX * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile : 0;
         float offsetY = _currentCampaign != null ? (float)Math.Floor(_currentCampaign.PartyY * Campaign.TacticalUnitsPerMile) / Campaign.TacticalUnitsPerMile : 0;
         int floor = _currentCampaign?.CurrentFloor ?? 0;
-        return WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY, floor, _currentCampaign);
+
+        var tileType = WorldGenerator.GetTileType(x, y, z, seed, offsetX, offsetY, floor, _currentCampaign);
+
+        // Generate urban wall edges for this tile
+        WorldGenerator.AddUrbanWallEdges(x, y, z, seed, offsetX, offsetY, _currentCampaign, _wallEdges);
+
+        return tileType;
     }
 
+    /// <summary>
+    /// Cache of dungeon IDs whose wall edges have already been loaded into _wallEdges.
+    /// </summary>
+    private HashSet<string> _loadedDungeonWallEdges = new();
+
+    private void LoadDungeonWallEdges(DungeonData dungeon, int originX, int originY)
+    {
+        string key = $"{dungeon.WorldX},{dungeon.WorldY},{originX},{originY}";
+        if (_loadedDungeonWallEdges.Contains(key)) return;
+        _loadedDungeonWallEdges.Add(key);
+
+        foreach (var edge in dungeon.WallEdges)
+        {
+            _wallEdges.SetWall(edge.X + originX, edge.Y + originY, edge.Z, edge.Side);
+        }
+    }
+    
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -327,23 +353,23 @@ public partial class Game1 : Game
 
         Initialize3DRendering();
         _combatManager.TacticalMap = _tacticalMap;
+        _combatManager.WallEdges = _wallEdges;
         _combatManager.DoorStateProvider = GetDoorState;
         _visionSystem.TacticalMap = _tacticalMap;
+        _visionSystem.WallEdges = _wallEdges;
         _visionSystem.DoorStateProvider = GetDoorState;
         _visionSystem.AmbientLight = _currentCampaign?.GetCurrentLightLevel() ?? LightType.Bright;
 
         // Procedural ground is now handled by InfiniteGrid3D factory.
         
-        // Add some walls
+        // Add some test walls as edges between tiles
         for (int i = -5; i <= 5; i++)
         {
             if (i == 0) continue; // Doorway
-            _tacticalMap.Set(i, 3, 0, TileType.Wall);
-            _tacticalMap.Set(i, 3, 1, TileType.Wall);
+            _wallEdges.SetWall(i, 3, 0, WallSide.North);
+            _wallEdges.SetWall(i, 3, 1, WallSide.North);
         }
 
-        // No debug/test upper-floor platforms.
-        
         try
         {
             Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _savesDir));
@@ -425,7 +451,7 @@ public partial class Game1 : Game
 
     private static bool IsValidPlayerSpawnTile(TileType tile)
     {
-        return tile != TileType.Water && tile != TileType.Wall && tile != TileType.DungeonWall && tile != TileType.Empty;
+        return tile != TileType.Water && tile != TileType.Empty;
     }
 
     private void PlacePlayerAtNearestValidTile(int preferredX = 0, int preferredY = 0, int preferredZ = 0)
@@ -492,7 +518,7 @@ public partial class Game1 : Game
 
         if (spawnedCount > 0)
         {
-            UpdateVision();
+            Update Vision();
         }
         else
         {
@@ -521,7 +547,7 @@ public partial class Game1 : Game
                 continue;
 
             var tile = _tacticalMap.Get(spawnX, spawnY, spawnZ);
-            if (tile == TileType.Wall || tile == TileType.Water || tile == TileType.Empty)
+            if (tile == TileType.Water || tile == TileType.Empty)
                 continue;
 
             Creature enemy = Creature.Create(type, spawnX, spawnY, spawnZ);
@@ -2294,7 +2320,7 @@ public partial class Game1 : Game
                         int tz = hovered.Value.z;
 
                         var tileType = _tacticalMap.Get(tx, ty, tz);
-                        if (tileType != TileType.Wall && tileType != TileType.Tree && tileType != TileType.Shrub && tileType != TileType.Empty)
+                        if (tileType != TileType.Tree && tileType != TileType.Shrub && tileType != TileType.Empty)
                         {
                             var occupant = _combatManager.GetCreatureAt(tx, ty, tz);
                             if (occupant == null)
@@ -2326,7 +2352,6 @@ public partial class Game1 : Game
                                         AddToCombatLog(Loc.Tr("You used the stairs."));
                                         UpdateVision();
                                         clickedOnGameplayUiButton = true;
-                                        return;
                                     }
                                 }
 
@@ -2337,6 +2362,8 @@ public partial class Game1 : Game
                                     // Snap camera to destination so the player sees where they're going
                                     var destOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
                                     _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
+                                    
+                                    // Update vision after movement
                                     UpdateVision();
                                 }
                                 else

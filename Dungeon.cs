@@ -56,6 +56,11 @@ namespace _4DND
         public List<DungeonDoorState> Doors { get; set; } = new();
         public List<DungeonStairs> Stairs { get; set; } = new();
 
+        /// <summary>
+        /// Wall edges stored in the dungeon. Serialized as a list for JSON compatibility.
+        /// </summary>
+        public List<WallEdgeData> WallEdges { get; set; } = new();
+
         // Tiles that are part of the dungeon (relative to dungeon origin)
         // We use string keys because System.Text.Json doesn't support Tuple keys.
         public Dictionary<string, TileType> LayoutOverrides { get; set; } = new();

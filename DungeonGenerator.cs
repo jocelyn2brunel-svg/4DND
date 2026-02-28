@@ -9,6 +9,7 @@ namespace _4DND
     {
         private Random _random;
         private DungeonData _dungeon;
+        private WallEdgeSystem _walls = new();
         private int _seed;
 
         public DungeonGenerator(int seed)
@@ -26,9 +27,13 @@ namespace _4DND
                 WorldY = worldY,
                 Seed = _seed
             };
+            _walls.Clear();
 
             // 1. Starting Area (d10)
             GenerateStartingArea();
+
+            // Serialize wall edges into dungeon data
+            _dungeon.WallEdges = _walls.SerializedEdges;
 
             return _dungeon;
         }
@@ -132,17 +137,8 @@ namespace _4DND
                 }
             }
 
-            // Add walls around room
-            for (int dx = -1; dx <= w; dx++)
-            {
-                SetWallIfEmpty(x + dx, y - 1, z);
-                SetWallIfEmpty(x + dx, y + h, z);
-            }
-            for (int dy = -1; dy <= h; dy++)
-            {
-                SetWallIfEmpty(x - 1, y + dy, z);
-                SetWallIfEmpty(x + w, y + dy, z);
-            }
+            // Add wall edges around room perimeter
+            _walls.AddRoomWalls(x, y, z, w, h);
         }
 
         private int _maxDepth = 10;
@@ -161,16 +157,43 @@ namespace _4DND
                 int px = x + (int)(direction.X * i);
                 int py = y + (int)(direction.Y * i);
 
-                // Add side walls
-                SetWallIfEmpty(px + (int)(direction.Y * (-1)), py - (int)(direction.X * (-1)), z);
-                SetWallIfEmpty(px + (int)(direction.Y * width), py - (int)(direction.X * width), z);
-
                 for (int w = 0; w < width; w++)
                 {
                     int wx = px + (int)(direction.Y * w);
                     int wy = py - (int)(direction.X * w);
                     SetTile(wx, wy, z, TileType.DungeonFloor);
+
+                    // Add wall edges on the sides of the passage
+                    if (w == 0)
+                    {
+                        // Left side wall edge
+                        WallSide leftSide = GetPassageSideWall(direction, isLeft: true);
+                        _walls.SetWall(wx, wy, z, leftSide);
+                    }
+                    if (w == width - 1)
+                    {
+                        // Right side wall edge
+                        WallSide rightSide = GetPassageSideWall(direction, isLeft: false);
+                        _walls.SetWall(wx, wy, z, rightSide);
+                    }
                 }
+            }
+
+            // Remove wall edges where the passage connects to adjacent rooms/passages
+            // (the first and last tiles of the passage should be open toward the direction)
+            for (int w = 0; w < width; w++)
+            {
+                int startWx = x + (int)(direction.Y * w);
+                int startWy = y - (int)(direction.X * w);
+                WallSide entrySide = DirectionToWallSide(-direction);
+                _walls.RemoveWall(startWx, startWy, z, entrySide);
+
+                int endPx = x + (int)(direction.X * (length - 1));
+                int endPy = y + (int)(direction.Y * (length - 1));
+                int endWx = endPx + (int)(direction.Y * w);
+                int endWy = endPy - (int)(direction.X * w);
+                WallSide exitSide = DirectionToWallSide(direction);
+                _walls.RemoveWall(endWx, endWy, z, exitSide);
             }
 
             int endX = x + (int)(direction.X * length);
@@ -203,6 +226,32 @@ namespace _4DND
             }
 
             _currentDepth--;
+        }
+
+        private static WallSide DirectionToWallSide(Vector2 direction)
+        {
+            if (direction.Y > 0) return WallSide.North;
+            if (direction.Y < 0) return WallSide.South;
+            if (direction.X > 0) return WallSide.East;
+            return WallSide.West;
+        }
+
+        private static WallSide GetPassageSideWall(Vector2 direction, bool isLeft)
+        {
+            // direction is the passage travel direction.
+            // Left perpendicular: rotate direction -90 degrees
+            // Right perpendicular: rotate direction +90 degrees
+            if (isLeft)
+            {
+                // Left side: the wall is on the side opposite to the right perpendicular
+                Vector2 leftDir = new Vector2(direction.Y, -direction.X);
+                return DirectionToWallSide(leftDir);
+            }
+            else
+            {
+                Vector2 rightDir = new Vector2(-direction.Y, direction.X);
+                return DirectionToWallSide(rightDir);
+            }
         }
 
         private void GenerateChamber(int x, int y, int z, Vector2 direction)
@@ -258,6 +307,13 @@ namespace _4DND
 
             SetTile(x, y, z, tileType);
 
+            // Remove wall edge where the door is placed so the door tile controls passage
+            WallSide doorSide = DirectionToWallSide(-direction);
+            _walls.RemoveWall(x, y, z, doorSide);
+            // Also remove the opposite side so adjacent room can connect
+            WallSide oppositeSide = DirectionToWallSide(direction);
+            _walls.RemoveWall(x, y, z, oppositeSide);
+
             var door = new DungeonDoorState
             {
                 X = x,
@@ -287,14 +343,6 @@ namespace _4DND
         private void SetTile(int x, int y, int z, TileType type)
         {
             _dungeon.SetTile(x, y, z, type);
-        }
-
-        private void SetWallIfEmpty(int x, int y, int z)
-        {
-            if (!_dungeon.LayoutOverrides.ContainsKey($"{x},{y},{z}"))
-            {
-                _dungeon.SetTile(x, y, z, TileType.DungeonWall);
-            }
         }
     }
 }

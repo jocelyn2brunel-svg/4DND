@@ -13,6 +13,7 @@ public class VisionSystem
     private const int ExploredRetentionRadius = 10000; // Increased for world-wide persistence
 
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
+    public WallEdgeSystem? WallEdges { get; set; }
     public Vector2 WorldOffset { get; set; } = Vector2.Zero;
     public List<LightSource> _lightSources = new();
     public List<AreaEffect> _areaEffects = new();
@@ -292,8 +293,23 @@ public class VisionSystem
             if (TacticalMap != null)
             {
                 var tile = TacticalMap.Get(cx, cy, cz);
-                if (tile == TileType.Wall || tile == TileType.DungeonWall || IsDoorOpaque(tile, cx, cy, cz))
+                if (tile == TileType.Wall || IsDoorOpaque(tile, cx, cy, cz))
                     break;
+            }
+
+            // Check wall edges: if there's a wall between this cell and the next, stop
+            if (i < dist && WallEdges != null)
+            {
+                float nextX = curX + stepX;
+                float nextY = curY + stepY;
+                int ncx = (int)nextX;
+                int ncy = (int)nextY;
+                int ncz = (int)(curZ + stepZ);
+                if (ncx != cx || ncy != cy)
+                {
+                    if (WallEdges.HasWallBetween(cx, cy, cz, ncx, ncy, ncz))
+                        break;
+                }
             }
 
             // Check area effects that block vision
@@ -729,7 +745,13 @@ public class VisionSystem
         if (TacticalMap == null) return true;
 
         int dist = DndMath.CalculateDistance(x1, y1, z1, x2, y2, z2);
-        if (dist <= 1) return true;
+        if (dist <= 1)
+        {
+            // Even adjacent tiles can be blocked by a wall edge
+            if (WallEdges != null && WallEdges.HasWallBetween(x1, y1, z1, x2, y2, z2))
+                return false;
+            return true;
+        }
 
         float stepX = (float)(x2 - x1) / dist;
         float stepY = (float)(y2 - y1) / dist;
@@ -738,6 +760,9 @@ public class VisionSystem
         float curX = x1 + 0.5f;
         float curY = y1 + 0.5f;
         float curZ = z1 + 0.5f;
+
+        int prevCX = x1;
+        int prevCY = y1;
 
         for (int i = 1; i < dist; i++)
         {
@@ -748,9 +773,20 @@ public class VisionSystem
             int cx = (int)curX;
             int cy = (int)curY;
             int cz = (int)curZ;
+
+            // Check wall edge between previous and current cell
+            if (WallEdges != null && (cx != prevCX || cy != prevCY))
+            {
+                if (WallEdges.HasWallBetween(prevCX, prevCY, cz, cx, cy, cz))
+                    return false;
+            }
+
             var tile = TacticalMap.Get(cx, cy, cz);
-            if (tile == TileType.Wall || tile == TileType.DungeonWall || IsDoorOpaque(tile, cx, cy, cz))
+            if (tile == TileType.Wall || IsDoorOpaque(tile, cx, cy, cz))
                 return false;
+
+            prevCX = cx;
+            prevCY = cy;
         }
 
         return true;

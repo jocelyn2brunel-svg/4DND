@@ -98,6 +98,7 @@ public class CombatManager
 
     public readonly record struct TacticalMapNode(int X, int Y, int Z);
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
+    public WallEdgeSystem? WallEdges { get; set; }
     public Func<int, int, int, DungeonDoorState?>? DoorStateProvider { get; set; }
     private readonly List<Creature> _combatants = new();
     private int _currentTurnIndex = 0;
@@ -243,7 +244,7 @@ public class CombatManager
             for (int dy = 0; dy <= 1; dy++)
             {
                 var existing = TacticalMap.Get(originX + dx, originY + dy, originZ);
-                if (existing != TileType.Wall && existing != TileType.Tree &&
+                if (existing != TileType.Tree &&
                     existing != TileType.Shrub && existing != TileType.Empty)
                 {
                     TacticalMap.Set(originX + dx, originY + dy, originZ, TileType.BallBearings);
@@ -650,14 +651,14 @@ public class CombatManager
     /// <item>You can move through a hostile creature's space only if the hostile creature
     ///       is at least two sizes larger or smaller than you.</item>
     /// <item>In all cases the occupied space counts as difficult terrain.</item>
-    /// </list>
     /// </para>
     /// </summary>
     private bool IsDungeonDoor(TileType type) => type == TileType.DungeonDoorWooden || type == TileType.DungeonDoorStone || type == TileType.DungeonDoorIron || type == TileType.DungeonPortcullis || type == TileType.DungeonSecretDoor;
 
     private bool IsTileBlocked(TileType type, int x, int y, int z, bool canFly)
     {
-        if (type == TileType.Wall || type == TileType.Tree || type == TileType.Shrub || type == TileType.DungeonWall)
+        // Solid natural obstacles that fill an entire cell
+        if (type == TileType.Wall || type == TileType.Tree || type == TileType.Shrub)
             return true;
 
         if (type == TileType.Empty && !canFly)
@@ -670,6 +671,14 @@ public class CombatManager
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Check if moving from one tile to an adjacent tile is blocked by a wall edge.
+    /// </summary>
+    private bool IsWallBlocked(int fromX, int fromY, int fromZ, int toX, int toY, int toZ)
+    {
+        return WallEdges?.HasWallBetween(fromX, fromY, fromZ, toX, toY, toZ) == true;
     }
 
     private bool CanPassThrough(Creature mover, int x, int y, int z)
@@ -1851,11 +1860,11 @@ public class CombatManager
             return result;
         }
 
-        if (_inCombat)
-            thrower.HasAction = false;
-
         // Consume the vial regardless of hit or miss
         character.InventoryData.RemoveItem("Acid (vial)");
+
+        if (_inCombat)
+            thrower.HasAction = false;
 
         bool attackerCanSee = visionSystem != null
             ? visionSystem.CanSee(thrower, target)
@@ -1871,7 +1880,7 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee ||
                                thrower.IsSqueezingThrough ||
                                thrower.Conditions.HasCondition(Condition.Restrained) ||
-                               thrower.HasArmorNonProficiencyPenalty;
+                               thrower.HasArmorNonProficientBonus;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -1963,11 +1972,11 @@ public class CombatManager
             return result;
         }
 
-        if (_inCombat)
-            thrower.HasAction = false;
-
         // Consume the flask regardless of hit or miss
         character.InventoryData.RemoveItem("Alchemist's Fire (flask)");
+
+        if (_inCombat)
+            thrower.HasAction = false;
 
         bool attackerCanSee = visionSystem != null
             ? visionSystem.CanSee(thrower, target)
@@ -1983,7 +1992,7 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee ||
                                thrower.IsSqueezingThrough ||
                                thrower.Conditions.HasCondition(Condition.Restrained) ||
-                               thrower.HasArmorNonProficiencyPenalty;
+                               thrower.HasArmorNonProficientBonus;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -1994,18 +2003,7 @@ public class CombatManager
                 hasDisadvantage = true;
         }
 
-        if (visionSystem != null && thrower.HasSunlightSensitivity)
-        {
-            var lightLevel = visionSystem.GetLightLevel(thrower.X, thrower.Y, thrower.Z);
-            if (lightLevel == LightType.Bright)
-                hasDisadvantage = true;
-        }
-
         thrower.IsHidden = false;
-
-        // Improvised ranged attack: DEX modifier, no proficiency bonus
-        int dexMod = thrower.GetAbilityModifier(thrower.Dexterity);
-        int attackBonus = dexMod;
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             "Alchemist's Fire (flask)",
@@ -2193,6 +2191,8 @@ public class CombatManager
             int nx = node.X + dx;
             int ny = node.Y + dy;
             int nz = node.Z + dz;
+            if (IsWallBlocked(node.X, node.Y, node.Z, nx, ny, nz))
+                continue;
             if (CanPassThrough(mover, nx, ny, nz))
                 yield return new TacticalMapNode(nx, ny, nz);
         }
@@ -2219,8 +2219,8 @@ public class CombatManager
         if (start == goal) return new List<TacticalMapNode> { start };
 
         var open = new PriorityQueue<(TacticalMapNode node, int diagCount), int>();
-        var cameFrom = new Dictionary<(TacticalMapNode node, int diagCount), (TacticalMapNode node, int diagCount)>();
-        var gScore = new Dictionary<(TacticalMapNode node, int diagCount), int>();
+        var cameFrom = new Dictionary<(TacticalMapNode node, int), (TacticalMapNode node, int)>();
+        var gScore = new Dictionary<(TacticalMapNode node, int), int>();
 
         int startDiagCount = creature.DiagonalStepsTaken;
         var startState = (start, startDiagCount % 2);
@@ -2354,7 +2354,7 @@ public class CombatManager
                                (target.Conditions.HasCondition(Condition.Prone) && !IsInMeleeRange(attacker, target)) ||
                                attacker.IsSqueezingThrough ||
                                attacker.Conditions.HasCondition(Condition.Restrained) ||
-                               attacker.HasArmorNonProficiencyPenalty;
+                               attacker.HasArmorNonProficientBonus;
 
         if (attacker.IsLanceAttack && DndMath.CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) <= 1)
             hasDisadvantage = true;
@@ -2362,8 +2362,8 @@ public class CombatManager
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
             bool targetCanSeeAttacker = visionSystem != null
-               ? visionSystem.CanSee(target, attacker)
-               : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
             if (targetCanSeeAttacker)
                 hasDisadvantage = true;
         }
@@ -2462,17 +2462,16 @@ public class CombatManager
                             target.IsSqueezingThrough ||
                             attacker.IsHidden ||
                             attacker.Conditions.HasCondition(Condition.Invisible);
-
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough ||
                                attacker.Conditions.HasCondition(Condition.Restrained) ||
-                               attacker.HasArmorNonProficiencyPenalty;
+                               attacker.HasArmorNonProficientBonus;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
             bool targetCanSeeAttacker = visionSystem != null
-               ? visionSystem.CanSee(target, attacker)
-               : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+                ? visionSystem.CanSee(target, attacker)
+                : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
             if (targetCanSeeAttacker)
                 hasDisadvantage = true;
         }
@@ -2487,14 +2486,14 @@ public class CombatManager
             hasDisadvantage,
             circumstantialBonus: 0);
 
-        result.AttackRoll = attackCheck.DieRoll;
+        result.AttackRoll       = attackCheck.DieRoll;
         result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit = attackCheck.Total;
-        result.HasAdvantage = attackCheck.HasAdvantage;
-        result.HasDisadvantage = attackCheck.HasDisadvantage;
-        result.IsCritical = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
-        result.IsHit = attackCheck.Success;
+        result.TotalToHit       = attackCheck.Total;
+        result.HasAdvantage     = attackCheck.HasAdvantage;
+        result.HasDisadvantage  = attackCheck.HasDisadvantage;
+        result.IsCritical       = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
+        result.IsHit            = attackCheck.Success;
 
         if (result.IsHit)
         {
