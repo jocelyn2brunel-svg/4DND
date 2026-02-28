@@ -190,6 +190,36 @@ public partial class Game1 : Game
     private Dictionary<Creature, int> _creatureHPTracker = new();
     private readonly Dictionary<Creature, MovementStep> _activeMovementSteps = new();
 
+    /// <summary>
+    /// Immediately starts the first queued movement step for a creature,
+    /// avoiding a 1-frame delay between enqueuing steps and the animation beginning.
+    /// </summary>
+    private void KickStartMovement(Creature creature)
+    {
+        if (_activeMovementSteps.ContainsKey(creature) || !creature.HasQueuedSteps())
+            return;
+
+        var nextStep = creature.PeekNextStep();
+        if (nextStep == null)
+            return;
+
+        _combatManager.OnStepStarting(creature, nextStep, _visionSystem);
+
+        bool canContinue = creature.IsAlive()
+            && !creature.Conditions.HasCondition(Condition.Incapacitated)
+            && !creature.Conditions.HasCondition(Condition.Unconscious);
+
+        if (canContinue && creature.GetRemainingWaypoints().Count == 0)
+        {
+            _activeMovementSteps[creature] = nextStep;
+            creature.MoveTo(nextStep.X, nextStep.Y, nextStep.Z);
+        }
+        else if (!canContinue)
+        {
+            creature.InterruptMovement();
+        }
+    }
+
     // Ammo tracking for post-battle recovery (PHB "Ammunition")
     private readonly Dictionary<string, int> _ammoFiredThisCombat = new();
 
@@ -2363,6 +2393,7 @@ public partial class Game1 : Game
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
+                                    KickStartMovement(_playerCreature);
 
                                     // Update vision after movement
                                     UpdateVision();
@@ -2716,6 +2747,7 @@ public partial class Game1 : Game
                                         int prevMove = currentCombatant.MovementRemaining;
 
                                         _combatManager.Move(currentCombatant, tx, ty, tz, _visionSystem);
+                                        KickStartMovement(currentCombatant);
                                         FlushTurnMessages();
 
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
