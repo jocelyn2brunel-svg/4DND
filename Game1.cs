@@ -2713,7 +2713,7 @@ public partial class Game1 : Game
                         if (canAct && playerCreature != null)
                         {
                             bool inMeleeRange = _combatManager.IsInMeleeRange(currentCombatant, playerCreature);
-                            int distanceFeet = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z, 
+                            int distanceFeet = DndMath.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
                                                                                   playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
 
                             switch (_currentAiPhase)

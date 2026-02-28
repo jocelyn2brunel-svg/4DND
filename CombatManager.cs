@@ -405,7 +405,7 @@ public class CombatManager
 
         _combatants.RemoveAll(c =>
             !c.IsPlayer &&
-            CalculateDistance(c.X, c.Y, c.Z, centerX, centerY, centerZ) > maxDistance);
+            DndMath.CalculateDistance(c.X, c.Y, c.Z, centerX, centerY, centerZ) > maxDistance);
     }
 
     /// <summary>
@@ -986,7 +986,7 @@ public class CombatManager
                 c.IsPlayer == attacker.IsPlayer &&
                 c.IsAlive() &&
                 !c.Conditions.HasCondition(Condition.Incapacitated) &&
-                CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+                DndMath.CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
             if (allyNearTarget) hasAdvantage = true;
         }
 
@@ -1321,7 +1321,7 @@ public class CombatManager
 
         foreach (var creature in _combatants.Where(c => c.IsAlive()))
         {
-            int dist = CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+            int dist = DndMath.CalculateDistance(creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
             if (dist > radiusTiles) continue;
 
             // PHB "Cover": total cover prevents targeting by spells
@@ -1439,7 +1439,7 @@ public class CombatManager
         {
             if (other.IsPlayer == creature.IsPlayer || !other.IsAlive()) continue;
             
-            int dist = CalculateDistance(creature.X, creature.Y, creature.Z, other.X, other.Y, other.Z);
+            int dist = DndMath.CalculateDistance(creature.X, creature.Y, creature.Z, other.X, other.Y, other.Z);
             if (dist < minDist)
             {
                 minDist = dist;
@@ -1835,7 +1835,7 @@ public class CombatManager
         }
 
         // Range check: 20 ft = 4 squares
-        int distanceSquares = CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
+        int distanceSquares = DndMath.CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
         if (distanceSquares > 4)
         {
             result.IsHit = false;
@@ -1947,7 +1947,7 @@ public class CombatManager
         }
 
         // Range check: 20 ft = 4 squares
-        int distanceSquares = CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
+        int distanceSquares = DndMath.CalculateDistance(thrower.X, thrower.Y, thrower.Z, target.X, target.Y, target.Z);
         if (distanceSquares > 4)
         {
             result.IsHit = false;
@@ -2156,6 +2156,378 @@ public class CombatManager
 
         TurnMessages.Add(Loc.Tr("{0} hits the net but fails to destroy it! ({1} {2} damage — needs 5 slashing to destroy)", attacker.Name, damage, attacker.CurrentDamageType));
         return false;
+    }
+
+    private int GetMoveCost(Creature mover, TacticalMapNode from, TacticalMapNode to, int diagonalCount)
+    {
+        int cost = 5;
+        if (IsDiagonalStep(from, to))
+        {
+            if (diagonalCount % 2 == 1) cost = 10;
+        }
+
+        if (TacticalMap != null && TacticalMap.Get(to.X, to.Y, to.Z) == TileType.DifficultTerrain)
+            cost *= 2;
+
+        if (mover.IsSqueezingThrough)
+            cost *= 2;
+
+        return cost;
+    }
+
+    private bool IsDiagonalStep(TacticalMapNode from, TacticalMapNode to)
+    {
+        int dx = Math.Abs(from.X - to.X);
+        int dy = Math.Abs(from.Y - to.Y);
+        int dz = Math.Abs(from.Z - to.Z);
+        return (dx + dy + dz) > 1 && dx <= 1 && dy <= 1 && dz <= 1;
+    }
+
+    private IEnumerable<TacticalMapNode> GetNeighbors(Creature mover, TacticalMapNode node)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+        for (int dz = -1; dz <= 1; dz++)
+        {
+            if (dx == 0 && dy == 0 && dz == 0) continue;
+            int nx = node.X + dx;
+            int ny = node.Y + dy;
+            int nz = node.Z + dz;
+            if (CanPassThrough(mover, nx, ny, nz))
+                yield return new TacticalMapNode(nx, ny, nz);
+        }
+    }
+
+    private int CalculatePathCost(Creature creature, List<TacticalMapNode> path)
+    {
+        int totalCost = 0;
+        int diagonalCount = creature.DiagonalStepsTaken;
+        for (int i = 1; i < path.Count; i++)
+        {
+            totalCost += GetMoveCost(creature, path[i - 1], path[i], diagonalCount);
+            if (IsDiagonalStep(path[i - 1], path[i]))
+                diagonalCount++;
+        }
+        return totalCost;
+    }
+
+    public List<TacticalMapNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
+    {
+        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        var goal = new TacticalMapNode(targetX, targetY, targetZ);
+
+        if (start == goal) return new List<TacticalMapNode> { start };
+
+        var open = new PriorityQueue<(TacticalMapNode node, int diagCount), int>();
+        var cameFrom = new Dictionary<(TacticalMapNode node, int diagCount), (TacticalMapNode node, int diagCount)>();
+        var gScore = new Dictionary<(TacticalMapNode node, int diagCount), int>();
+
+        int startDiagCount = creature.DiagonalStepsTaken;
+        var startState = (start, startDiagCount % 2);
+        open.Enqueue(startState, 0);
+        gScore[startState] = 0;
+
+        int iterations = 0;
+        const int maxIterations = 2000;
+
+        while (open.Count > 0 && iterations < maxIterations)
+        {
+            iterations++;
+            var current = open.Dequeue();
+
+            if (current.node == goal)
+            {
+                return ReconstructPath(cameFrom, current);
+            }
+
+            foreach (var neighbor in GetNeighbors(creature, current.node))
+            {
+                bool isDiag = IsDiagonalStep(current.node, neighbor);
+                int cost = GetMoveCost(creature, current.node, neighbor, current.diagCount);
+                int tentativeGScore = gScore[current] + cost;
+
+                var nextState = (neighbor, isDiag ? 1 - current.diagCount : current.diagCount);
+
+                if (tentativeGScore < gScore.GetValueOrDefault(nextState, int.MaxValue))
+                {
+                    cameFrom[nextState] = current;
+                    gScore[nextState] = tentativeGScore;
+                    int fScore = tentativeGScore + DndMath.CalculateDistance(neighbor.X, neighbor.Y, neighbor.Z, goal.X, goal.Y, goal.Z) * 5;
+                    open.Enqueue(nextState, fScore);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private List<TacticalMapNode> ReconstructPath(Dictionary<(TacticalMapNode, int), (TacticalMapNode, int)> cameFrom, (TacticalMapNode node, int diagCount) current)
+    {
+        var path = new List<TacticalMapNode> { current.node };
+        while (cameFrom.ContainsKey(current))
+        {
+            current = cameFrom[current];
+            path.Add(current.node);
+        }
+        path.Reverse();
+        return path;
+    }
+
+    public List<TacticalMapNode>? FindPathToAdjacent(Creature creature, Creature target)
+    {
+        var (targetW, targetH) = SizeHelper.GetSpaceInSquares(target.Size);
+        List<TacticalMapNode>? bestPath = null;
+        int minCost = int.MaxValue;
+
+        for (int dx = 0; dx < targetW; dx++)
+        for (int dy = 0; dy < targetH; dy++)
+        {
+            foreach (var adj in GetNeighbors(creature, new TacticalMapNode(target.X + dx, target.Y + dy, target.Z)))
+            {
+                if (!CanOccupySpace(creature.Size, adj.X, adj.Y, adj.Z, creature))
+                    continue;
+
+                var path = FindPath(creature, adj.X, adj.Y, adj.Z);
+                if (path != null)
+                {
+                    int cost = CalculatePathCost(creature, path);
+                    if (cost < minCost)
+                    {
+                        minCost = cost;
+                        bestPath = path;
+                    }
+                }
+            }
+        }
+        return bestPath;
+    }
+
+    public AttackResult MakeAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    {
+        return MakeAttackInternal(attacker, target, visionSystem, isBonusAction: false);
+    }
+
+    public AttackResult MakeBonusActionAttack(Creature attacker, Creature target, VisionSystem? visionSystem = null)
+    {
+        return MakeAttackInternal(attacker, target, visionSystem, isBonusAction: true);
+    }
+
+    private AttackResult MakeAttackInternal(Creature attacker, Creature target, VisionSystem? visionSystem, bool isBonusAction)
+    {
+        var result = new AttackResult { Attacker = attacker, Target = target };
+
+        if (_inCombat)
+        {
+            if (isBonusAction)
+            {
+                if (!attacker.HasBonusAction) { result.IsHit = false; return result; }
+                attacker.HasBonusAction = false;
+            }
+            else
+            {
+                if (!attacker.HasAction) { result.IsHit = false; return result; }
+                attacker.HasAction = false;
+            }
+        }
+
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} has total cover and cannot be targeted.", target.Name));
+            return result;
+        }
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = (target.Conditions.HasCondition(Condition.Prone) && IsInMeleeRange(attacker, target)) ||
+                            target.Conditions.HasCondition(Condition.Paralyzed) ||
+                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.Conditions.HasCondition(Condition.Restrained) ||
+                            target.IsBeingHelped ||
+                            target.IsSqueezingThrough ||
+                            attacker.IsHidden ||
+                            attacker.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasDisadvantage = !attackerCanSee ||
+                               (target.Conditions.HasCondition(Condition.Prone) && !IsInMeleeRange(attacker, target)) ||
+                               attacker.IsSqueezingThrough ||
+                               attacker.Conditions.HasCondition(Condition.Restrained) ||
+                               attacker.HasArmorNonProficiencyPenalty;
+
+        if (attacker.IsLanceAttack && DndMath.CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) <= 1)
+            hasDisadvantage = true;
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+               ? visionSystem.CanSee(target, attacker)
+               : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        if (visionSystem != null && attacker.HasSunlightSensitivity)
+        {
+            var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
+            if (lightLevel == LightType.Bright)
+                hasDisadvantage = true;
+        }
+
+        if (attacker.HasPackTactics)
+        {
+            bool allyNearTarget = _combatants.Any(c =>
+                c != attacker &&
+                c.IsPlayer == attacker.IsPlayer &&
+                c.IsAlive() &&
+                !c.Conditions.HasCondition(Condition.Incapacitated) &&
+                DndMath.CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
+            if (allyNearTarget) hasAdvantage = true;
+        }
+
+        attacker.IsHidden = false;
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attacker.AttackBonus,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0);
+
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            if (attacker.IsNetAttack)
+            {
+                if (target.Size <= CreatureSize.Large)
+                {
+                    target.Conditions = target.Conditions.AddCondition(Condition.Restrained);
+                    result.TargetRestrained = true;
+                }
+            }
+            else
+            {
+                int damageBonus = attacker.DamageBonus;
+                if (attacker.IsRaging && attacker.IsMeleeAttack && attacker.IsStrengthBasedAttack)
+                    damageBonus += attacker.RageDamageBonus;
+
+                result.Damage = RollDamage(attacker.DamageDice, damageBonus, result.IsCritical);
+                result.DamageType = attacker.CurrentDamageType;
+                target.TakeDamage(result.Damage, result.DamageType, result.IsCritical, attacker.IsSilveredAttack);
+            }
+            attacker.HasAttackedThisRound = true;
+        }
+
+        return result;
+    }
+
+    public AttackResult MakeSpellAttack(Creature attacker, Creature target, int attackBonus, string damageDice, DamageType damageType, VisionSystem? visionSystem = null)
+    {
+        var result = new AttackResult { Attacker = attacker, Target = target };
+
+        if (_inCombat && !attacker.HasAction)
+        {
+            result.IsHit = false;
+            return result;
+        }
+
+        if (target.Cover == CoverType.Total)
+        {
+            result.IsHit = false;
+            TurnMessages.Add(Loc.Tr("{0} has total cover and cannot be targeted.", target.Name));
+            return result;
+        }
+
+        if (_inCombat)
+            attacker.HasAction = false;
+
+        bool attackerCanSee = visionSystem != null
+            ? visionSystem.CanSee(attacker, target)
+            : !attacker.IsBlinded() && !target.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasAdvantage = target.Conditions.HasCondition(Condition.Paralyzed) ||
+                            target.Conditions.HasCondition(Condition.Unconscious) ||
+                            target.Conditions.HasCondition(Condition.Restrained) ||
+                            target.IsBeingHelped ||
+                            target.IsSqueezingThrough ||
+                            attacker.IsHidden ||
+                            attacker.Conditions.HasCondition(Condition.Invisible);
+
+        bool hasDisadvantage = !attackerCanSee ||
+                               attacker.IsSqueezingThrough ||
+                               attacker.Conditions.HasCondition(Condition.Restrained) ||
+                               attacker.HasArmorNonProficiencyPenalty;
+
+        if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
+        {
+            bool targetCanSeeAttacker = visionSystem != null
+               ? visionSystem.CanSee(target, attacker)
+               : !target.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible);
+            if (targetCanSeeAttacker)
+                hasDisadvantage = true;
+        }
+
+        attacker.IsHidden = false;
+
+        var attackCheck = D20CheckFactory.MakeAttackRoll(
+            attacker.AttackName,
+            attackBonus,
+            target.ArmorClass + DndMath.GetCoverBonus(target.Cover),
+            hasAdvantage,
+            hasDisadvantage,
+            circumstantialBonus: 0);
+
+        result.AttackRoll = attackCheck.DieRoll;
+        result.TotalAttackBonus = attackCheck.BaseModifier;
+        result.TotalToHit = attackCheck.Total;
+        result.HasAdvantage = attackCheck.HasAdvantage;
+        result.HasDisadvantage = attackCheck.HasDisadvantage;
+        result.IsCritical = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
+        result.IsHit = attackCheck.Success;
+
+        if (result.IsHit)
+        {
+            result.Damage = RollDamage(damageDice, 0, result.IsCritical);
+            result.DamageType = damageType;
+            target.TakeDamage(result.Damage, result.DamageType, result.IsCritical);
+        }
+
+        return result;
+    }
+
+    public (int x, int y, int z)? GetNextStepAwayFrom(Creature creature, Creature target)
+    {
+        TacticalMapNode current = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        TacticalMapNode? bestStep = null;
+        int maxDist = DndMath.CalculateDistance(creature.X, creature.Y, creature.Z, target.X, target.Y, target.Z);
+
+        foreach (var neighbor in GetNeighbors(creature, current))
+        {
+            if (!CanOccupySpace(creature.Size, neighbor.X, neighbor.Y, neighbor.Z, creature))
+                continue;
+
+            int dist = DndMath.CalculateDistance(neighbor.X, neighbor.Y, neighbor.Z, target.X, target.Y, target.Z);
+            if (dist > maxDist)
+            {
+                maxDist = dist;
+                bestStep = neighbor;
+            }
+        }
+
+        if (bestStep.HasValue)
+            return (bestStep.Value.X, bestStep.Value.Y, bestStep.Value.Z);
+        return null;
     }
 }
 

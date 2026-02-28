@@ -319,6 +319,25 @@ namespace _4DND
         ///   <item>Compare adjusted XP against party thresholds to determine difficulty.</item>
         /// </list>
         /// </summary>
+        /// <summary>
+        /// Calculates the Chebyshev distance between two 3D points in grid tiles.
+        /// </summary>
+        public static int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
+        {
+            return Math.Max(Math.Max(Math.Abs(x2 - x1), Math.Abs(y2 - y1)), Math.Abs(z2 - z1));
+        }
+
+        /// <summary>
+        /// Calculates the difficulty of a combat encounter following DMG p.82-84.
+        ///
+        /// <para>Steps performed:</para>
+        /// <list type="number">
+        ///   <item>Sum all party XP thresholds at each tier to get party thresholds.</item>
+        ///   <item>Sum raw monster XP rewards.</item>
+        ///   <item>Multiply by the monster-count multiplier (adjusted for party size).</item>
+        ///   <item>Compare adjusted XP against party thresholds to determine difficulty.</item>
+        /// </list>
+        /// </summary>
         /// <param name="partyLevels">Level of each player character in the party.</param>
         /// <param name="monsterXPRewards">XP reward of each monster in the encounter.</param>
         /// <returns>A <see cref="EncounterDifficultyResult"/> with full breakdown.</returns>
