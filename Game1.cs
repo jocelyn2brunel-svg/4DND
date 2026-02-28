@@ -2726,10 +2726,10 @@ public partial class Game1 : Game
                                 case AiPhase.Move:
                                     if (currentCombatant.MovementRemaining > 0 && !inMeleeRange)
                                     {
-                                        var nextStep = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
-                                        if (nextStep.HasValue && _combatManager.GetCreatureAt(nextStep.Value.x, nextStep.Value.y, nextStep.Value.z) == null && _combatManager.CanMove(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z))
+                                        var moveTarget = _combatManager.GetNextStepTowards(currentCombatant, playerCreature);
+                                        if (moveTarget.HasValue && _combatManager.GetCreatureAt(moveTarget.Value.x, moveTarget.Value.y, moveTarget.Value.z) == null)
                                         {
-                                            _combatManager.Move(currentCombatant, nextStep.Value.x, nextStep.Value.y, nextStep.Value.z, _visionSystem);
+                                            _combatManager.Move(currentCombatant, moveTarget.Value.x, moveTarget.Value.y, moveTarget.Value.z, _visionSystem);
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
                                             UpdateVision();

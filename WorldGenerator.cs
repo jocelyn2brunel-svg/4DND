@@ -167,6 +167,9 @@ namespace _4DND
                 if (z > targetZ) return TileType.Empty;
             }
 
+            // Overworld: no tiles below ground level (z < 0 is void)
+            if (floor >= 0 && z < 0) return TileType.Empty;
+
             if (floor < 0 && z > 0) return TileType.Empty;
 
             // Local noise for tile variation using absolute world coordinates
