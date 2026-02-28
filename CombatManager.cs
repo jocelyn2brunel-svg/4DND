@@ -1880,7 +1880,7 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee ||
                                thrower.IsSqueezingThrough ||
                                thrower.Conditions.HasCondition(Condition.Restrained) ||
-                               thrower.HasArmorNonProficientBonus;
+                               thrower.HasArmorNonProficiencyPenalty;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -1992,7 +1992,7 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee ||
                                thrower.IsSqueezingThrough ||
                                thrower.Conditions.HasCondition(Condition.Restrained) ||
-                               thrower.HasArmorNonProficientBonus;
+                               thrower.HasArmorNonProficiencyPenalty;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
@@ -2357,7 +2357,7 @@ public class CombatManager
                                (target.Conditions.HasCondition(Condition.Prone) && !IsInMeleeRange(attacker, target)) ||
                                attacker.IsSqueezingThrough ||
                                attacker.Conditions.HasCondition(Condition.Restrained) ||
-                               attacker.HasArmorNonProficientBonus;
+                               attacker.HasArmorNonProficiencyPenalty;
 
         if (attacker.IsLanceAttack && DndMath.CalculateDistance(attacker.X, attacker.Y, attacker.Z, target.X, target.Y, target.Z) <= 1)
             hasDisadvantage = true;
@@ -2468,7 +2468,7 @@ public class CombatManager
         bool hasDisadvantage = !attackerCanSee ||
                                attacker.IsSqueezingThrough ||
                                attacker.Conditions.HasCondition(Condition.Restrained) ||
-                               attacker.HasArmorNonProficientBonus;
+                               attacker.HasArmorNonProficiencyPenalty;
 
         if (target.IsDodging && !target.Conditions.HasCondition(Condition.Incapacitated) && target.Speed > 0)
         {
