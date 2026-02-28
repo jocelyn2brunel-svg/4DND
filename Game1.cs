@@ -2359,9 +2359,6 @@ public partial class Game1 : Game
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
-                                    // Snap camera to destination so the player sees where they're going
-                                    var destOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
-                                    _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
                                     
                                     // Update vision after movement
                                     UpdateVision();
@@ -2720,10 +2717,6 @@ public partial class Game1 : Game
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog(Loc.Tr("{0} moved to ({1}, {2}, {3}) [{4}ft, {5}ft remaining]", currentCombatant.Name, currentCombatant.X, currentCombatant.Y, currentCombatant.Z, distanceInFeet, currentCombatant.MovementRemaining));
                                         _selectedAction = CombatAction.Move;
-
-                                        // Snap camera to destination so the player sees where they're going
-                                        var destOffset = SizeHelper.GetCenterOffset(_playerCreature?.Size ?? CreatureSize.Medium);
-                                        _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
                                         
                                         // Update vision after movement
                                         UpdateVision();
