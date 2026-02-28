@@ -238,7 +238,7 @@ namespace _4DND
             if (localY < 0) localY += lotSize;
 
             // Deterministic hash for this lot
-            float lotHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode());
+            float lotHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name));
 
             // Population influences density
             float densityThreshold = loc.Type switch
@@ -254,7 +254,7 @@ namespace _4DND
 
             // Distribution of building sizes/heights
             // 1/4 normal, 1/4 taller, 1/4 larger, 1/4 both
-            float distHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode() ^ 999);
+            float distHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name) ^ 999);
             int buildingWidth = 6;
             int buildingHeight = 6;
             int buildingFloors = 1;
@@ -341,7 +341,7 @@ namespace _4DND
             int localY = (int)Math.Floor(absY) % lotSize;
             if (localY < 0) localY += lotSize;
 
-            float lotHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode());
+            float lotHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name));
             float densityThreshold = loc.Type switch
             {
                 SettlementType.Metropolis => 0.8f,
@@ -352,7 +352,7 @@ namespace _4DND
             };
             if (lotHash > densityThreshold) return;
 
-            float distHash = Hash(lotX, lotY, seed ^ loc.Name.GetHashCode() ^ 999);
+            float distHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name) ^ 999);
             int buildingWidth = 6, buildingHeight = 6, buildingFloors = 1;
             if (distHash <= 0.25f) { buildingWidth = 6; buildingHeight = 6; buildingFloors = 1; }
             else if (distHash <= 0.50f) { buildingWidth = 6; buildingHeight = 6; buildingFloors = 3; }
@@ -431,6 +431,27 @@ namespace _4DND
                 h ^= h >> 16;
                 uint u = (uint)h;
                 return (u & 0x00FFFFFF) / 16777215f;
+            }
+        }
+
+        /// <summary>
+        /// Deterministic string hash (FNV-1a). Unlike string.GetHashCode(),
+        /// this returns the same value across process restarts so that
+        /// procedural generation based on location names is stable.
+        /// </summary>
+        private static int StableStringHash(string s)
+        {
+            unchecked
+            {
+                const int fnvOffsetBasis = unchecked((int)2166136261);
+                const int fnvPrime = 16777619;
+                int hash = fnvOffsetBasis;
+                foreach (char c in s)
+                {
+                    hash ^= c;
+                    hash *= fnvPrime;
+                }
+                return hash;
             }
         }
     }
