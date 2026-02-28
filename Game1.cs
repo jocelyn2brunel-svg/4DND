@@ -81,6 +81,7 @@ public partial class Game1 : Game
     private bool _isMultiplayerMode = false;
     private int _lastIntPartyX;
     private int _lastIntPartyY;
+    private bool _wasTraveling;
     private Vector3 _scrollOffset = Vector3.Zero;
     private float _lastTotalTacticalX;
     private float _lastTotalTacticalY;
@@ -1616,23 +1617,47 @@ public partial class Game1 : Game
                             _playerCreature.VisualZ = _playerCreature.Z;
                     }
 
-                    if (intX != _lastIntPartyX || intY != _lastIntPartyY)
+                    // Detect travel-end: rebuild the tactical map exactly once
+                    if (_wasTraveling && !_currentCampaign.IsTraveling)
                     {
                         _tacticalMap.Clear();
                         _urbanDoorStates.Clear();
-                        _lastIntPartyX = intX;
-                        _lastIntPartyY = intY;
                         PlacePlayerAtNearestValidTile();
                         _playerCreature?.InterruptMovement();
                         _cameraTarget = Vector3.Zero;
 
-                        // Pre-warm the tile cache so the next render frame does not
-                        // stall generating thousands of procedural tiles on-demand.
                         int warmCenterX = _playerCreature?.X ?? 0;
                         int warmCenterY = _playerCreature?.Y ?? 0;
                         _tacticalMap.PreWarm(warmCenterX, warmCenterY, 0, 40);
 
                         UpdateVision();
+                        _currentCampaign.PartyPositionChanged = false;
+                    }
+                    _wasTraveling = _currentCampaign.IsTraveling;
+
+                    if (intX != _lastIntPartyX || intY != _lastIntPartyY)
+                    {
+                        _lastIntPartyX = intX;
+                        _lastIntPartyY = intY;
+
+                        // Skip the expensive tactical map rebuild while traveling —
+                        // the map is not interactive and will be rebuilt once when travel ends.
+                        if (!_currentCampaign.IsTraveling)
+                        {
+                            _tacticalMap.Clear();
+                            _urbanDoorStates.Clear();
+                            PlacePlayerAtNearestValidTile();
+                            _playerCreature?.InterruptMovement();
+                            _cameraTarget = Vector3.Zero;
+
+                            // Pre-warm the tile cache so the next render frame does not
+                            // stall generating thousands of procedural tiles on-demand.
+                            int warmCenterX = _playerCreature?.X ?? 0;
+                            int warmCenterY = _playerCreature?.Y ?? 0;
+                            _tacticalMap.PreWarm(warmCenterX, warmCenterY, 0, 40);
+
+                            UpdateVision();
+                        }
                         _currentCampaign.PartyPositionChanged = false;
                     }
 
@@ -2391,9 +2416,7 @@ public partial class Game1 : Game
                             var occupant = _combatManager.GetCreatureAt(tx, ty, tz);
                             if (occupant == null)
                             {
-                                // Interrupt any in-progress animation BEFORE computing the path,
-                                // so that X,Y,Z reflects the creature's actual (interrupted) position
-                                // rather than the final destination of a previous move.
+                                // Interrupt any in-progress animation BEFORE computing the path
                                 _playerCreature.InterruptMovement();
                                 // Snap visual position to logical position so the new path starts cleanly
                                 _playerCreature.VisualX = _playerCreature.X;
@@ -2759,7 +2782,7 @@ public partial class Game1 : Game
                                 // Check if tile is empty and within movement range
                                 if (_combatManager.GetCreatureAt(tx, ty, tz) == null)
                                 {
-                                    // Interrupt any in-progress animation before computing the path
+                                    // Interrupt any in-progress animation BEFORE computing the path
                                     currentCombatant.InterruptMovement();
                                     // Snap visual position to logical position so the new path starts cleanly
                                     currentCombatant.VisualX = currentCombatant.X;
