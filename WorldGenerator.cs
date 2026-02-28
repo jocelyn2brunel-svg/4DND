@@ -237,20 +237,15 @@ namespace _4DND
             int localY = (int)Math.Floor(absY) % lotSize;
             if (localY < 0) localY += lotSize;
 
-            // Deterministic hash for this lot
-            float lotHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name));
+            // Only generate a building on the single lot that contains the settlement center
+            var (centerMilesX, centerMilesY) = Campaign.AxialToMiles(loc.X, loc.Y);
+            float centerAbsX = centerMilesX * Campaign.TacticalUnitsPerMile;
+            float centerAbsY = centerMilesY * Campaign.TacticalUnitsPerMile;
+            int centerLotX = (int)Math.Floor(centerAbsX / lotSize);
+            int centerLotY = (int)Math.Floor(centerAbsY / lotSize);
 
-            // Population influences density
-            float densityThreshold = loc.Type switch
-            {
-                SettlementType.Metropolis => 0.8f,
-                SettlementType.City => 0.6f,
-                SettlementType.Town => 0.4f,
-                SettlementType.Village => 0.2f,
-                _ => 0.1f
-            };
-
-            if (lotHash > densityThreshold) return TileType.Floor;
+            if (lotX != centerLotX || lotY != centerLotY)
+                return TileType.Floor;
 
             // Distribution of building sizes/heights
             // 1/4 normal, 1/4 taller, 1/4 larger, 1/4 both
@@ -341,16 +336,15 @@ namespace _4DND
             int localY = (int)Math.Floor(absY) % lotSize;
             if (localY < 0) localY += lotSize;
 
-            float lotHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name));
-            float densityThreshold = loc.Type switch
-            {
-                SettlementType.Metropolis => 0.8f,
-                SettlementType.City => 0.6f,
-                SettlementType.Town => 0.4f,
-                SettlementType.Village => 0.2f,
-                _ => 0.1f
-            };
-            if (lotHash > densityThreshold) return;
+            // Only generate walls for the single lot that contains the settlement center
+            var (centerMilesX, centerMilesY) = Campaign.AxialToMiles(loc.X, loc.Y);
+            float centerAbsX = centerMilesX * Campaign.TacticalUnitsPerMile;
+            float centerAbsY = centerMilesY * Campaign.TacticalUnitsPerMile;
+            int centerLotX = (int)Math.Floor(centerAbsX / lotSize);
+            int centerLotY = (int)Math.Floor(centerAbsY / lotSize);
+
+            if (lotX != centerLotX || lotY != centerLotY)
+                return;
 
             float distHash = Hash(lotX, lotY, seed ^ StableStringHash(loc.Name) ^ 999);
             int buildingWidth = 6, buildingHeight = 6, buildingFloors = 1;
