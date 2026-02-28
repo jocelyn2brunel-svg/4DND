@@ -290,6 +290,19 @@ public partial class CombatManager
     }
 
     /// <summary>
+    /// Gets a path starting from an explicit position rather than the creature's logical position.
+    /// Used to preview paths when the creature is mid-movement.
+    /// </summary>
+    public List<(int x, int y, int z)>? GetPath(Creature creature, int startX, int startY, int startZ, int targetX, int targetY, int targetZ)
+    {
+        var path = FindPath(creature, startX, startY, startZ, targetX, targetY, targetZ);
+        if (path == null)
+            return null;
+
+        return path.Select(n => (n.X, n.Y, n.Z)).ToList();
+    }
+
+    /// <summary>
     /// Gets all map positions reachable by the creature with its remaining movement.
     /// The start tile is excluded from the result.
     /// </summary>
@@ -467,7 +480,12 @@ public partial class CombatManager
 
     public List<TacticalMapNode>? FindPath(Creature creature, int targetX, int targetY, int targetZ)
     {
-        var start = new TacticalMapNode(creature.X, creature.Y, creature.Z);
+        return FindPath(creature, creature.X, creature.Y, creature.Z, targetX, targetY, targetZ);
+    }
+
+    public List<TacticalMapNode>? FindPath(Creature creature, int startX, int startY, int startZ, int targetX, int targetY, int targetZ)
+    {
+        var start = new TacticalMapNode(startX, startY, startZ);
         var goal = new TacticalMapNode(targetX, targetY, targetZ);
 
         if (start == goal) return new List<TacticalMapNode> { start };

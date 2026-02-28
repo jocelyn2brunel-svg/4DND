@@ -908,6 +908,7 @@ public partial class Game1
 
         // 1. Draw through remaining waypoints (current movement in progress)
         var waypoints = _playerCreature.GetRemainingWaypoints();
+        bool isMoving = waypoints.Count > 0 || _playerCreature.HasQueuedSteps();
         foreach (var wp in waypoints)
         {
             Vector3 nextPoint = new Vector3(wp.X + offset.X, wp.Y + offset.Y, wp.Z + zOffset);
@@ -915,10 +916,16 @@ public partial class Game1
             previousPoint = nextPoint;
         }
 
-        // 2. Draw potential new path from logical position to hover target
+        // 2. Draw potential new path from current (or destination) position to hover target
         if (_combatManager.GetCreatureAt(targetX, targetY, targetZ) == null)
         {
-            var path = _combatManager.GetPath(_playerCreature, targetX, targetY, targetZ);
+            // When mid-movement, compute path from the movement destination
+            // so the preview connects smoothly to the end of the current waypoints.
+            int startX = isMoving ? _playerCreature.TargetX : _playerCreature.X;
+            int startY = isMoving ? _playerCreature.TargetY : _playerCreature.Y;
+            int startZ = isMoving ? _playerCreature.TargetZ : _playerCreature.Z;
+
+            var path = _combatManager.GetPath(_playerCreature, startX, startY, startZ, targetX, targetY, targetZ);
             if (path != null && path.Count >= 2)
             {
                 Color hoverPathColor = (_combatManager.InCombat && !_combatManager.CanMove(_playerCreature, targetX, targetY, targetZ))
