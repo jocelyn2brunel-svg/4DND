@@ -8,7 +8,7 @@ namespace _4DND
     public class DungeonGenerator
     {
         private Random _random;
-        private DungeonData _dungeon;
+        private DungeonData _dungeon = null!;
         private WallEdgeSystem _walls = new();
         private int _seed;
 

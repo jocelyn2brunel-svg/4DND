@@ -1983,7 +1983,7 @@ public partial class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
-                        else if (combatCastSpellButtonRect.Contains(mouse.Position) && IsSpellcasterClass(_currentCharacter.Class))
+                        else if (combatCastSpellButtonRect.Contains(mouse.Position) && _currentCharacter != null && IsSpellcasterClass(_currentCharacter.Class))
                         {
                             if (_selectedAction == CombatAction.CastSpell)
                             {
@@ -2288,7 +2288,7 @@ public partial class Game1 : Game
                 if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                 {
                     // Cancel travel if player clicks on tactical map
-                    if (_currentCampaign.IsTraveling)
+                    if (_currentCampaign != null && _currentCampaign.IsTraveling)
                     {
                         _currentCampaign.IsTraveling = false;
                         _currentCampaign.SetTravelMessage(Loc.Tr("Travel cancelled."));
@@ -2720,9 +2720,9 @@ public partial class Game1 : Game
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog(Loc.Tr("{0} moved to ({1}, {2}, {3}) [{4}ft, {5}ft remaining]", currentCombatant.Name, currentCombatant.X, currentCombatant.Y, currentCombatant.Z, distanceInFeet, currentCombatant.MovementRemaining));
                                         _selectedAction = CombatAction.Move;
-                                        
+
                                         // Snap camera to destination so the player sees where they're going
-                                        var destOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
+                                        var destOffset = SizeHelper.GetCenterOffset(_playerCreature?.Size ?? CreatureSize.Medium);
                                         _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
                                         
                                         // Update vision after movement
