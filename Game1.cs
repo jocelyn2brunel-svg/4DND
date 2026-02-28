@@ -450,7 +450,7 @@ public partial class Game1 : Game
         _showCombatUI = true;
         _selectedAction = CombatAction.Move;
         _currentAiPhase = AiPhase.Start;
-        _aiDelayTimer = 1.0f;
+        _aiDelayTimer = 0.5f;
         AddToCombatLog(Loc.Tr("Combat started!"));
         AddToCombatLog(Loc.Tr("Round {0} begins!", _combatManager.CurrentRound));
         
@@ -2797,7 +2797,7 @@ public partial class Game1 : Game
                                 case AiPhase.Start:
                                     _aiDidSomethingThisTurn = false;
                                     _currentAiPhase = AiPhase.Move;
-                                    break;
+                                    goto case AiPhase.Move;
 
                                 case AiPhase.Move:
                                     if (currentCombatant.MovementRemaining > 0 && !inMeleeRange)
@@ -2806,6 +2806,7 @@ public partial class Game1 : Game
                                         if (moveTarget.HasValue)
                                         {
                                             _combatManager.Move(currentCombatant, moveTarget.Value.x, moveTarget.Value.y, moveTarget.Value.z, _visionSystem);
+                                            KickStartMovement(currentCombatant);
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} moved", currentCombatant.Name));
                                             UpdateVision();
@@ -2864,6 +2865,7 @@ public partial class Game1 : Game
                                         if (retreatStep.HasValue && _combatManager.GetCreatureAt(retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z) == null && _combatManager.CanMove(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z))
                                         {
                                             _combatManager.Move(currentCombatant, retreatStep.Value.x, retreatStep.Value.y, retreatStep.Value.z, _visionSystem);
+                                            KickStartMovement(currentCombatant);
                                             FlushTurnMessages();
                                             AddToCombatLog(Loc.Tr("{0} retreats", currentCombatant.Name));
                                             UpdateVision();
@@ -2885,7 +2887,7 @@ public partial class Game1 : Game
                                         AddToCombatLog(Loc.Tr("=== Round {0} ===", newRound));
 
                                     _currentAiPhase = AiPhase.Start;
-                                    _aiDelayTimer = _aiDidSomethingThisTurn ? 0.5f : 0f;
+                                    _aiDelayTimer = _aiDidSomethingThisTurn ? 0.2f : 0f;
                                     break;
                             }
                         }
