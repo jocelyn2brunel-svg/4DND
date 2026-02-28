@@ -728,7 +728,7 @@ public class VisionSystem
     {
         if (TacticalMap == null) return true;
 
-        int dist = CalculateDistance(x1, y1, z1, x2, y2, z2);
+        int dist = DndMath.CalculateDistance(x1, y1, z1, x2, y2, z2);
         if (dist <= 1) return true;
 
         float stepX = (float)(x2 - x1) / dist;
@@ -754,11 +754,6 @@ public class VisionSystem
         }
 
         return true;
-    }
-
-    private int CalculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
-    {
-        return Math.Max(Math.Max(Math.Abs(x2 - x1), Math.Abs(y2 - y1)), Math.Abs(z2 - z1));
     }
 
     public void UpdateAreaEffects()
