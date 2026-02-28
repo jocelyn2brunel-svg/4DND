@@ -1729,8 +1729,7 @@ public partial class Game1 : Game
                 }
 
                 // Camera follow active unit during movement
-                bool shouldFollow = (creature.IsMoving() && _combatManager.InCombat && _combatManager.CurrentCombatant == creature)
-                                 || (creature.IsMoving() && !_combatManager.InCombat && creature == _playerCreature);
+                bool shouldFollow = creature.IsMoving() && _combatManager.InCombat && _combatManager.CurrentCombatant == creature;
                 if (shouldFollow)
                 {
                     var offset = SizeHelper.GetCenterOffset(creature.Size);
@@ -2271,7 +2270,15 @@ public partial class Game1 : Game
                         clickedOnGameplayUiButton = true;
                     }
 
-                    if (isAnyUnitMoving) return; // Block new orders while moving
+                    // In exploration mode, allow the player to interrupt their own movement
+                    // by clicking a new destination. Only block if a non-player unit is animating.
+                    if (isAnyUnitMoving)
+                    {
+                        bool onlyPlayerMoving = _playerCreature?.IsMoving() == true
+                            && !_combatManager.Combatants.Any(c => c != _playerCreature && c.IsMoving());
+                        if (!onlyPlayerMoving)
+                            return; // Block new orders while a non-player unit is moving
+                    }
 
                     var hovered = GetHoveredTile();
                     if (hovered.HasValue && IsDungeonDoor(_tacticalMap.Get(hovered.Value.x, hovered.Value.y, hovered.Value.z)))
@@ -2296,6 +2303,11 @@ public partial class Game1 : Game
                                 // so that X,Y,Z reflects the creature's actual (interrupted) position
                                 // rather than the final destination of a previous move.
                                 _playerCreature.InterruptMovement();
+                                // Snap visual position to logical position so the new path starts cleanly
+                                _playerCreature.VisualX = _playerCreature.X;
+                                _playerCreature.VisualY = _playerCreature.Y;
+                                _playerCreature.VisualZ = _playerCreature.Z;
+                                _activeMovementSteps.Remove(_playerCreature);
 
                                 var path = _combatManager.GetPath(_playerCreature, tx, ty, tz);
 
@@ -2308,8 +2320,10 @@ public partial class Game1 : Game
                                     {
                                         _playerCreature.TeleportTo(tx, ty, stairs.TargetZ);
                                         _currentViewLevel = stairs.TargetZ;
+                                        // Center camera on new position after teleport
+                                        var stairsOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
+                                        _cameraTarget = new Vector3(tx + stairsOffset.X, ty + stairsOffset.Y, stairs.TargetZ);
                                         AddToCombatLog(Loc.Tr("You used the stairs."));
-                                        AddToCombatLog(Loc.Tr("Tile clicked: stairs at ({0}, {1}, {2}) to level {3}.", tx, ty, tz, stairs.TargetZ));
                                         UpdateVision();
                                         clickedOnGameplayUiButton = true;
                                         return;
@@ -2320,6 +2334,9 @@ public partial class Game1 : Game
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
+                                    // Snap camera to destination so the player sees where they're going
+                                    var destOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
+                                    _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
                                     UpdateVision();
                                 }
                                 else
@@ -2659,6 +2676,10 @@ public partial class Game1 : Game
                                     {
                                         // Interrupt any in-progress animation before computing the path
                                         currentCombatant.InterruptMovement();
+                                        // Snap visual position to logical position so the new path starts cleanly
+                                        currentCombatant.VisualX = currentCombatant.X;
+                                        currentCombatant.VisualY = currentCombatant.Y;
+                                        currentCombatant.VisualZ = currentCombatant.Z;
                                         _activeMovementSteps.Remove(currentCombatant);
 
                                         int prevX = currentCombatant.X;
@@ -2672,6 +2693,10 @@ public partial class Game1 : Game
                                         int distanceInFeet = prevMove - currentCombatant.MovementRemaining;
                                         AddToCombatLog(Loc.Tr("{0} moved to ({1}, {2}, {3}) [{4}ft, {5}ft remaining]", currentCombatant.Name, currentCombatant.X, currentCombatant.Y, currentCombatant.Z, distanceInFeet, currentCombatant.MovementRemaining));
                                         _selectedAction = CombatAction.Move;
+                                        
+                                        // Snap camera to destination so the player sees where they're going
+                                        var destOffset = SizeHelper.GetCenterOffset(_playerCreature.Size);
+                                        _cameraTarget = new Vector3(tx + destOffset.X, ty + destOffset.Y, tz);
                                         
                                         // Update vision after movement
                                         UpdateVision();
@@ -2713,8 +2738,7 @@ public partial class Game1 : Game
                         if (canAct && playerCreature != null)
                         {
                             bool inMeleeRange = _combatManager.IsInMeleeRange(currentCombatant, playerCreature);
-                            int distanceFeet = DndMath.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
-                                                                                  playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
+                            int distanceFeet = DndMath.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z, playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
 
                             switch (_currentAiPhase)
                             {
