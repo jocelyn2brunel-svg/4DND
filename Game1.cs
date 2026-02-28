@@ -2320,12 +2320,12 @@ public partial class Game1 : Game
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: moving to ({0}, {1}, {2}) over {3} step(s).", tx, ty, tz, Math.Max(0, path.Count - 1)));
                                     _combatManager.Move(_playerCreature, tx, ty, tz, _visionSystem, ignoreCost: true);
+                                    UpdateVision();
                                 }
                                 else
                                 {
                                     AddToCombatLog(Loc.Tr("Tile clicked: no path to ({0}, {1}, {2}).", tx, ty, tz));
                                 }
-                                UpdateVision();
                             }
                             else
                             {
@@ -2527,25 +2527,8 @@ public partial class Game1 : Game
                                         }
                                         else
                                             AddTooltip(target, Loc.Tr("Missed!"), Color.LightGray);
-                                        _diceRollAnimation.Start(result.AttackRoll);
-                                        _selectedAction = CombatAction.Move;
-
-                                        if (!wasInCombat && target.IsAlive())
-                                            StartCombatWithNearbyEnemies();
-                                        else if (wasInCombat && !_combatManager.InCombat)
-                                        {
-                                            AddToCombatLog(Loc.Tr("Combat ended!"));
-                                            if (_playerCreature != null && _currentCharacter != null)
-                                            {
-                                                _playerCreature.UpdateCharacter(_currentCharacter);
-                                                SaveCharacters();
-                                            }
-                                        }
                                     }
-                                    else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
-                                    {
-                                        AddToCombatLog(Loc.Tr("No action available!"));
-                                    }
+                                    _selectedAction = CombatAction.Move;
                                 }
                             }
                         }
@@ -2631,7 +2614,7 @@ public partial class Game1 : Game
                                         }
                                         else if (wasInCombat && !_combatManager.InCombat)
                                         {
-                                        AddToCombatLog(Loc.Tr("Combat ended!"));
+                                            AddToCombatLog(Loc.Tr("Combat ended!"));
                                             if (_playerCreature != null && _currentCharacter != null)
                                             {
                                                 _playerCreature.UpdateCharacter(_currentCharacter);
@@ -2658,6 +2641,9 @@ public partial class Game1 : Game
                         // Simple: click to move
                         if (mouseClickedThisFrame && !clickedOnGameplayUiButton)
                         {
+                            // Block new move orders while the creature is still animating
+                            if (currentCombatant.IsMoving()) return;
+
                             var hovered = GetHoveredTile();
                             if (hovered.HasValue)
                             {
@@ -2671,6 +2657,10 @@ public partial class Game1 : Game
 
                                     if (canMove)
                                     {
+                                        // Interrupt any in-progress animation before computing the path
+                                        currentCombatant.InterruptMovement();
+                                        _activeMovementSteps.Remove(currentCombatant);
+
                                         int prevX = currentCombatant.X;
                                         int prevY = currentCombatant.Y;
                                         int prevZ = currentCombatant.Z;
@@ -2723,7 +2713,7 @@ public partial class Game1 : Game
                         if (canAct && playerCreature != null)
                         {
                             bool inMeleeRange = _combatManager.IsInMeleeRange(currentCombatant, playerCreature);
-                            int distanceFeet = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z,
+                            int distanceFeet = _combatManager.CalculateDistance(currentCombatant.X, currentCombatant.Y, currentCombatant.Z, 
                                                                                   playerCreature.X, playerCreature.Y, playerCreature.Z) * 5;
 
                             switch (_currentAiPhase)

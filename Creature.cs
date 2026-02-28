@@ -1053,6 +1053,15 @@ public class Creature
                 VisualZ += dz * t;
             }
         }
+        else if (_movementWaypoints.Count > 0)
+        {
+            // Already at the waypoint position — dequeue immediately so the step completes
+            VisualX = target.X;
+            VisualY = target.Y;
+            VisualZ = target.Z;
+            _movementWaypoints.Dequeue();
+            JustFinishedStep = true;
+        }
     }
     
     /// <summary>

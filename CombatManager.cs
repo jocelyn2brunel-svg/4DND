@@ -96,7 +96,7 @@ public class CombatManager
         return selectedEnemies;
     }
 
-    private readonly record struct TacticalMapNode(int X, int Y, int Z);
+    public readonly record struct TacticalMapNode(int X, int Y, int Z);
     public InfiniteGrid3D<TileType>? TacticalMap { get; set; }
     public Func<int, int, int, DungeonDoorState?>? DoorStateProvider { get; set; }
     private readonly List<Creature> _combatants = new();
@@ -1607,10 +1607,7 @@ public class CombatManager
                            target.IsSqueezingThrough ||  // Attack rolls against a squeezing creature have advantage
                            attacker.IsHidden ||           // Unseen attacker (hidden via stealth): attack rolls have advantage
                            attacker.Conditions.HasCondition(Condition.Invisible); // Unseen attacker (Invisible condition): PHB "Unseen Attackers and Targets"
-        bool hasDisadvantage = !attackerCanSee ||
-                               attacker.IsSqueezingThrough ||   // Squeezing creature has disadvantage on attack rolls
-                               attacker.Conditions.HasCondition(Condition.Restrained) ||  // Restrained: attack rolls have disadvantage
-                               beyondNormalRange;               // Ranged attack beyond normal range (PHB "Ranged Attacks")
+        bool hasDisadvantage = !attackerCanSee || attacker.IsSqueezingThrough;
 
         // Reveal the attacker after striking — attacking ends the hidden condition (PHB "Unseen Attackers and Targets").
         attacker.IsHidden = false;
@@ -1637,9 +1634,7 @@ public class CombatManager
         {
             var lightLevel = visionSystem.GetLightLevel(attacker.X, attacker.Y, attacker.Z);
             if (lightLevel == LightType.Bright)
-            {
                 hasDisadvantage = true;
-            }
         }
 
         // Pack Tactics: advantage if a non-incapacitated ally is within 5 ft. of the target
@@ -1651,33 +1646,9 @@ public class CombatManager
                 c.IsAlive() &&
                 !c.Conditions.HasCondition(Condition.Incapacitated) &&
                 CalculateDistance(c.X, c.Y, c.Z, target.X, target.Y, target.Z) <= 1);
-
-            if (allyNearTarget)
-                hasAdvantage = true;
+            if (allyNearTarget) hasAdvantage = true;
         }
 
-        // Armor non-proficiency: disadvantage on attack rolls involving STR or DEX (PHB "Armor Proficiency")
-        if (attacker.HasArmorNonProficiencyPenalty)
-            hasDisadvantage = true;
-
-        // Heavy weapon: Small and Tiny creatures have disadvantage on attack rolls (PHB "Heavy")
-        if (attacker.IsHeavyWeaponAttack && attacker.Size <= CreatureSize.Small)
-            hasDisadvantage = true;
-
-        // Lance: disadvantage on attack rolls when within 5 feet of a hostile creature other than the target (PHB "Special Weapons")
-        if (attacker.IsLanceAttack)
-        {
-            bool hostileAdjacentNonTarget = _combatants.Any(c =>
-                c != attacker &&
-                c != target &&
-                c.IsPlayer != attacker.IsPlayer &&
-                c.IsAlive() &&
-                CalculateDistance(attacker.X, attacker.Y, attacker.Z, c.X, c.Y, c.Z) <= 1);
-            if (hostileAdjacentNonTarget)
-                hasDisadvantage = true;
-        }
-
-        // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
             attacker.AttackBonus,
@@ -1811,10 +1782,7 @@ public class CombatManager
             if (allyNearTarget) hasAdvantage = true;
         }
 
-        // Armor non-proficiency: disadvantage on attack rolls involving STR or DEX (PHB "Armor Proficiency")
-        if (attacker.HasArmorNonProficiencyPenalty)
-            hasDisadvantage = true;
-
+        // Make attack roll using D20Check system
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             attacker.AttackName,
             attacker.AttackBonus,
@@ -1889,7 +1857,7 @@ public class CombatManager
             return result;
         }
 
-        // Total cover: cannot be targeted directly (PHB "Cover")
+        // Total cover: cannot be targeted
         if (target.Cover == CoverType.Total)
         {
             result.IsHit = false;
@@ -2068,21 +2036,6 @@ public class CombatManager
             if (lightLevel == LightType.Bright)
                 hasDisadvantage = true;
         }
-
-        // Ranged attacks in close combat: disadvantage if a hostile within 5 ft. can see the attacker
-        // and isn't incapacitated (PHB "Ranged Attacks in Close Combat")
-        bool spellHostileAdjacent = _combatants.Any(c =>
-            c != attacker &&
-            c.IsPlayer != attacker.IsPlayer &&
-            c.IsAlive() &&
-            !c.Conditions.HasCondition(Condition.Incapacitated) &&
-            CalculateDistance(c.X, c.Y, c.Z, attacker.X, attacker.Y, attacker.Z) <= 1 &&
-            (visionSystem != null
-                ? visionSystem.CanSee(c, attacker)
-                : !c.IsBlinded() && !attacker.Conditions.HasCondition(Condition.Invisible)));
-
-        if (spellHostileAdjacent)
-            hasDisadvantage = true;
 
         var attackCheck = D20CheckFactory.MakeAttackRoll(
             "Spell Attack",
@@ -2800,6 +2753,7 @@ public class CombatManager
         if (result.IsHit)
         {
             result.Damage = RollDamage("2d6", 0, result.IsCritical);
+            result.DamageType = DamageType.Acid;
             target.TakeDamage(result.Damage, DamageType.Acid, result.IsCritical);
             thrower.HasAttackedThisRound = true;
         }
@@ -2897,16 +2851,14 @@ public class CombatManager
             hasDisadvantage,
             circumstantialBonus: 0);
 
-        result.AttackRoll = attackCheck.DieRoll;
+        result.AttackRoll       = attackCheck.DieRoll;
         result.TotalAttackBonus = attackCheck.BaseModifier;
-        result.TotalToHit = attackCheck.Total;
-        result.HasAdvantage = attackCheck.HasAdvantage;
-        result.HasDisadvantage = attackCheck.HasDisadvantage;
-        result.IsCritical = attackCheck.IsCriticalHit;
-        result.IsCriticalMiss = attackCheck.IsCriticalMiss;
-        result.IsHit = attackCheck.Success;
-        result.IsNonProficient = true;
-        result.DamageType = DamageType.Fire;
+        result.TotalToHit       = attackCheck.Total;
+        result.HasAdvantage     = attackCheck.HasAdvantage;
+        result.HasDisadvantage  = attackCheck.HasDisadvantage;
+        result.IsCritical       = attackCheck.IsCriticalHit;
+        result.IsCriticalMiss   = attackCheck.IsCriticalMiss;
+        result.IsHit            = attackCheck.Success;
 
         if (result.IsHit)
         {
