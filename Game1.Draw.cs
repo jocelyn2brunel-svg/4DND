@@ -141,6 +141,12 @@ public partial class Game1
         return new Rectangle(grappleRect.Right + 10, grappleRect.Y, grappleRect.Width, grappleRect.Height);
     }
 
+    private Rectangle GetCombatBreathWeaponButtonRect(Viewport viewport)
+    {
+        var throwAcidRect = GetCombatThrowAcidButtonRect(viewport);
+        return new Rectangle(throwAcidRect.Right + 10, throwAcidRect.Y, throwAcidRect.Width, throwAcidRect.Height);
+    }
+
     private Rectangle GetCombatDisengageButtonRect(Viewport viewport)
     {
         var dashRect = GetCombatDashButtonRect(viewport);
@@ -449,6 +455,15 @@ public partial class Game1
                 return true;
         }
 
+        if ((_selectedAction == CombatAction.Attack || _selectedAction == CombatAction.BreathWeapon)
+            && currentCombatant.HasAction
+            && currentCombatant.BreathWeaponAvailable
+            && _currentCharacter != null && Race.GetRace(_currentCharacter.Race).HasBreathWeapon)
+        {
+            if (GetCombatBreathWeaponButtonRect(viewport).Contains(mousePosition))
+                return true;
+        }
+
         return false;
     }
     
@@ -478,6 +493,31 @@ public partial class Game1
             DrawEnemySightLinesToPlayer();
             var hovered = GetHoveredTile();
             DrawHoveredMovementPath(hovered);
+
+            // Draw breath weapon area-of-effect outline while aiming
+            if (_selectedAction == CombatAction.BreathWeapon && _playerCreature != null && _currentCharacter != null)
+            {
+                int aimX = hovered.HasValue ? hovered.Value.x : _playerCreature.X + 1;
+                int aimY = hovered.HasValue ? hovered.Value.y : _playerCreature.Y;
+                float dx = aimX - _playerCreature.X;
+                float dy = aimY - _playerCreature.Y;
+                float hAngle = (dx == 0 && dy == 0) ? 0f : MathF.Atan2(dy, dx);
+                var entry = Race.DraconicAncestryTable[_currentCharacter.DragonAncestry];
+                Color breathColor = entry.DamageType switch
+                {
+                    DamageType.Fire      => new Color(255, 100, 20),
+                    DamageType.Cold      => new Color(100, 200, 255),
+                    DamageType.Lightning => new Color(200, 200, 50),
+                    DamageType.Acid      => new Color(100, 220, 50),
+                    DamageType.Poison    => new Color(120, 80, 200),
+                    _                   => Color.Orange
+                };
+                DrawBreathWeaponOutline(
+                    _playerCreature.VisualX, _playerCreature.VisualY, _playerCreature.VisualZ,
+                    hAngle, _breathWeaponVerticalAngle,
+                    entry.BreathWeaponShape, breathColor);
+            }
+
             if (hovered.HasValue)
             {
                 hoveredX = hovered.Value.x;
@@ -996,6 +1036,23 @@ public partial class Game1
                                 isAnyUnitMoving);
                         }
 
+                        bool isBreathWeaponVisible = (_selectedAction == CombatAction.Attack || _selectedAction == CombatAction.BreathWeapon)
+                            && currentCombatant.HasAction
+                            && currentCombatant.BreathWeaponAvailable
+                            && _currentCharacter != null && Race.GetRace(_currentCharacter.Race).HasBreathWeapon;
+                        if (isBreathWeaponVisible)
+                        {
+                            var entry = Race.DraconicAncestryTable[_currentCharacter!.DragonAncestry];
+                            int angleDeg = (int)MathF.Round(MathHelper.ToDegrees(_breathWeaponVerticalAngle));
+                            string angleLabel = _selectedAction == CombatAction.BreathWeapon ? $"Souffle ({angleDeg:+#;-#;0}°)" : "Souffle";
+                            DrawCombatActionButton(
+                                GetCombatBreathWeaponButtonRect(vp),
+                                angleLabel,
+                                new Color(180, 90, 20),
+                                _selectedAction == CombatAction.BreathWeapon,
+                                isAnyUnitMoving);
+                        }
+
                         bool canCastSpell = IsSpellcasterClass(_currentCharacter!.Class);
                         DrawCombatActionButton(
                             GetCombatCastSpellButtonRect(vp),
@@ -1054,6 +1111,7 @@ public partial class Game1
                                 CombatAction.CastSpell => "Click on an enemy to cast a spell",
                                 CombatAction.Help => "Click on an adjacent enemy to distract (Help action)",
                                 CombatAction.ThrowAcid => "Click on an enemy to throw acid (20 ft, 2d6 acid)",
+                                CombatAction.BreathWeapon => $"Clic pour cracher — PageUp/Down: angle vertical ({(int)MathF.Round(MathHelper.ToDegrees(_breathWeaponVerticalAngle)):+#;-#;0}°)",
                                 _ => ""
                             };
                             var actionTextSize = _font.MeasureString(actionText) * 0.8f;

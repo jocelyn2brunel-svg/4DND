@@ -975,6 +975,90 @@ public partial class Game1
         Draw3DQuad(world, color);
     }
 
+    /// <summary>
+    /// Draws the 3D outline of the breath weapon area of effect while the player is aiming.
+    /// The shape is tilted by <paramref name="verticalAngle"/> (radians) — positive = up.
+    /// Page Up / Page Down controls this angle in-game.
+    /// </summary>
+    private void DrawBreathWeaponOutline(
+        float originX, float originY, float originZ,
+        float horizontalAngle, float verticalAngle,
+        BreathWeaponShape shape, Color color)
+    {
+        float cosH = MathF.Cos(horizontalAngle);
+        float sinH = MathF.Sin(horizontalAngle);
+        float cosV = MathF.Cos(verticalAngle);
+        float sinV = MathF.Sin(verticalAngle);
+
+        // Forward direction vector (normalised)
+        var fwd  = new Vector3(cosH * cosV, sinH * cosV, sinV);
+        // Horizontal side vector (always flat)
+        var side = new Vector3(-sinH, cosH, 0f);
+        // Up-perpendicular (perpendicular to both fwd and side)
+        var upPerp = new Vector3(-cosH * sinV, -sinH * sinV, cosV);
+
+        var origin = new Vector3(originX, originY, originZ);
+
+        if (shape == BreathWeaponShape.Line5x30)
+        {
+            // 30 ft = 6 tiles long, 5 ft = 1 tile wide (±0.5 on each side)
+            // Also draw vertical extents (±0.5 in upPerp) so the 3D tilt is visible
+            const float halfWidth = 0.5f;
+            const float halfHeight = 0.5f;
+            Vector3 endCenter = origin + fwd * 6f;
+
+            Vector3 nTopLeft  = origin   + side * halfWidth + upPerp * halfHeight;
+            Vector3 nTopRight = origin   - side * halfWidth + upPerp * halfHeight;
+            Vector3 nBotLeft  = origin   + side * halfWidth - upPerp * halfHeight;
+            Vector3 nBotRight = origin   - side * halfWidth - upPerp * halfHeight;
+
+            Vector3 fTopLeft  = endCenter + side * halfWidth + upPerp * halfHeight;
+            Vector3 fTopRight = endCenter - side * halfWidth + upPerp * halfHeight;
+            Vector3 fBotLeft  = endCenter + side * halfWidth - upPerp * halfHeight;
+            Vector3 fBotRight = endCenter - side * halfWidth - upPerp * halfHeight;
+
+            // Near face
+            Draw3DLine(nTopLeft,  nTopRight, color);
+            Draw3DLine(nBotLeft,  nBotRight, color);
+            Draw3DLine(nTopLeft,  nBotLeft,  color);
+            Draw3DLine(nTopRight, nBotRight, color);
+            // Far face
+            Draw3DLine(fTopLeft,  fTopRight, color);
+            Draw3DLine(fBotLeft,  fBotRight, color);
+            Draw3DLine(fTopLeft,  fBotLeft,  color);
+            Draw3DLine(fTopRight, fBotRight, color);
+            // Longitudinal edges
+            Draw3DLine(nTopLeft,  fTopLeft,  color);
+            Draw3DLine(nTopRight, fTopRight, color);
+            Draw3DLine(nBotLeft,  fBotLeft,  color);
+            Draw3DLine(nBotRight, fBotRight, color);
+        }
+        else // Cone15: 3 tiles long, radius expands at rate 1 (radius = 1.5 at the far end)
+        {
+            const float length = 3f;
+            const float baseRadius = 1.5f; // radius at far end equals half the width (D&D rule: width = distance)
+            Vector3 apex       = origin;
+            Vector3 baseCenter = origin + fwd * length;
+
+            // Draw the base circle as a polygon
+            const int segments = 16;
+            Vector3 prevPoint = baseCenter + side * baseRadius;
+            for (int i = 1; i <= segments; i++)
+            {
+                float t = i * MathF.PI * 2f / segments;
+                Vector3 p = baseCenter + (MathF.Cos(t) * side + MathF.Sin(t) * upPerp) * baseRadius;
+                Draw3DLine(prevPoint, p, color);
+                prevPoint = p;
+            }
+
+            // Draw 4 rays from apex to cardinal points on the base circle
+            Draw3DLine(apex, baseCenter + side    * baseRadius,  color);
+            Draw3DLine(apex, baseCenter - side    * baseRadius,  color);
+            Draw3DLine(apex, baseCenter + upPerp  * baseRadius,  color);
+            Draw3DLine(apex, baseCenter - upPerp  * baseRadius,  color);
+        }
+    }
+
     private void DrawEnemySightLinesToPlayer()
     {
         if (_playerCreature == null || !_playerCreature.IsAlive())
