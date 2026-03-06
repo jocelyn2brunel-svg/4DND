@@ -455,8 +455,7 @@ public partial class Game1
                 return true;
         }
 
-        if ((_selectedAction == CombatAction.Attack || _selectedAction == CombatAction.BreathWeapon)
-            && currentCombatant.HasAction
+        if (currentCombatant.HasAction
             && currentCombatant.BreathWeaponAvailable
             && _currentCharacter != null && Race.GetRace(_currentCharacter.Race).HasBreathWeapon)
         {
@@ -1036,8 +1035,7 @@ public partial class Game1
                                 isAnyUnitMoving);
                         }
 
-                        bool isBreathWeaponVisible = (_selectedAction == CombatAction.Attack || _selectedAction == CombatAction.BreathWeapon)
-                            && currentCombatant.HasAction
+                        bool isBreathWeaponVisible = currentCombatant.HasAction
                             && currentCombatant.BreathWeaponAvailable
                             && _currentCharacter != null && Race.GetRace(_currentCharacter.Race).HasBreathWeapon;
                         if (isBreathWeaponVisible)
