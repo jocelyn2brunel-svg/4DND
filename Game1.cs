@@ -125,9 +125,11 @@ public partial class Game1 : Game
     private (int X, int Y, int Z)? _lastRoundedVisualTile = null;
     
     // Combat UI state
-    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple, ThrowAcid }
+    private enum CombatAction { None, Move, Attack, Dash, CastSpell, BonusAction, EndTurn, Help, Grapple, ThrowAcid, BreathWeapon }
     private CombatAction _selectedAction = CombatAction.None;
     private bool _showBonusActionMenu = false;
+    // Breath weapon aiming: vertical angle in radians (Page Up/Down), horizontal from mouse
+    private float _breathWeaponVerticalAngle = 0f;
     private bool _showCombatUI = true;
     private bool _hudAlwaysVisible = true;
     private int _combatTopPanelHeight = 125; // Reduced from 220
@@ -1640,7 +1642,7 @@ public partial class Game1 : Game
                         _lastIntPartyX = intX;
                         _lastIntPartyY = intY;
 
-                        // Skip the expensive tactical map rebuild while traveling —
+                        // Skip the expensive tactical map rebuild while traveling ï¿½
                         // the map is not interactive and will be rebuilt once when travel ends.
                         if (!_currentCampaign.IsTraveling)
                         {
@@ -2074,6 +2076,13 @@ public partial class Game1 : Game
                             _showBonusActionMenu = false;
                             clickedOnGameplayUiButton = true;
                         }
+                        else if ((_selectedAction == CombatAction.Attack || _selectedAction == CombatAction.BreathWeapon) && (currentCombatant.HasAction || !_combatManager.InCombat) && GetCombatBreathWeaponButtonRect(GraphicsDevice.Viewport).Contains(mouse.Position) && currentCombatant.BreathWeaponAvailable && _currentCharacter != null && Race.GetRace(_currentCharacter.Race).HasBreathWeapon)
+                        {
+                            _selectedAction = _selectedAction == CombatAction.BreathWeapon ? CombatAction.Attack : CombatAction.BreathWeapon;
+                            _breathWeaponVerticalAngle = 0f;
+                            _showBonusActionMenu = false;
+                            clickedOnGameplayUiButton = true;
+                        }
                         else if (combatCastSpellButtonRect.Contains(mouse.Position) && _currentCharacter != null && IsSpellcasterClass(_currentCharacter.Class))
                         {
                             if (_selectedAction == CombatAction.CastSpell)
@@ -2151,16 +2160,28 @@ public partial class Game1 : Game
                     OpenCampaignMap();
             }
 
-            // Change view level with PageUp/PageDown
-            if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
+            // When aiming a breath weapon, Page Up/Down tilt the angle up/down
+            if (_selectedAction == CombatAction.BreathWeapon)
             {
-                _currentViewLevel++;
-                AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
+                const float angleStep = MathHelper.Pi / 12f; // 15Â° per press
+                if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
+                    _breathWeaponVerticalAngle = Math.Min(MathHelper.PiOver2 * 0.9f, _breathWeaponVerticalAngle + angleStep);
+                if (kb.IsKeyDown(Keys.PageDown) && !_prevKb.IsKeyDown(Keys.PageDown))
+                    _breathWeaponVerticalAngle = Math.Max(-MathHelper.PiOver2 * 0.9f, _breathWeaponVerticalAngle - angleStep);
             }
-            if (kb.IsKeyDown(Keys.PageDown) && !_prevKb.IsKeyDown(Keys.PageDown))
+            else
             {
-                _currentViewLevel = Math.Max(0, _currentViewLevel - 1);
-                AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
+                // Change view level with PageUp/PageDown
+                if (kb.IsKeyDown(Keys.PageUp) && !_prevKb.IsKeyDown(Keys.PageUp))
+                {
+                    _currentViewLevel++;
+                    AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
+                }
+                if (kb.IsKeyDown(Keys.PageDown) && !_prevKb.IsKeyDown(Keys.PageDown))
+                {
+                    _currentViewLevel = Math.Max(0, _currentViewLevel - 1);
+                    AddToCombatLog(Loc.Tr("Viewing level {0}", _currentViewLevel));
+                }
             }
 
 
@@ -2707,6 +2728,58 @@ public partial class Game1 : Game
                                 else if (target != null && !currentCombatant.HasAction && _combatManager.InCombat)
                                 {
                                     AddToCombatLog(Loc.Tr("No action available!"));
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle breath weapon action: click anywhere to fire in mouse direction
+                    if (_selectedAction == CombatAction.BreathWeapon)
+                    {
+                        if (mouseClickedThisFrame && !clickedOnGameplayUiButton && _playerCreature != null && _currentCharacter != null)
+                        {
+                            var hovered = GetHoveredTile();
+                            if (hovered.HasValue && (currentCombatant.HasAction || !_combatManager.InCombat))
+                            {
+                                float dx = hovered.Value.x - _playerCreature.X;
+                                float dy = hovered.Value.y - _playerCreature.Y;
+                                float hAngle = (dx == 0 && dy == 0) ? 0f : MathF.Atan2(dy, dx);
+
+                                var entry = Race.DraconicAncestryTable[_currentCharacter.DragonAncestry];
+                                bool wasInCombat = _combatManager.InCombat;
+                                var hits = _combatManager.UseBreathWeapon(
+                                    currentCombatant, _currentCharacter.Level,
+                                    entry.DamageType, entry.SavingThrow, entry.BreathWeaponShape,
+                                    _playerCreature.X, _playerCreature.Y, _playerCreature.Z,
+                                    hAngle, _breathWeaponVerticalAngle);
+
+                                AddToCombatLog(Loc.Tr("{0} uses Breath Weapon!", currentCombatant.Name));
+                                AddTooltip(currentCombatant, Loc.Tr("Breath Weapon!"), new Color(255, 140, 0));
+                                foreach (var (target, damage, saved) in hits)
+                                {
+                                    string saveText = saved ? Loc.Tr("{0} saves! -{1} HP", target.Name, damage) : Loc.Tr("{0} fails! -{1} HP", target.Name, damage);
+                                    AddToCombatLog(saveText);
+                                    AddTooltip(target, Loc.Tr("-{0} HP", damage), saved ? Color.Orange : Color.Lime);
+                                    if (!target.IsAlive())
+                                        AddToCombatLog(Loc.Tr("{0} is slain!", target.Name));
+                                }
+                                if (hits.Count == 0)
+                                    AddToCombatLog(Loc.Tr("No targets in the area."));
+
+                                FlushTurnMessages();
+                                _selectedAction = CombatAction.Move;
+                                _breathWeaponVerticalAngle = 0f;
+
+                                if (!wasInCombat)
+                                    StartCombatWithNearbyEnemies();
+                                else if (wasInCombat && !_combatManager.InCombat)
+                                {
+                                    AddToCombatLog(Loc.Tr("Combat ended!"));
+                                    if (_currentCharacter != null)
+                                    {
+                                        _playerCreature.UpdateCharacter(_currentCharacter);
+                                        SaveCharacters();
+                                    }
                                 }
                             }
                         }

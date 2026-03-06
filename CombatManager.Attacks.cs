@@ -421,7 +421,7 @@ public partial class CombatManager
         if (distanceSquares > 4)
         {
             result.IsHit = false;
-            TurnMessages.Add(Loc.Tr("{0} cannot throw the acid that far � maximum range is 20 ft.", thrower.Name));
+            TurnMessages.Add(Loc.Tr("{0} cannot throw the acid that far � maximum range is 20 ft.", thrower.Name));
             return result;
         }
 
@@ -533,7 +533,7 @@ public partial class CombatManager
         if (distanceSquares > 4)
         {
             result.IsHit = false;
-            TurnMessages.Add(Loc.Tr("{0} cannot throw the alchemist's fire that far � maximum range is 20 ft.", thrower.Name));
+            TurnMessages.Add(Loc.Tr("{0} cannot throw the alchemist's fire that far � maximum range is 20 ft.", thrower.Name));
             return result;
         }
 
@@ -605,6 +605,92 @@ public partial class CombatManager
             TurnMessages.Add(Loc.Tr("{0} is set ablaze by alchemist's fire!", target.Name));
         }
 
+        return result;
+    }
+
+    /// <summary>
+    /// Uses the Dragonborn breath weapon (PHB "Breath Weapon"). The user exhales destructive energy
+    /// in a cone (15 ft) or line (5×30 ft). Each creature in the area makes a saving throw;
+    /// on a fail takes full damage, on a success takes half. Usable once per short or long rest.
+    /// Damage: 2d6 at levels 1–5, 3d6 at 6–10, 4d6 at 11–15, 5d6 at 16+.
+    /// </summary>
+    public List<(Creature Target, int Damage, bool Saved)> UseBreathWeapon(
+        Creature user, int characterLevel, DamageType damageType, string saveAbility,
+        BreathWeaponShape shape,
+        int originX, int originY, int originZ,
+        float horizontalAngle, float verticalAngle)
+    {
+        var results = new List<(Creature, int, bool)>();
+
+        if (!user.BreathWeaponAvailable || (_inCombat && !user.HasAction))
+            return results;
+
+        string damageDice = characterLevel switch
+        {
+            >= 16 => "5d6",
+            >= 11 => "4d6",
+            >= 6  => "3d6",
+            _     => "2d6"
+        };
+
+        int conMod = user.GetAbilityModifier(user.Constitution);
+        int profBonus = DndMath.GetProficiencyBonus(characterLevel);
+        int saveDC = 8 + conMod + profBonus;
+
+        foreach (var target in GetCreaturesInBreathWeaponArea(originX, originY, originZ, horizontalAngle, verticalAngle, shape))
+        {
+            if (target == user) continue;
+
+            int abilityScore = saveAbility == "Constitution" ? target.Constitution : target.Dexterity;
+            int saveMod = target.GetAbilityModifier(abilityScore);
+            int roll = Dice.Roll(20);
+            bool saved = (roll + saveMod) >= saveDC;
+
+            int damage = RollDamage(damageDice, 0, false);
+            if (saved) damage = Math.Max(1, damage / 2);
+
+            target.TakeDamage(damage, damageType, false);
+            results.Add((target, damage, saved));
+        }
+
+        user.BreathWeaponAvailable = false;
+        if (_inCombat)
+            user.HasAction = false;
+
+        return results;
+    }
+
+    /// <summary>Returns all living combatants whose tile falls within the breath weapon area.</summary>
+    public List<Creature> GetCreaturesInBreathWeaponArea(
+        int originX, int originY, int originZ,
+        float horizontalAngle, float verticalAngle,
+        BreathWeaponShape shape)
+    {
+        float fwdX = MathF.Cos(horizontalAngle) * MathF.Cos(verticalAngle);
+        float fwdY = MathF.Sin(horizontalAngle) * MathF.Cos(verticalAngle);
+        float fwdZ = MathF.Sin(verticalAngle);
+
+        var result = new List<Creature>();
+        foreach (var c in _combatants)
+        {
+            if (!c.IsAlive()) continue;
+
+            float dx = c.X - originX;
+            float dy = c.Y - originY;
+            float dz = c.Z - originZ;
+
+            float proj = dx * fwdX + dy * fwdY + dz * fwdZ;
+            float perpX = dx - proj * fwdX;
+            float perpY = dy - proj * fwdY;
+            float perpZ = dz - proj * fwdZ;
+            float perpDist = MathF.Sqrt(perpX * perpX + perpY * perpY + perpZ * perpZ);
+
+            bool inArea = shape == BreathWeaponShape.Line5x30
+                ? proj >= 0f && proj <= 6f && perpDist <= 0.5f
+                : proj > 0f && proj <= 3f && perpDist <= proj;
+
+            if (inArea) result.Add(c);
+        }
         return result;
     }
 }

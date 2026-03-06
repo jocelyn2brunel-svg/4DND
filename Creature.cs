@@ -586,6 +586,11 @@ public class Creature
     public bool IsRaging { get; set; } = false;
 
     /// <summary>
+    /// Whether the breath weapon is available (recharges on short or long rest).
+    /// </summary>
+    public bool BreathWeaponAvailable { get; set; } = true;
+
+    /// <summary>
     /// Number of Rage uses remaining until a long rest.
     /// </summary>
     public int RagesRemaining { get; set; } = 0;
